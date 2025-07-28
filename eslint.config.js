@@ -18,6 +18,7 @@ module.exports = [
         __dirname: 'readonly',
         __filename: 'readonly',
         global: 'readonly',
+        console: 'readonly', // Thêm console vào globals
         // ES2020 globals (equivalent to env: { es2020: true })
         globalThis: 'readonly',
         BigInt: 'readonly',
@@ -78,7 +79,17 @@ module.exports = [
       'keyword-spacing': 1,
       'comma-dangle': 1,
       'comma-spacing': 1,
-      'arrow-spacing': 1
+      'arrow-spacing': 1,
+      
+      // Rules để phát hiện biến chưa được định nghĩa/import
+      'no-undef': 'error', // Báo lỗi khi sử dụng biến chưa được định nghĩa
+      'no-implicit-globals': 'error', // Ngăn chặn tạo global variables không mong muốn
+      'no-redeclare': 'error', // Ngăn chặn khai báo lại biến
+      'no-use-before-define': ['error', { 
+        functions: false, // Cho phép sử dụng function trước khi định nghĩa (hoisting)
+        classes: true, // Không cho phép sử dụng class trước khi định nghĩa
+        variables: true // Không cho phép sử dụng biến trước khi định nghĩa
+      }]
     },
   }
 ];
