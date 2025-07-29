@@ -7,7 +7,7 @@ let commerceapiDatabaseInstance = null
 const mongoClientInstance = new MongoClient(env.MONGODB_URI, {
   serverApi: {
     version: ServerApiVersion.v1,
-    strict: true,
+    strict: false, // Cho phép sử dụng các command không có trong API v1
     deprecationErrors: true
   }
 })
