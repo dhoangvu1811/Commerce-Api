@@ -17,6 +17,8 @@ Router.delete(
   productController.deleteProduct
 )
 
+Router.post('/deleteSelected', productController.deleteSelectedProducts)
+
 Router.get('/getAll', productController.getProducts)
 
 // Upload ảnh sản phẩm lên Cloudinary

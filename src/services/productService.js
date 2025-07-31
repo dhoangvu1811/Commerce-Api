@@ -67,6 +67,25 @@ const update = async (productId, updateData) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
     }
 
+    // Kiểm tra duplicate nếu có thay đổi name hoặc type
+    if (updateData.name || updateData.type) {
+      const nameToCheck = updateData.name || existingProduct.name
+      const typeToCheck = updateData.type || existingProduct.type
+
+      const duplicateProduct = await productModel.findByNameAndType(
+        nameToCheck,
+        typeToCheck
+      )
+
+      // Nếu tìm thấy sản phẩm trùng và không phải là chính sản phẩm đang update
+      if (duplicateProduct && duplicateProduct._id.toString() !== productId) {
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          `Sản phẩm "${nameToCheck}" thuộc loại "${typeToCheck}" đã tồn tại`
+        )
+      }
+    }
+
     // Cập nhật sản phẩm
     const dataToUpdate = {
       ...updateData,
@@ -98,6 +117,57 @@ const deleteProduct = async (productId) => {
     const result = await productModel.deleteOneById(productId)
 
     return result
+  } catch (error) {
+    throw error
+  }
+}
+
+const deleteSelectedProducts = async (productIds) => {
+  try {
+    // Validate input
+    if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Danh sách ID sản phẩm không hợp lệ'
+      )
+    }
+
+    // Validate tất cả ObjectIds
+    const invalidIds = productIds.filter((id) => !ObjectId.isValid(id))
+    if (invalidIds.length > 0) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `ID sản phẩm không hợp lệ: ${invalidIds.join(', ')}`
+      )
+    }
+
+    // Chuyển đổi string IDs thành ObjectIds
+    const objectIds = productIds.map((id) => new ObjectId(id))
+
+    // Kiểm tra các sản phẩm có tồn tại không
+    const existingProducts = await productModel.findByIds(objectIds)
+    const existingIds = existingProducts.map((product) =>
+      product._id.toString()
+    )
+    const notFoundIds = productIds.filter((id) => !existingIds.includes(id))
+
+    if (notFoundIds.length > 0) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        `Không tìm thấy sản phẩm với ID: ${notFoundIds.join(', ')}`
+      )
+    }
+
+    // Xóa các sản phẩm đã chọn
+    const result = await productModel.deleteMany({
+      _id: { $in: objectIds }
+    })
+
+    return {
+      deletedCount: result.deletedCount,
+      message: `Đã xóa ${result.deletedCount} sản phẩm được chọn`,
+      deletedIds: productIds
+    }
   } catch (error) {
     throw error
   }
@@ -243,6 +313,7 @@ export const productService = {
   getDetails,
   update,
   deleteProduct,
+  deleteSelectedProducts,
   getProducts,
   getProductsByType,
   getAllTypes,
