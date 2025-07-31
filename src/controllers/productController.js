@@ -63,6 +63,22 @@ const deleteProduct = async (req, res, next) => {
   }
 }
 
+const deleteSelectedProducts = async (req, res, next) => {
+  try {
+    const { data } = req.body
+
+    const result = await productService.deleteSelectedProducts(data.productIds)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Xóa các sản phẩm được chọn thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 const getProducts = async (req, res, next) => {
   try {
     const { page, itemsPerPage, search, type, sort } = req.query
@@ -137,6 +153,7 @@ export const productController = {
   getDetails,
   update,
   deleteProduct,
+  deleteSelectedProducts,
   getProducts,
   getAllTypes,
   uploadImage

@@ -101,6 +101,21 @@ const findByNameAndType = async (name, type) => {
   }
 }
 
+const findByIds = async (productIds) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .find({
+        _id: { $in: productIds }
+      })
+      .toArray()
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const getMany = async (
   filter = {},
   page = 1,
@@ -173,6 +188,18 @@ const deleteOneById = async (productId) => {
   }
 }
 
+const deleteMany = async (filter = {}) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .deleteMany(filter)
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const getAllTypes = async () => {
   try {
     const types = await GET_DB()
@@ -192,8 +219,10 @@ export const productModel = {
   createNew,
   findOneById,
   findByNameAndType,
+  findByIds,
   getMany,
   update,
   deleteOneById,
+  deleteMany,
   getAllTypes
 }
