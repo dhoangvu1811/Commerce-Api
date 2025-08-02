@@ -303,7 +303,7 @@ const uploadImage = async (fileBuffer, folderName = 'products') => {
   } catch (error) {
     throw new ApiError(
       StatusCodes.INTERNAL_SERVER_ERROR,
-      'Lỗi upload ảnh lên Cloudinary'
+      `Lỗi upload ảnh lên Cloudinary: ${error.message}`
     )
   }
 }
