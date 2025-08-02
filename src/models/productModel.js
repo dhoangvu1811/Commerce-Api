@@ -27,36 +27,6 @@ const validateBeforeCreate = async (data) => {
   return validData
 }
 
-const validateBeforeUpdate = async (data) => {
-  // Tạo schema cho update (tất cả fields đều optional trừ updatedAt)
-  const updateSchema = PRODUCT_COLLECTION_SCHEMA.fork(
-    [
-      'name',
-      'image',
-      'type',
-      'countInStock',
-      'price',
-      'rating',
-      'description',
-      'selled',
-      'discount',
-      'createdAt'
-    ],
-    (schema) => schema.optional()
-  ).concat(
-    Joi.object({
-      updatedAt: Joi.date().timestamp().default(Date.now)
-    })
-  )
-
-  const validData = await updateSchema.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-
-  return validData
-}
-
 const createNew = async (data) => {
   try {
     const validData = await validateBeforeCreate(data)
@@ -157,14 +127,17 @@ const getMany = async (
 
 const update = async (productId, updateData) => {
   try {
-    // Validate dữ liệu trước khi update
-    const validData = await validateBeforeUpdate(updateData)
+    // Thêm updatedAt vào dữ liệu update
+    const dataToUpdate = {
+      ...updateData,
+      updatedAt: new Date()
+    }
 
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .findOneAndUpdate(
         { _id: new ObjectId(productId) },
-        { $set: validData },
+        { $set: dataToUpdate },
         { returnDocument: 'after' }
       )
 
