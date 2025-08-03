@@ -64,7 +64,7 @@ const login = async (loginData) => {
 
     if (!user) {
       throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
+        StatusCodes.NOT_ACCEPTABLE,
         'Email hoặc mật khẩu không đúng'
       )
     }
@@ -79,7 +79,7 @@ const login = async (loginData) => {
 
     if (!isPasswordValid) {
       throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
+        StatusCodes.NOT_ACCEPTABLE,
         'Email hoặc mật khẩu không đúng'
       )
     }
@@ -222,7 +222,7 @@ const updatePassword = async (userId, passwordData) => {
 
     if (!isCurrentPasswordValid) {
       throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
+        StatusCodes.NOT_ACCEPTABLE,
         'Mật khẩu hiện tại không đúng'
       )
     }

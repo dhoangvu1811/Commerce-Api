@@ -101,6 +101,10 @@ const updateUser = async (req, res, next) => {
       'string.min': 'Tên phải có ít nhất 2 ký tự',
       'string.max': 'Tên không được vượt quá 100 ký tự'
     }),
+    email: Joi.string().optional().email().lowercase().trim().messages({
+      'string.empty': 'Email không được để trống',
+      'string.email': 'Email không đúng định dạng'
+    }),
     phone: Joi.string()
       .optional()
       .trim()

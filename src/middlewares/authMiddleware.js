@@ -5,9 +5,13 @@ import { JwtProvider } from '~/providers/JwtProvider'
 // Middleware xác thực JWT token
 const verifyToken = async (req, res, next) => {
   try {
-    // Lấy token từ header Authorization
-    const authHeader = req.headers.authorization
-    const token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
+    // Lấy token từ cookie trước, nếu không có thì lấy từ header Authorization (để tương thích)
+    let token = req.cookies.accessToken
+
+    if (!token) {
+      const authHeader = req.headers.authorization
+      token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
+    }
 
     if (!token) {
       throw new ApiError(StatusCodes.UNAUTHORIZED, 'Access token không tồn tại')
@@ -24,7 +28,7 @@ const verifyToken = async (req, res, next) => {
     if (error.name === 'JsonWebTokenError') {
       next(new ApiError(StatusCodes.UNAUTHORIZED, 'Access token không hợp lệ'))
     } else if (error.name === 'TokenExpiredError') {
-      next(new ApiError(StatusCodes.UNAUTHORIZED, 'Access token đã hết hạn'))
+      next(new ApiError(StatusCodes.GONE, 'Access token đã hết hạn'))
     } else {
       next(error)
     }
