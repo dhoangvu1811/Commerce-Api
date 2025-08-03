@@ -21,7 +21,14 @@ const login = async (req, res, next) => {
   try {
     const loginResult = await userService.login(req.body)
 
-    // Set cookie cho refresh token
+    // Set cookie cho refresh token, access token
+    res.cookie('accessToken', loginResult.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: ms('7d')
+    })
+
     res.cookie('refreshToken', loginResult.refreshToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -33,8 +40,7 @@ const login = async (req, res, next) => {
       code: StatusCodes.OK,
       message: 'Đăng nhập thành công',
       data: {
-        user: loginResult.user,
-        accessToken: loginResult.accessToken
+        user: loginResult.user
       }
     })
   } catch (error) {
@@ -44,7 +50,8 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
-    // Xóa refresh token cookie
+    // Xóa cả access token và refresh token cookie
+    res.clearCookie('accessToken')
     res.clearCookie('refreshToken')
 
     res.status(StatusCodes.OK).json({
@@ -235,10 +242,18 @@ const refreshToken = async (req, res, next) => {
 
     const result = await userService.refreshToken(refreshToken)
 
+    // Set cookie cho access token mới
+    res.cookie('accessToken', result.accessToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: ms('7d')
+    })
+
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Làm mới token thành công',
-      data: result
+      data: null
     })
   } catch (error) {
     next(error)
