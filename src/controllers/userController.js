@@ -140,15 +140,6 @@ const updateUserByAdmin = async (req, res, next) => {
     const userId = req.params.id
     const updateData = { ...req.body }
 
-    // Xử lý upload avatar nếu có file
-    if (req.file) {
-      const uploadResult = await CloudinaryProvider.streamUpload(
-        req.file.buffer,
-        'users-commerceweb'
-      )
-      updateData.avatar = uploadResult.secure_url
-    }
-
     const updatedUser = await userService.updateUserByAdmin(userId, updateData)
 
     res.status(StatusCodes.OK).json({
@@ -260,6 +251,52 @@ const refreshToken = async (req, res, next) => {
   }
 }
 
+const createUserByAdmin = async (req, res, next) => {
+  try {
+    const createData = { ...req.body }
+
+    const createdUser = await userService.createUserByAdmin(createData)
+
+    res.status(StatusCodes.CREATED).json({
+      code: StatusCodes.CREATED,
+      message: 'Tạo người dùng thành công',
+      data: createdUser
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const uploadAvatar = async (req, res, next) => {
+  try {
+    // Kiểm tra xem có file được upload không
+    if (!req.file) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        code: StatusCodes.BAD_REQUEST,
+        message: 'Vui lòng chọn ảnh avatar để upload',
+        data: null
+      })
+    }
+
+    // Upload avatar thông qua service
+    const uploadResult = await userService.uploadAvatar(
+      req.file.buffer,
+      'users-commerceweb'
+    )
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Upload ảnh thành công',
+      data: {
+        avatarUrl: uploadResult.secure_url,
+        publicId: uploadResult.public_id
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -273,5 +310,7 @@ export const userController = {
   deleteUser,
   deleteMultipleUsers,
   getUsers,
-  refreshToken
+  refreshToken,
+  createUserByAdmin,
+  uploadAvatar
 }

@@ -28,9 +28,21 @@ Router.put(
   userValidation.updatePassword,
   userController.updatePassword
 )
+Router.post(
+  '/upload-avatar',
+  multerUploadMiddleware.upload.single('avatar'),
+  userController.uploadAvatar
+)
 
 // Admin routes - chỉ admin mới có quyền
 Router.get('/all', authMiddleware.verifyAdmin, userController.getUsers)
+
+Router.post(
+  '/create',
+  authMiddleware.verifyAdmin,
+  userValidation.createUserByAdmin,
+  userController.createUserByAdmin
+)
 
 Router.get(
   '/details/:id',
@@ -41,7 +53,6 @@ Router.get(
 Router.put(
   '/update/:id',
   authMiddleware.verifyAdmin,
-  multerUploadMiddleware.upload.single('avatar'),
   userValidation.updateUserByAdmin,
   userController.updateUserByAdmin
 )
