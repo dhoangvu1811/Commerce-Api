@@ -5,6 +5,7 @@ import { userModel } from '~/models/userModel'
 import { ObjectId } from 'mongodb'
 import bcrypt from 'bcrypt'
 import { JwtProvider } from '~/providers/JwtProvider'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 
 // Hash mật khẩu
 const hashPassword = async (password) => {
@@ -49,7 +50,7 @@ const register = async (userData) => {
     // eslint-disable-next-line no-unused-vars
     const { password, ...userResponse } = createdUser
 
-    return userResponse
+    return { user: userResponse }
   } catch (error) {
     throw error
   }
@@ -122,7 +123,7 @@ const getDetails = async (userId) => {
     // eslint-disable-next-line no-unused-vars
     const { password, ...userResponse } = user
 
-    return userResponse
+    return { user: userResponse }
   } catch (error) {
     throw error
   }
@@ -153,7 +154,7 @@ const updateUser = async (userId, updateData) => {
     // eslint-disable-next-line no-unused-vars
     const { password, ...userResponse } = updatedUser
 
-    return userResponse
+    return { user: userResponse }
   } catch (error) {
     throw error
   }
@@ -195,7 +196,7 @@ const updateUserByAdmin = async (userId, updateData) => {
     // eslint-disable-next-line no-unused-vars
     const { password, ...userResponse } = updatedUser
 
-    return userResponse
+    return { user: userResponse }
   } catch (error) {
     throw error
   }
@@ -240,7 +241,7 @@ const updatePassword = async (userId, passwordData) => {
     // eslint-disable-next-line no-unused-vars
     const { password, ...userResponse } = updatedUser
 
-    return userResponse
+    return { user: userResponse }
   } catch (error) {
     throw error
   }
@@ -428,6 +429,62 @@ const refreshToken = async (refreshTokenValue) => {
   }
 }
 
+const createUserByAdmin = async (userData) => {
+  try {
+    // Kiểm tra email đã tồn tại chưa
+    const existingUser = await userModel.findOneByEmail(userData.email)
+
+    if (existingUser) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        `Email "${userData.email}" đã được sử dụng`
+      )
+    }
+
+    // Hash mật khẩu
+    const hashedPassword = await hashPassword(userData.password)
+
+    // Tạo user mới với dữ liệu từ admin
+    const newUser = {
+      ...userData,
+      password: hashedPassword,
+      role: userData.role || 'user',
+      isActive: userData.isActive !== undefined ? userData.isActive : true,
+      emailVerified:
+        userData.emailVerified !== undefined ? userData.emailVerified : false,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    }
+
+    const createdUser = await userModel.createNew(newUser)
+
+    // Loại bỏ password khỏi response
+    // eslint-disable-next-line no-unused-vars
+    const { password, ...userResponse } = createdUser
+
+    return { user: userResponse }
+  } catch (error) {
+    throw error
+  }
+}
+
+const uploadAvatar = async (fileBuffer, folderName = 'users-commerceweb') => {
+  try {
+    // Upload ảnh lên Cloudinary với folder 'users-commerceweb'
+    const uploadResult = await CloudinaryProvider.streamUpload(
+      fileBuffer,
+      folderName
+    )
+
+    return uploadResult
+  } catch (error) {
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Lỗi upload ảnh lên Cloudinary: ${error.message}`
+    )
+  }
+}
+
 export const userService = {
   register,
   login,
@@ -439,6 +496,8 @@ export const userService = {
   deleteMultipleUsers,
   getUsers,
   refreshToken,
+  createUserByAdmin,
+  uploadAvatar,
   hashPassword,
   comparePassword
 }

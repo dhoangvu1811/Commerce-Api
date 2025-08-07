@@ -286,6 +286,81 @@ const updateUserByAdmin = async (req, res, next) => {
   }
 }
 
+const createUserByAdmin = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    name: Joi.string().required().trim().min(2).max(100).messages({
+      'string.empty': 'Tên không được để trống',
+      'string.min': 'Tên phải có ít nhất 2 ký tự',
+      'string.max': 'Tên không được vượt quá 100 ký tự',
+      'any.required': 'Tên là bắt buộc'
+    }),
+    avatar: Joi.string().optional().uri().allow('').messages({
+      'string.uri': 'Avatar phải là URL hợp lệ'
+    }),
+    email: Joi.string().required().email().lowercase().trim().messages({
+      'string.empty': 'Email không được để trống',
+      'string.email': 'Email không đúng định dạng',
+      'any.required': 'Email là bắt buộc'
+    }),
+    password: Joi.string().required().min(6).max(255).messages({
+      'string.empty': 'Mật khẩu không được để trống',
+      'string.min': 'Mật khẩu phải có ít nhất 6 ký tự',
+      'string.max': 'Mật khẩu không được vượt quá 255 ký tự',
+      'any.required': 'Mật khẩu là bắt buộc'
+    }),
+    phone: Joi.string()
+      .optional()
+      .trim()
+      .pattern(/^[0-9+\-\s()]+$/)
+      .min(10)
+      .max(15)
+      .allow('')
+      .messages({
+        'string.pattern.base': 'Số điện thoại không đúng định dạng',
+        'string.min': 'Số điện thoại phải có ít nhất 10 ký tự',
+        'string.max': 'Số điện thoại không được vượt quá 15 ký tự'
+      }),
+    address: Joi.string().optional().trim().max(500).allow('').messages({
+      'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
+    }),
+    dateOfBirth: Joi.date().optional().max('now').allow(null).messages({
+      'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
+    }),
+    gender: Joi.string()
+      .optional()
+      .valid('male', 'female', 'other')
+      .allow('')
+      .messages({
+        'any.only': 'Giới tính phải là male, female hoặc other'
+      }),
+    role: Joi.string()
+      .optional()
+      .valid('admin', 'user')
+      .default('user')
+      .messages({
+        'any.only': 'Quyền phải là admin hoặc user'
+      }),
+    isActive: Joi.boolean().optional().default(true).messages({
+      'boolean.base': 'Trạng thái hoạt động phải là true hoặc false'
+    }),
+    emailVerified: Joi.boolean().optional().default(false).messages({
+      'boolean.base': 'Trạng thái xác thực email phải là true hoặc false'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
 export const userValidation = {
   register,
   login,
@@ -293,5 +368,6 @@ export const userValidation = {
   updatePassword,
   deleteUser,
   deleteMultipleUsers,
-  updateUserByAdmin
+  updateUserByAdmin,
+  createUserByAdmin
 }
