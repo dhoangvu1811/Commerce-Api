@@ -11,11 +11,11 @@ import { corsOptions } from './config/cors'
 const START_SERVER = () => {
   const app = express()
 
-  // //Fix cái vụ Cache from disk của ExpressJS
-  // app.use((req, res, next) => {
-  //   res.set('Cache-Control', 'no-store')
-  //   next()
-  // })
+  //Fix cái vụ Cache from disk của ExpressJS
+  app.use((req, res, next) => {
+    res.set('Cache-Control', 'no-store')
+    next()
+  })
 
   //Cấu hình Cookie parser
   app.use(cookieParser())
@@ -36,7 +36,7 @@ const START_SERVER = () => {
   if (env.BUILD_MODE === 'production') {
     app.listen(process.env.PORT, () => {
       console.log(
-        `3. PRODUCTION Hello ${env.AUTHOR}, I am running at PORT: ${process.env.PORT}`
+        `3. PRODUCTION Hello ${env.AUTHOR}, I am running at PORT: ${process.env?.PORT}`
       )
     })
   } else {

@@ -1,6 +1,7 @@
 import Joi from 'joi'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
+import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators'
 
 const createNew = async (req, res, next) => {
   const correctCondition = Joi.object({
@@ -137,10 +138,10 @@ const deleteProduct = async (req, res, next) => {
   const correctCondition = Joi.object({
     id: Joi.string()
       .required()
-      .pattern(/^[0-9a-fA-F]{24}$/)
+      .pattern(OBJECT_ID_RULE)
       .messages({
         'string.empty': 'ID sản phẩm không được để trống',
-        'string.pattern.base': 'ID sản phẩm không hợp lệ',
+        'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
         'any.required': 'ID sản phẩm là bắt buộc'
       })
   })
@@ -155,8 +156,38 @@ const deleteProduct = async (req, res, next) => {
   }
 }
 
+const deleteSelected = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    ids: Joi.array()
+      .required()
+      .min(1)
+      .items(
+        Joi.string()
+          .pattern(OBJECT_ID_RULE)
+          .messages({
+            'string.pattern.base': OBJECT_ID_RULE_MESSAGE
+          })
+      )
+      .messages({
+        'array.base': 'Danh sách ID phải là một mảng',
+        'array.min': 'Phải chọn ít nhất một sản phẩm để xóa',
+        'any.required': 'Danh sách ID sản phẩm là bắt buộc'
+      })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    next(
+      new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(error).message)
+    )
+  }
+}
+
 export const productValidation = {
   createNew,
   update,
-  deleteProduct
+  deleteProduct,
+  deleteSelected
 }

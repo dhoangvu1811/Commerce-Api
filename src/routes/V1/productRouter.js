@@ -2,14 +2,23 @@ import express from 'express'
 import { productController } from '~/controllers/productController'
 import { productValidation } from '~/validations/productValidation'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware'
+import { authMiddleware } from '~/middlewares/authMiddleware'
 
 const Router = express.Router()
 
+// Public routes - không cần xác thực (cho khách hàng xem sản phẩm)
+Router.get('/details/:id', productController.getDetails)
+Router.get('/getAll', productController.getProducts)
+Router.get('/getAllType', productController.getAllTypes)
+
+// Protected routes - cần xác thực và quyền admin
+Router.use(authMiddleware.verifyToken)
+Router.use(authMiddleware.verifyAdmin)
+
+// Admin-only routes - quản lý sản phẩm
 Router.post('/create', productValidation.createNew, productController.createNew)
 
 Router.put('/update/:id', productValidation.update, productController.update)
-
-Router.get('/details/:id', productController.getDetails)
 
 Router.delete(
   '/delete/:id',
@@ -17,9 +26,11 @@ Router.delete(
   productController.deleteProduct
 )
 
-Router.post('/deleteSelected', productController.deleteSelectedProducts)
-
-Router.get('/getAll', productController.getProducts)
+Router.post(
+  '/deleteSelected',
+  productValidation.deleteSelected,
+  productController.deleteSelectedProducts
+)
 
 // Upload ảnh sản phẩm lên Cloudinary
 Router.post(
@@ -27,9 +38,5 @@ Router.post(
   multerUploadMiddleware.upload.single('image'),
   productController.uploadImage
 )
-
-// Router.post('/deleteMany', authMiddleware, productController.deleteManyProduct)
-
-Router.get('/getAllType', productController.getAllTypes)
 
 export const productRoute = Router

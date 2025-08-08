@@ -6,10 +6,10 @@ import { JwtProvider } from '~/providers/JwtProvider'
 const verifyToken = async (req, res, next) => {
   try {
     // Lấy token từ cookie trước, nếu không có thì lấy từ header Authorization (để tương thích)
-    let token = req.cookies.accessToken
+    let token = req.cookies?.accessToken
 
     if (!token) {
-      const authHeader = req.headers.authorization
+      const authHeader = req.headers?.authorization
       token = authHeader && authHeader.split(' ')[1] // Bearer TOKEN
     }
 
@@ -38,7 +38,7 @@ const verifyToken = async (req, res, next) => {
 // Middleware kiểm tra quyền admin
 const verifyAdmin = async (req, res, next) => {
   try {
-    if (req.jwtDecoded.role !== 'admin') {
+    if (req.jwtDecoded?.role !== 'admin') {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         'Bạn không có quyền truy cập chức năng này'
@@ -53,9 +53,9 @@ const verifyAdmin = async (req, res, next) => {
 // Middleware kiểm tra quyền user (chỉ được truy cập thông tin của chính mình hoặc admin)
 const verifyUserOwnership = async (req, res, next) => {
   try {
-    const userId = req.params.id
-    const currentUserId = req.jwtDecoded._id
-    const currentUserRole = req.jwtDecoded.role
+    const userId = req.params?.id
+    const currentUserId = req.jwtDecoded?._id
+    const currentUserRole = req.jwtDecoded?.role
 
     // Admin có thể truy cập thông tin của bất kỳ user nào
     // User chỉ có thể truy cập thông tin của chính mình

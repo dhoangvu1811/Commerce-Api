@@ -22,7 +22,7 @@ const streamUpload = (fileBuffer, folderName) => {
       }
     )
     // Thực hiện upload luồng trên bằng lib streamifier
-    streamifier.createReadStream(fileBuffer).pipe(stream)
+    streamifier.createReadStream(fileBuffer)?.pipe(stream)
   })
 }
 

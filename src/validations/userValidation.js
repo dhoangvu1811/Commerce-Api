@@ -1,6 +1,14 @@
 import Joi from 'joi'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
+import {
+  OBJECT_ID_RULE,
+  OBJECT_ID_RULE_MESSAGE,
+  EMAIL_RULE,
+  EMAIL_RULE_MESSAGE,
+  PASSWORD_RULE,
+  PASSWORD_RULE_MESSAGE
+} from '~/utils/validators'
 
 const register = async (req, res, next) => {
   const correctCondition = Joi.object({
@@ -10,15 +18,19 @@ const register = async (req, res, next) => {
       'string.max': 'Tên không được vượt quá 100 ký tự',
       'any.required': 'Tên là bắt buộc'
     }),
-    email: Joi.string().required().email().lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.email': 'Email không đúng định dạng',
-      'any.required': 'Email là bắt buộc'
-    }),
-    password: Joi.string().required().min(6).max(255).messages({
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
+    password: Joi.string().required().pattern(PASSWORD_RULE).messages({
       'string.empty': 'Mật khẩu không được để trống',
-      'string.min': 'Mật khẩu phải có ít nhất 6 ký tự',
-      'string.max': 'Mật khẩu không được vượt quá 255 ký tự',
+      'string.pattern.base': PASSWORD_RULE_MESSAGE,
       'any.required': 'Mật khẩu là bắt buộc'
     }),
     confirmPassword: Joi.string()
@@ -70,11 +82,16 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   const correctCondition = Joi.object({
-    email: Joi.string().required().email().lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.email': 'Email không đúng định dạng',
-      'any.required': 'Email là bắt buộc'
-    }),
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
     password: Joi.string().required().messages({
       'string.empty': 'Mật khẩu không được để trống',
       'any.required': 'Mật khẩu là bắt buộc'
@@ -101,10 +118,15 @@ const updateUser = async (req, res, next) => {
       'string.min': 'Tên phải có ít nhất 2 ký tự',
       'string.max': 'Tên không được vượt quá 100 ký tự'
     }),
-    email: Joi.string().optional().email().lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.email': 'Email không đúng định dạng'
-    }),
+    email: Joi.string()
+      .optional()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE
+      }),
     phone: Joi.string()
       .optional()
       .trim()
@@ -151,10 +173,9 @@ const updatePassword = async (req, res, next) => {
       'string.empty': 'Mật khẩu hiện tại không được để trống',
       'any.required': 'Mật khẩu hiện tại là bắt buộc'
     }),
-    newPassword: Joi.string().required().min(6).max(255).messages({
+    newPassword: Joi.string().required().pattern(PASSWORD_RULE).messages({
       'string.empty': 'Mật khẩu mới không được để trống',
-      'string.min': 'Mật khẩu mới phải có ít nhất 6 ký tự',
-      'string.max': 'Mật khẩu mới không được vượt quá 255 ký tự',
+      'string.pattern.base': PASSWORD_RULE_MESSAGE,
       'any.required': 'Mật khẩu mới là bắt buộc'
     }),
     confirmPassword: Joi.string()
@@ -178,14 +199,11 @@ const updatePassword = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
   const correctCondition = Joi.object({
-    id: Joi.string()
-      .required()
-      .pattern(/^[0-9a-fA-F]{24}$/)
-      .messages({
-        'string.empty': 'ID người dùng không được để trống',
-        'string.pattern.base': 'ID người dùng không hợp lệ',
-        'any.required': 'ID người dùng là bắt buộc'
-      })
+    id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
+      'string.empty': 'ID người dùng không được để trống',
+      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
+      'any.required': 'ID người dùng là bắt buộc'
+    })
   })
 
   try {
@@ -202,11 +220,9 @@ const deleteMultipleUsers = async (req, res, next) => {
   const correctCondition = Joi.object({
     userIds: Joi.array()
       .items(
-        Joi.string()
-          .pattern(/^[0-9a-fA-F]{24}$/)
-          .messages({
-            'string.pattern.base': 'ID người dùng không hợp lệ'
-          })
+        Joi.string().pattern(OBJECT_ID_RULE).messages({
+          'string.pattern.base': OBJECT_ID_RULE_MESSAGE
+        })
       )
       .min(1)
       .required()
@@ -233,10 +249,15 @@ const updateUserByAdmin = async (req, res, next) => {
       'string.min': 'Tên phải có ít nhất 2 ký tự',
       'string.max': 'Tên không được vượt quá 100 ký tự'
     }),
-    email: Joi.string().optional().email().lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.email': 'Email không đúng định dạng'
-    }),
+    email: Joi.string()
+      .optional()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE
+      }),
     phone: Joi.string()
       .optional()
       .trim()
@@ -297,15 +318,19 @@ const createUserByAdmin = async (req, res, next) => {
     avatar: Joi.string().optional().uri().allow('').messages({
       'string.uri': 'Avatar phải là URL hợp lệ'
     }),
-    email: Joi.string().required().email().lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.email': 'Email không đúng định dạng',
-      'any.required': 'Email là bắt buộc'
-    }),
-    password: Joi.string().required().min(6).max(255).messages({
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
+    password: Joi.string().required().pattern(PASSWORD_RULE).messages({
       'string.empty': 'Mật khẩu không được để trống',
-      'string.min': 'Mật khẩu phải có ít nhất 6 ký tự',
-      'string.max': 'Mật khẩu không được vượt quá 255 ký tự',
+      'string.pattern.base': PASSWORD_RULE_MESSAGE,
       'any.required': 'Mật khẩu là bắt buộc'
     }),
     phone: Joi.string()

@@ -78,7 +78,7 @@ const update = async (productId, updateData) => {
       )
 
       // Nếu tìm thấy sản phẩm trùng và không phải là chính sản phẩm đang update
-      if (duplicateProduct && duplicateProduct._id.toString() !== productId) {
+      if (duplicateProduct && duplicateProduct?._id?.toString() !== productId) {
         throw new ApiError(
           StatusCodes.CONFLICT,
           `Sản phẩm "${nameToCheck}" thuộc loại "${typeToCheck}" đã tồn tại`
@@ -147,7 +147,7 @@ const deleteSelectedProducts = async (productIds) => {
     // Kiểm tra các sản phẩm có tồn tại không
     const existingProducts = await productModel.findByIds(objectIds)
     const existingIds = existingProducts.map((product) =>
-      product._id.toString()
+      product?._id?.toString()
     )
     const notFoundIds = productIds.filter((id) => !existingIds.includes(id))
 
