@@ -121,7 +121,7 @@ const getDetails = async (userId) => {
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
-    const { password, ...userResponse } = user
+    const { password, ...userResponse } = user || {}
 
     return { user: userResponse }
   } catch (error) {
@@ -152,7 +152,7 @@ const updateUser = async (userId, updateData) => {
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
-    const { password, ...userResponse } = updatedUser
+    const { password, ...userResponse } = updatedUser || {}
 
     return { user: userResponse }
   } catch (error) {
@@ -194,7 +194,7 @@ const updateUserByAdmin = async (userId, updateData) => {
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
-    const { password, ...userResponse } = updatedUser
+    const { password, ...userResponse } = updatedUser || {}
 
     return { user: userResponse }
   } catch (error) {
@@ -239,7 +239,7 @@ const updatePassword = async (userId, passwordData) => {
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
-    const { password, ...userResponse } = updatedUser
+    const { password, ...userResponse } = updatedUser || {}
 
     return { user: userResponse }
   } catch (error) {
@@ -293,7 +293,7 @@ const deleteMultipleUsers = async (userIds) => {
 
     // Kiểm tra các user có tồn tại không
     const existingUsers = await userModel.findByIds(objectIds)
-    const existingIds = existingUsers.map((user) => user._id.toString())
+    const existingIds = existingUsers.map((user) => user?._id?.toString())
     const notFoundIds = userIds.filter((id) => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
@@ -377,11 +377,11 @@ const getUsers = async (page = 1, itemsPerPage = 10, queryFilter = {}) => {
     )
 
     // Loại bỏ password khỏi tất cả user trong response
-    const usersWithoutPassword = result.users.map((user) => {
+    const usersWithoutPassword = result.users?.map((user) => {
       // eslint-disable-next-line no-unused-vars
-      const { password, ...userWithoutPassword } = user
+      const { password, ...userWithoutPassword } = user || {}
       return userWithoutPassword
-    })
+    }) || []
 
     return {
       ...result,

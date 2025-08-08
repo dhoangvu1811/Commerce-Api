@@ -17,7 +17,7 @@ const createNew = async (req, res, next) => {
 
 const getDetails = async (req, res, next) => {
   try {
-    const productId = req.params.id
+    const productId = req.params?.id
 
     const product = await productService.getDetails(productId)
 
@@ -33,7 +33,7 @@ const getDetails = async (req, res, next) => {
 
 const update = async (req, res, next) => {
   try {
-    const productId = req.params.id
+    const productId = req.params?.id
 
     const updatedProduct = await productService.update(productId, req.body)
 
@@ -49,7 +49,7 @@ const update = async (req, res, next) => {
 
 const deleteProduct = async (req, res, next) => {
   try {
-    const productId = req.params.id
+    const productId = req.params?.id
 
     const result = await productService.deleteProduct(productId)
 
@@ -65,9 +65,9 @@ const deleteProduct = async (req, res, next) => {
 
 const deleteSelectedProducts = async (req, res, next) => {
   try {
-    const { data } = req.body
+    const { data } = req.body || {}
 
-    const result = await productService.deleteSelectedProducts(data.productIds)
+    const result = await productService.deleteSelectedProducts(data?.productIds)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -81,7 +81,7 @@ const deleteSelectedProducts = async (req, res, next) => {
 
 const getProducts = async (req, res, next) => {
   try {
-    const { page, itemsPerPage, search, type, sort } = req.query
+    const { page, itemsPerPage, search, type, sort } = req.query || {}
     const queryFilter = {
       search,
       type,
@@ -131,7 +131,7 @@ const uploadImage = async (req, res, next) => {
 
     // Upload ảnh lên Cloudinary thông qua service
     const uploadResult = await productService.uploadImage(
-      req.file.buffer,
+      req.file?.buffer,
       'products'
     )
 
@@ -139,8 +139,8 @@ const uploadImage = async (req, res, next) => {
       code: StatusCodes.OK,
       message: 'Upload ảnh thành công',
       data: {
-        imageUrl: uploadResult.secure_url,
-        publicId: uploadResult.public_id
+        imageUrl: uploadResult?.secure_url,
+        publicId: uploadResult?.public_id
       }
     })
   } catch (error) {

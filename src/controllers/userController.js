@@ -24,15 +24,15 @@ const login = async (req, res, next) => {
     // Set cookie cho refresh token, access token
     res.cookie('accessToken', loginResult.accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       maxAge: ms('7d')
     })
 
     res.cookie('refreshToken', loginResult.refreshToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       maxAge: ms('7d') // 7 ngày
     })
 
@@ -66,7 +66,7 @@ const logout = async (req, res, next) => {
 
 const getDetails = async (req, res, next) => {
   try {
-    const userId = req.params.id
+    const userId = req.params?.id
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -81,7 +81,7 @@ const getDetails = async (req, res, next) => {
 
 const getCurrentUser = async (req, res, next) => {
   try {
-    const userId = req.jwtDecoded._id
+    const userId = req.jwtDecoded?._id
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -96,7 +96,7 @@ const getCurrentUser = async (req, res, next) => {
 
 const updateUser = async (req, res, next) => {
   try {
-    const userId = req.params.id
+    const userId = req.params?.id
     const updatedUser = await userService.updateUser(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -111,16 +111,16 @@ const updateUser = async (req, res, next) => {
 
 const updateCurrentUser = async (req, res, next) => {
   try {
-    const userId = req.jwtDecoded._id
+    const userId = req.jwtDecoded?._id
     const updateData = { ...req.body }
 
     // Xử lý upload avatar nếu có file
     if (req.file) {
       const uploadResult = await CloudinaryProvider.streamUpload(
-        req.file.buffer,
+        req.file?.buffer,
         'users-commerceweb'
       )
-      updateData.avatar = uploadResult.secure_url
+      updateData.avatar = uploadResult?.secure_url
     }
 
     const updatedUser = await userService.updateUser(userId, updateData)
@@ -137,7 +137,7 @@ const updateCurrentUser = async (req, res, next) => {
 
 const updateUserByAdmin = async (req, res, next) => {
   try {
-    const userId = req.params.id
+    const userId = req.params?.id
     const updateData = { ...req.body }
 
     const updatedUser = await userService.updateUserByAdmin(userId, updateData)
@@ -154,7 +154,7 @@ const updateUserByAdmin = async (req, res, next) => {
 
 const updatePassword = async (req, res, next) => {
   try {
-    const userId = req.jwtDecoded._id
+    const userId = req.jwtDecoded?._id
     const updatedUser = await userService.updatePassword(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -169,7 +169,7 @@ const updatePassword = async (req, res, next) => {
 
 const deleteUser = async (req, res, next) => {
   try {
-    const userId = req.params.id
+    const userId = req.params?.id
     const result = await userService.deleteUser(userId)
 
     res.status(StatusCodes.OK).json({
@@ -184,7 +184,7 @@ const deleteUser = async (req, res, next) => {
 
 const deleteMultipleUsers = async (req, res, next) => {
   try {
-    const { userIds } = req.body
+    const { userIds } = req.body || {}
     const result = await userService.deleteMultipleUsers(userIds)
 
     res.status(StatusCodes.OK).json({
@@ -199,7 +199,7 @@ const deleteMultipleUsers = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
   try {
-    const { page, itemsPerPage, search, role, isActive, sort } = req.query
+    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
     const queryFilter = {
       search,
       role,
@@ -221,7 +221,7 @@ const getUsers = async (req, res, next) => {
 
 const refreshToken = async (req, res, next) => {
   try {
-    const refreshToken = req.cookies.refreshToken
+    const refreshToken = req.cookies?.refreshToken
 
     if (!refreshToken) {
       return res.status(StatusCodes.UNAUTHORIZED).json({
@@ -236,8 +236,8 @@ const refreshToken = async (req, res, next) => {
     // Set cookie cho access token mới
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: true,
+      sameSite: 'none',
       maxAge: ms('7d')
     })
 
@@ -280,7 +280,7 @@ const uploadAvatar = async (req, res, next) => {
 
     // Upload avatar thông qua service
     const uploadResult = await userService.uploadAvatar(
-      req.file.buffer,
+      req.file?.buffer,
       'users-commerceweb'
     )
 
@@ -288,8 +288,8 @@ const uploadAvatar = async (req, res, next) => {
       code: StatusCodes.OK,
       message: 'Upload ảnh thành công',
       data: {
-        avatarUrl: uploadResult.secure_url,
-        publicId: uploadResult.public_id
+        avatarUrl: uploadResult?.secure_url,
+        publicId: uploadResult?.public_id
       }
     })
   } catch (error) {
