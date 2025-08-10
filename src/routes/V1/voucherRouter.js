@@ -12,6 +12,9 @@ Router.post(
   voucherController.verifyVoucher
 )
 
+// Public - danh sách voucher đang hoạt động
+Router.get('/active', voucherController.getActivePublic)
+
 // Admin management
 Router.use(authMiddleware.verifyToken)
 Router.use(authMiddleware.verifyAdmin)

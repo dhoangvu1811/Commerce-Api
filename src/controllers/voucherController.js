@@ -100,6 +100,20 @@ const deleteMultiple = async (req, res, next) => {
   }
 }
 
+const getActivePublic = async (req, res, next) => {
+  try {
+    const { limit } = req.query || {}
+    const vouchers = await voucherService.getActivePublic(limit)
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách voucher đang hoạt động thành công',
+      data: vouchers
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const voucherController = {
   createNew,
   getDetails,
@@ -107,5 +121,6 @@ export const voucherController = {
   deleteVoucher,
   deleteMultiple,
   getVouchers,
-  verifyVoucher
+  verifyVoucher,
+  getActivePublic
 }
