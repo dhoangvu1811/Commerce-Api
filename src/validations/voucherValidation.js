@@ -40,6 +40,10 @@ const createNew = async (req, res, next) => {
       'number.base': 'Giới hạn sử dụng phải là số nguyên',
       'number.min': 'Giới hạn sử dụng không được âm'
     }),
+    usedCount: Joi.number().optional().integer().min(0).messages({
+      'number.base': 'Số lần đã sử dụng phải là số nguyên',
+      'number.min': 'Số lần đã sử dụng không được âm'
+    }),
     startDate: Joi.date().optional().allow(null),
     endDate: Joi.date().optional().allow(null),
     isActive: Joi.boolean().optional()
@@ -77,6 +81,7 @@ const update = async (req, res, next) => {
     maxDiscount: Joi.number().optional().min(0).precision(2),
     minOrderValue: Joi.number().optional().min(0).precision(2),
     usageLimit: Joi.number().optional().integer().min(0),
+    usedCount: Joi.number().optional().integer().min(0),
     startDate: Joi.date().optional().allow(null),
     endDate: Joi.date().optional().allow(null),
     isActive: Joi.boolean().optional()

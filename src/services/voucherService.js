@@ -4,6 +4,38 @@ import ApiError from '~/utils/ApiError'
 import { voucherModel } from '~/models/voucherModel'
 import { ObjectId } from 'mongodb'
 
+// Lấy danh sách voucher đang hoạt động cho người dùng (public)
+const getActivePublic = async (limit = 100) => {
+  try {
+    const now = new Date()
+
+    const filter = {
+      isActive: true,
+      $and: [
+        { $or: [{ startDate: null }, { startDate: { $lte: now } }] },
+        { $or: [{ endDate: null }, { endDate: { $gte: now } }] },
+        {
+          $or: [
+            { usageLimit: 0 },
+            { $expr: { $lt: ['$usedCount', '$usageLimit'] } }
+          ]
+        }
+      ]
+    }
+
+    const { vouchers } = await voucherModel.getMany(
+      filter,
+      1,
+      parseInt(limit, 10) || 100,
+      { createdAt: -1 }
+    )
+
+    return vouchers
+  } catch (error) {
+    throw error
+  }
+}
+
 const createNew = async (data) => {
   try {
     // Chuẩn hóa code về UPPERCASE không khoảng trắng
@@ -281,5 +313,6 @@ export const voucherService = {
   deleteVoucher,
   deleteMultiple,
   getVouchers,
-  verifyVoucher
+  verifyVoucher,
+  getActivePublic
 }
