@@ -173,6 +173,51 @@ const deleteMany = async (filter = {}) => {
   }
 }
 
+// Giảm tồn kho atomically nếu đủ hàng
+const decrementStock = async (productId, qty) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .updateOne(
+        { _id: new ObjectId(productId), countInStock: { $gte: qty } },
+        { $inc: { countInStock: -qty }, $set: { updatedAt: new Date() } }
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+// Tăng tồn kho (dùng cho rollback khi thất bại)
+const incrementStock = async (productId, qty) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .updateOne(
+        { _id: new ObjectId(productId) },
+        { $inc: { countInStock: qty }, $set: { updatedAt: new Date() } }
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+// Tăng số lượng đã bán
+const incrementSelled = async (productId, qty) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .updateOne(
+        { _id: new ObjectId(productId) },
+        { $inc: { selled: qty }, $set: { updatedAt: new Date() } }
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const getAllTypes = async () => {
   try {
     const types = await GET_DB()
@@ -197,5 +242,8 @@ export const productModel = {
   update,
   deleteOneById,
   deleteMany,
+  decrementStock,
+  incrementStock,
+  incrementSelled,
   getAllTypes
 }
