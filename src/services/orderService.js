@@ -1,34 +1,19 @@
+/* eslint-disable no-console */
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { orderModel } from '~/models/orderModel'
 import { productModel } from '~/models/productModel'
 import { voucherModel } from '~/models/voucherModel'
+import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants'
+import {
+  applyVoucher,
+  calcLineTotal,
+  generateOrderCode,
+  isConsistentStatusPayment,
+  isValidPaymentStatusTransition,
+  isValidStatusTransition
+} from '~/utils/helper'
 import { ObjectId } from 'mongodb'
-
-// Helper: tính line total theo unitPrice/discount/quantity
-const calcLineTotal = (price, discount, quantity) => {
-  const unitPrice = Number(price)
-  const disc = Number(discount || 0)
-  const qty = Number(quantity)
-  const afterDiscount = disc > 0 ? unitPrice * (1 - disc / 100) : unitPrice
-  return Math.max(0, Number((afterDiscount * qty).toFixed(2)))
-}
-
-// Helper: áp dụng voucher theo service logic hiện có (mã đã active)
-const applyVoucher = (voucher, subtotal) => {
-  if (!voucher) return { discount: 0 }
-  let discount = 0
-  if (voucher.type === 'percent') {
-    discount = (Number(subtotal) * Number(voucher.amount)) / 100
-    if (voucher.maxDiscount && discount > Number(voucher.maxDiscount)) {
-      discount = Number(voucher.maxDiscount)
-    }
-  } else {
-    discount = Number(voucher.amount)
-  }
-  if (discount > Number(subtotal)) discount = Number(subtotal)
-  return { discount }
-}
 
 const create = async (userId, payload) => {
   try {
@@ -143,6 +128,7 @@ const create = async (userId, payload) => {
 
     const orderDoc = {
       userId,
+      orderCode: generateOrderCode(),
       items: orderItems,
       shippingAddress,
       voucher: voucherSnapshot,
@@ -152,8 +138,8 @@ const create = async (userId, payload) => {
         shippingFee: shipping,
         payable
       },
-      status: 'pending',
-      paymentStatus: 'unpaid',
+      status: 'PENDING',
+      paymentStatus: 'PENDING',
       paymentMethod,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -168,12 +154,11 @@ const create = async (userId, payload) => {
         byRole: 'user',
         note: 'Người dùng tạo đơn hàng',
         fromStatus: null,
-        toStatus: 'pending'
+        toStatus: 'PENDING'
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
         // Không chặn luồng chính nếu ghi log thất bại
-        // eslint-disable-next-line no-console
         console.warn('appendLog(create) failed:', err)
       }
     }
@@ -221,6 +206,26 @@ const getDetails = async (orderId, userId, isAdmin = false) => {
   }
 }
 
+const getDetailsByOrderCode = async (orderCode, userId) => {
+  try {
+    if (!orderCode) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã đơn hàng không hợp lệ')
+    }
+    const order = await orderModel.findOneByOrderCode(orderCode)
+    if (!order)
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+    if (order.userId.toString() !== userId) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Bạn không có quyền xem đơn hàng này'
+      )
+    }
+    return order
+  } catch (error) {
+    throw error
+  }
+}
+
 const adminGetOrders = async (page = 1, itemsPerPage = 10, query = {}) => {
   try {
     const { status, paymentStatus, search } = query
@@ -250,11 +255,58 @@ const updateStatus = async (orderId, data) => {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
     }
+
     const order = await orderModel.findOneById(orderId)
-    if (!order)
+    if (!order) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+    }
+
+    // Ensure valid status and paymentStatus
+    const { status, paymentStatus } = data
+    if (status && !ORDER_STATUS.includes(status)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Trạng thái đơn hàng không hợp lệ'
+      )
+    }
+    if (paymentStatus && !PAYMENT_STATUS.includes(paymentStatus)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Trạng thái thanh toán không hợp lệ'
+      )
+    }
+
+    // Validate state transitions
+    if (status && status !== order.status) {
+      if (!isValidStatusTransition(order.status, status)) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          `Không thể chuyển từ trạng thái ${order.status} sang ${status}`
+        )
+      }
+    }
+
+    if (paymentStatus && paymentStatus !== order.paymentStatus) {
+      if (!isValidPaymentStatusTransition(order.paymentStatus, paymentStatus)) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          `Không thể chuyển từ trạng thái thanh toán ${order.paymentStatus} sang ${paymentStatus}`
+        )
+      }
+    }
+
+    // Validate consistency between status and paymentStatus
+    const finalStatus = status || order.status
+    const finalPaymentStatus = paymentStatus || order.paymentStatus
+    if (!isConsistentStatusPayment(finalStatus, finalPaymentStatus)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Trạng thái ${finalStatus} không tương thích với trạng thái thanh toán ${finalPaymentStatus}`
+      )
+    }
 
     const updated = await orderModel.update(orderId, data)
+
     // Audit log: updateStatus (admin)
     try {
       await orderModel.appendLog(orderId, {
@@ -263,15 +315,15 @@ const updateStatus = async (orderId, data) => {
         byRole: 'admin',
         note: 'Admin cập nhật trạng thái đơn',
         fromStatus: order.status,
-        toStatus: data.status || order.status,
-        meta: { paymentStatus: data.paymentStatus }
+        toStatus: status || order.status,
+        meta: { paymentStatus: paymentStatus || order.paymentStatus }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
         console.warn('appendLog(updateStatus) failed:', err)
       }
     }
+
     return updated
   } catch (error) {
     throw error
@@ -288,7 +340,23 @@ const markPaid = async (orderId) => {
     if (!order)
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
 
-    if (order.paymentStatus === 'paid') return order // idempotent
+    // Kiểm tra trạng thái đơn hàng có thể mark paid
+    if (!['PENDING', 'CONFIRMED'].includes(order.status)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Không thể xác nhận thanh toán cho đơn hàng có trạng thái ${order.status}`
+      )
+    }
+
+    if (order.paymentStatus === 'PAID') return order // idempotent
+
+    // Kiểm tra trạng thái thanh toán có thể chuyển thành PAID
+    if (!['PENDING', 'PROCESSING', 'FAILED'].includes(order.paymentStatus)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Không thể xác nhận thanh toán từ trạng thái ${order.paymentStatus}`
+      )
+    }
 
     // 1) Trừ tồn kho cho từng item (atomic update), nếu thiếu rollback các item đã trừ
     const doneOps = [] // { productId, qty }
@@ -318,8 +386,8 @@ const markPaid = async (orderId) => {
 
     // 3) Cập nhật order
     const updated = await orderModel.update(orderId, {
-      paymentStatus: 'paid',
-      status: 'paid',
+      paymentStatus: 'PAID',
+      status: 'CONFIRMED',
       updatedAt: new Date()
     })
     // Audit log: markPaid (admin)
@@ -330,11 +398,10 @@ const markPaid = async (orderId) => {
         byRole: 'admin',
         note: 'Xác nhận thanh toán thành công',
         fromStatus: order.status,
-        toStatus: 'paid'
+        toStatus: 'CONFIRMED'
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
         console.warn('appendLog(markPaid) failed:', err)
       }
     }
@@ -345,8 +412,8 @@ const markPaid = async (orderId) => {
 }
 
 // Hủy đơn hàng
-// - User: chỉ hủy khi status = pending và paymentStatus = unpaid
-// - Admin: có thể hủy bất kỳ; nếu đã paid thì restock tồn kho (tùy chính sách), đặt paymentStatus='refunded'
+// - User: chỉ hủy khi status = PENDING và paymentStatus = PENDING
+// - Admin: có thể hủy bất kỳ; nếu đã PAID thì restock tồn kho (tùy chính sách), đặt paymentStatus='REFUNDED'
 const cancel = async (orderId, requesterId = null, isAdmin = false) => {
   try {
     if (!ObjectId.isValid(orderId)) {
@@ -364,31 +431,50 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
           'Bạn không có quyền hủy đơn hàng này'
         )
       }
-      // Chỉ được hủy khi chưa thanh toán và còn pending
-      if (!(order.status === 'pending' && order.paymentStatus === 'unpaid')) {
+      // User được hủy khi: PENDING (chưa thanh toán) hoặc CONFIRMED (đã thanh toán nhưng chưa xử lý)
+      const canUserCancel =
+        (order.status === 'PENDING' && order.paymentStatus === 'PENDING') ||
+        (order.status === 'CONFIRMED' && order.paymentStatus === 'PAID')
+
+      if (!canUserCancel) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          'Chỉ có thể hủy đơn khi đơn đang chờ và chưa thanh toán'
+          'Chỉ có thể hủy đơn khi đơn đang chờ xử lý hoặc vừa được xác nhận'
         )
       }
     }
 
     // Đã hủy rồi thì idempotent
-    if (order.status === 'cancelled') return order
+    if (order.status === 'CANCELLED') return order
 
-    // Admin có thể hủy đơn đã thanh toán: thực hiện restock cơ bản
-    if (isAdmin && order.paymentStatus === 'paid') {
-      for (const it of order.items) {
-        await productModel.incrementStock(it.productId, it.quantity)
+    // Xử lý restock và refund dựa trên trạng thái thanh toán
+    const needRestock = order.paymentStatus === 'PAID'
+
+    if (needRestock) {
+      try {
+        // Restock tồn kho và trừ lại selled cho cả user và admin
+        for (const it of order.items) {
+          await productModel.incrementStock(it.productId, it.quantity)
+          await productModel.decrementSelled(it.productId, it.quantity)
+        }
+
+        // Rollback voucher usedCount
+        if (order.voucher?.code) {
+          const voucher = await voucherModel.findOneByCode(order.voucher.code)
+          if (voucher?._id) {
+            await voucherModel.decrementUsedCount(voucher._id)
+          }
+        }
+      } catch (rollbackError) {
+        // Log lỗi rollback nhưng không chặn cancel
+        console.error('Rollback error during cancel:', rollbackError)
+        // Trong production nên có compensation mechanism hoặc manual review
       }
     }
 
     const updated = await orderModel.update(orderId, {
-      status: 'cancelled',
-      paymentStatus:
-        isAdmin && order.paymentStatus === 'paid'
-          ? 'refunded'
-          : order.paymentStatus,
+      status: 'CANCELLED',
+      paymentStatus: needRestock ? 'REFUNDED' : order.paymentStatus,
       updatedAt: new Date()
     })
     // Audit log: cancel
@@ -399,13 +485,97 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
         byRole: isAdmin ? 'admin' : 'user',
         note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn',
         fromStatus: order.status,
-        toStatus: 'cancelled',
+        toStatus: 'CANCELLED',
         meta: { previousPaymentStatus: order.paymentStatus }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        // eslint-disable-next-line no-console
         console.warn('appendLog(cancel) failed:', err)
+      }
+    }
+    return updated
+  } catch (error) {
+    throw error
+  }
+}
+
+// Hủy đơn hàng bằng orderCode cho user
+const cancelByOrderCode = async (orderCode, requesterId) => {
+  try {
+    if (!orderCode) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã đơn hàng không hợp lệ')
+    }
+    const order = await orderModel.findOneByOrderCode(orderCode)
+    if (!order)
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+
+    // Quyền hủy
+    if (!requesterId || order.userId.toString() !== requesterId) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Bạn không có quyền hủy đơn hàng này'
+      )
+    }
+
+    // User được hủy khi: PENDING (chưa thanh toán) hoặc CONFIRMED (đã thanh toán nhưng chưa xử lý)
+    const canUserCancel =
+      (order.status === 'PENDING' && order.paymentStatus === 'PENDING') ||
+      (order.status === 'CONFIRMED' && order.paymentStatus === 'PAID')
+
+    if (!canUserCancel) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Chỉ có thể hủy đơn khi đơn đang chờ xử lý hoặc vừa được xác nhận'
+      )
+    }
+
+    // Đã hủy rồi thì idempotent
+    if (order.status === 'CANCELLED') return order
+
+    // Xử lý restock và refund dựa trên trạng thái thanh toán
+    const needRestock = order.paymentStatus === 'PAID'
+
+    if (needRestock) {
+      try {
+        // Restock tồn kho và trừ lại selled
+        for (const it of order.items) {
+          await productModel.incrementStock(it.productId, it.quantity)
+          await productModel.decrementSelled(it.productId, it.quantity)
+        }
+
+        // Rollback voucher usedCount
+        if (order.voucher?.code) {
+          const voucher = await voucherModel.findOneByCode(order.voucher.code)
+          if (voucher?._id) {
+            await voucherModel.decrementUsedCount(voucher._id)
+          }
+        }
+      } catch (rollbackError) {
+        // Log lỗi rollback nhưng không chặn cancel
+        console.error('Rollback error during cancelByOrderCode:', rollbackError)
+      }
+    }
+
+    const updated = await orderModel.update(order._id, {
+      status: 'CANCELLED',
+      paymentStatus: needRestock ? 'REFUNDED' : order.paymentStatus,
+      updatedAt: new Date()
+    })
+
+    // Audit log: cancel
+    try {
+      await orderModel.appendLog(order._id, {
+        action: 'cancel',
+        by: requesterId,
+        byRole: 'user',
+        note: 'Người dùng hủy đơn bằng mã đơn hàng',
+        fromStatus: order.status,
+        toStatus: 'CANCELLED',
+        meta: { previousPaymentStatus: order.paymentStatus, orderCode }
+      })
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('appendLog(cancelByOrderCode) failed:', err)
       }
     }
     return updated
@@ -418,8 +588,10 @@ export const orderService = {
   create,
   getMyOrders,
   getDetails,
+  getDetailsByOrderCode,
   adminGetOrders,
   updateStatus,
   markPaid,
-  cancel
+  cancel,
+  cancelByOrderCode
 }

@@ -218,6 +218,21 @@ const incrementSelled = async (productId, qty) => {
   }
 }
 
+// Giảm số lượng đã bán (dùng khi hủy đơn đã thanh toán)
+const decrementSelled = async (productId, qty) => {
+  try {
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .updateOne(
+        { _id: new ObjectId(productId) },
+        { $inc: { selled: -qty }, $set: { updatedAt: new Date() } }
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const getAllTypes = async () => {
   try {
     const types = await GET_DB()
@@ -245,5 +260,6 @@ export const productModel = {
   decrementStock,
   incrementStock,
   incrementSelled,
+  decrementSelled,
   getAllTypes
 }

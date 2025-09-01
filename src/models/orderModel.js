@@ -1,6 +1,7 @@
 import { ObjectId } from 'mongodb'
 import { GET_DB } from '~/config/mongodb'
 import Joi from 'joi'
+import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants'
 
 const ORDER_COLLECTION_NAME = 'orders'
 
@@ -21,11 +22,11 @@ const LOG_ENTRY_SCHEMA = Joi.object({
   at: Joi.date().timestamp().default(Date.now),
   note: Joi.string().allow('').default(''),
   fromStatus: Joi.string()
-    .valid('pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled')
+    .valid(...ORDER_STATUS)
     .allow(null)
     .default(null),
   toStatus: Joi.string()
-    .valid('pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled')
+    .valid(...ORDER_STATUS)
     .allow(null)
     .default(null),
   meta: Joi.object().unknown(true).default({})
@@ -33,6 +34,7 @@ const LOG_ENTRY_SCHEMA = Joi.object({
 
 const ORDER_COLLECTION_SCHEMA = Joi.object({
   userId: Joi.string().required(),
+  orderCode: Joi.string().required(),
   items: Joi.array().items(ORDER_ITEM_SCHEMA).min(1).required(),
   shippingAddress: Joi.object({
     id: Joi.string().allow('').optional(),
@@ -61,11 +63,11 @@ const ORDER_COLLECTION_SCHEMA = Joi.object({
     payable: Joi.number().required().min(0)
   }).required(),
   status: Joi.string()
-    .valid('pending', 'paid', 'processing', 'shipped', 'completed', 'cancelled')
-    .default('pending'),
+    .valid(...ORDER_STATUS)
+    .default('PENDING'),
   paymentStatus: Joi.string()
-    .valid('unpaid', 'paid', 'refunded')
-    .default('unpaid'),
+    .valid(...PAYMENT_STATUS)
+    .default('PENDING'),
   paymentMethod: Joi.string().allow('').default(''),
   logs: Joi.array().items(LOG_ENTRY_SCHEMA).default([]),
   createdAt: Joi.date().timestamp().default(Date.now),
@@ -162,6 +164,16 @@ const update = async (orderId, updateData) => {
   }
 }
 
+const findOneByOrderCode = async (orderCode) => {
+  try {
+    return await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .findOne({ orderCode })
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const appendLog = async (orderId, logEntry) => {
   try {
     const result = await GET_DB()
@@ -179,8 +191,11 @@ const appendLog = async (orderId, logEntry) => {
 export const orderModel = {
   ORDER_COLLECTION_NAME,
   ORDER_COLLECTION_SCHEMA,
+  ORDER_STATUS,
+  PAYMENT_STATUS,
   createNew,
   findOneById,
+  findOneByOrderCode,
   getMany,
   update,
   appendLog

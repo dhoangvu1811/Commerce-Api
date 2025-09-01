@@ -143,6 +143,8 @@ build/
 # Project instructions và documentation nội bộ
 instructions/
 .github/instructions/
+.cursor/rules/
+.windsurf/
 
 # OS generated files
 .DS_Store
