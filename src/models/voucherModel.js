@@ -156,6 +156,22 @@ const incrementUsedCount = async (voucherId, step = 1) => {
   }
 }
 
+// Giảm số lần đã sử dụng voucher (dùng khi hủy đơn đã thanh toán)
+const decrementUsedCount = async (voucherId, step = 1) => {
+  try {
+    const result = await GET_DB()
+      .collection(VOUCHER_COLLECTION_NAME)
+      .findOneAndUpdate(
+        { _id: new ObjectId(voucherId) },
+        { $inc: { usedCount: -step }, $set: { updatedAt: new Date() } },
+        { returnDocument: 'after' }
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const findByIds = async (ids) => {
   try {
     const result = await GET_DB()
@@ -190,6 +206,7 @@ export const voucherModel = {
   update,
   deleteOneById,
   incrementUsedCount,
+  decrementUsedCount,
   findByIds,
   deleteManyByIds
 }

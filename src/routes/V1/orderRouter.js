@@ -11,7 +11,17 @@ Router.use(authMiddleware.verifyToken)
 Router.post('/create', orderValidation.create, orderController.create)
 Router.get('/my-orders', orderController.getMyOrders)
 Router.get('/details/:id', orderController.getDetails)
+Router.get(
+  '/details-by-code/:orderCode',
+  orderValidation.validateOrderCode,
+  orderController.getDetailsByOrderCode
+)
 Router.post('/cancel/:id', orderController.userCancel)
+Router.post(
+  '/cancel-by-code/:orderCode',
+  orderValidation.validateOrderCode,
+  orderController.userCancelByOrderCode
+)
 
 // Admin
 Router.use(authMiddleware.verifyAdmin)

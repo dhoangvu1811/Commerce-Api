@@ -2,6 +2,7 @@ import Joi from 'joi'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators'
+import { orderModel } from '~/models/orderModel'
 
 const create = async (req, res, next) => {
   const correctCondition = Joi.object({
@@ -58,16 +59,11 @@ const updateStatus = async (req, res, next) => {
 
   const bodyCondition = Joi.object({
     status: Joi.string()
-      .valid(
-        'pending',
-        'paid',
-        'processing',
-        'shipped',
-        'completed',
-        'cancelled'
-      )
+      .valid(...orderModel.ORDER_STATUS)
       .optional(),
-    paymentStatus: Joi.string().valid('unpaid', 'paid', 'refunded').optional()
+    paymentStatus: Joi.string()
+      .valid(...orderModel.PAYMENT_STATUS)
+      .optional()
   })
 
   try {
@@ -81,7 +77,26 @@ const updateStatus = async (req, res, next) => {
   }
 }
 
+const validateOrderCode = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    orderCode: Joi.string().required().min(1).messages({
+      'string.empty': 'Mã đơn hàng không được để trống',
+      'any.required': 'Mã đơn hàng là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.params, { abortEarly: false })
+    next()
+  } catch (error) {
+    next(
+      new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(error).message)
+    )
+  }
+}
+
 export const orderValidation = {
   create,
-  updateStatus
+  updateStatus,
+  validateOrderCode
 }
