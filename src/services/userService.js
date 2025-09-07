@@ -116,7 +116,7 @@ const getDetails = async (userId) => {
     const user = await userModel.findOneById(userId)
 
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Không tìm thấy người dùng')
     }
 
     // Loại bỏ password khỏi response

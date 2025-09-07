@@ -23,14 +23,14 @@ const getActivePublic = async (limit = 100) => {
       ]
     }
 
-    const { vouchers } = await voucherModel.getMany(
+    const result = await voucherModel.getMany(
       filter,
       1,
       parseInt(limit, 10) || 100,
       { createdAt: -1 }
     )
 
-    return vouchers
+    return result
   } catch (error) {
     throw error
   }
@@ -55,6 +55,20 @@ const createNew = async (data) => {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Giá trị phần trăm không được vượt quá 100%'
+      )
+    }
+    // Validate startDate và endDate
+    if (data.startDate) {
+      data.startDate = new Date(data.startDate)
+    }
+    if (data.endDate) {
+      data.endDate = new Date(data.endDate)
+    }
+    // Validate endDate > startDate nếu cả hai đều có giá trị
+    if (data.startDate && data.endDate && data.endDate <= data.startDate) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Ngày kết thúc phải sau ngày bắt đầu'
       )
     }
 
@@ -121,6 +135,20 @@ const update = async (id, data) => {
           'Giá trị phần trăm không được vượt quá 100%'
         )
       }
+    }
+    // Validate and convert startDate và endDate thành Date objects
+    if (data.startDate) {
+      data.startDate = new Date(data.startDate)
+    }
+    if (data.endDate) {
+      data.endDate = new Date(data.endDate)
+    }
+    // Validate endDate > startDate nếu cả hai đều có giá trị
+    if (data.startDate && data.endDate && data.endDate <= data.startDate) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Ngày kết thúc phải sau ngày bắt đầu'
+      )
     }
 
     const updated = await voucherModel.update(id, {

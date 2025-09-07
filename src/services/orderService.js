@@ -8,7 +8,10 @@ import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants'
 import {
   applyVoucher,
   calcLineTotal,
+  canMarkPaid,
+  canUpdateStatus,
   generateOrderCode,
+  isCODPayment,
   isConsistentStatusPayment,
   isValidPaymentStatusTransition,
   isValidStatusTransition
@@ -261,23 +264,17 @@ const updateStatus = async (orderId, data) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
     }
 
-    // Ensure valid status and paymentStatus
-    const { status, paymentStatus } = data
-    if (status && !ORDER_STATUS.includes(status)) {
+    // Chỉ xử lý status, không xử lý paymentStatus
+    const { status } = data
+    if (!status || !ORDER_STATUS.includes(status)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Trạng thái đơn hàng không hợp lệ'
-      )
-    }
-    if (paymentStatus && !PAYMENT_STATUS.includes(paymentStatus)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Trạng thái thanh toán không hợp lệ'
+        'Trạng thái đơn hàng là bắt buộc và phải hợp lệ'
       )
     }
 
-    // Validate state transitions
-    if (status && status !== order.status) {
+    // Validate status transition
+    if (status !== order.status) {
       if (!isValidStatusTransition(order.status, status)) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
@@ -286,7 +283,81 @@ const updateStatus = async (orderId, data) => {
       }
     }
 
-    if (paymentStatus && paymentStatus !== order.paymentStatus) {
+    const updateCheck = canUpdateStatus(order, status)
+    if (!updateCheck.allowed) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, updateCheck.reason)
+    }
+
+    // Validate consistency với paymentStatus hiện tại
+    if (
+      !isConsistentStatusPayment(
+        status,
+        order.paymentStatus,
+        order.paymentMethod
+      )
+    ) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Trạng thái ${status} không tương thích với trạng thái thanh toán hiện tại ${order.paymentStatus}` +
+          (order.paymentMethod ? ` (${order.paymentMethod})` : '')
+      )
+    }
+
+    // Chuẩn bị data update
+    const updateData = { status }
+
+    // Tự động set deliveredAt khi status chuyển thành DELIVERED
+    if (status === 'DELIVERED' && order.status !== 'DELIVERED') {
+      updateData.deliveredAt = new Date()
+    }
+
+    const updated = await orderModel.update(orderId, updateData)
+
+    // Audit log: updateStatus (admin)
+    try {
+      await orderModel.appendLog(orderId, {
+        action: 'updateStatus',
+        by: 'admin',
+        byRole: 'admin',
+        note: 'Admin cập nhật trạng thái đơn hàng',
+        fromStatus: order.status,
+        toStatus: status,
+        meta: { paymentStatus: order.paymentStatus }
+      })
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') {
+        console.warn('appendLog(updateStatus) failed:', err)
+      }
+    }
+
+    return updated
+  } catch (error) {
+    throw error
+  }
+}
+
+const updatePaymentStatus = async (orderId, data) => {
+  try {
+    if (!ObjectId.isValid(orderId)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+    }
+
+    const order = await orderModel.findOneById(orderId)
+    if (!order) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+    }
+
+    // Chỉ xử lý paymentStatus, không xử lý status
+    const { paymentStatus } = data
+    if (!paymentStatus || !PAYMENT_STATUS.includes(paymentStatus)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Trạng thái thanh toán là bắt buộc và phải hợp lệ'
+      )
+    }
+
+    // Validate paymentStatus transition
+    if (paymentStatus !== order.paymentStatus) {
       if (!isValidPaymentStatusTransition(order.paymentStatus, paymentStatus)) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
@@ -295,32 +366,30 @@ const updateStatus = async (orderId, data) => {
       }
     }
 
-    // Validate consistency between status and paymentStatus
-    const finalStatus = status || order.status
-    const finalPaymentStatus = paymentStatus || order.paymentStatus
-    if (!isConsistentStatusPayment(finalStatus, finalPaymentStatus)) {
+    // Validate consistency với status hiện tại
+    if (!isConsistentStatusPayment(order.status, paymentStatus)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        `Trạng thái ${finalStatus} không tương thích với trạng thái thanh toán ${finalPaymentStatus}`
+        `Trạng thái thanh toán ${paymentStatus} không tương thích với trạng thái đơn hàng hiện tại ${order.status}`
       )
     }
 
-    const updated = await orderModel.update(orderId, data)
+    const updated = await orderModel.update(orderId, { paymentStatus })
 
-    // Audit log: updateStatus (admin)
+    // Audit log: updatePaymentStatus (admin)
     try {
       await orderModel.appendLog(orderId, {
-        action: 'updateStatus',
+        action: 'updatePaymentStatus',
         by: 'admin',
         byRole: 'admin',
-        note: 'Admin cập nhật trạng thái đơn',
-        fromStatus: order.status,
-        toStatus: status || order.status,
-        meta: { paymentStatus: paymentStatus || order.paymentStatus }
+        note: 'Admin cập nhật trạng thái thanh toán',
+        fromPaymentStatus: order.paymentStatus,
+        toPaymentStatus: paymentStatus,
+        meta: { status: order.status }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
-        console.warn('appendLog(updateStatus) failed:', err)
+        console.warn('appendLog(updatePaymentStatus) failed:', err)
       }
     }
 
@@ -340,12 +409,9 @@ const markPaid = async (orderId) => {
     if (!order)
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
 
-    // Kiểm tra trạng thái đơn hàng có thể mark paid
-    if (!['PENDING', 'CONFIRMED'].includes(order.status)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Không thể xác nhận thanh toán cho đơn hàng có trạng thái ${order.status}`
-      )
+    const markPaidCheck = canMarkPaid(order, true) // Admin action
+    if (!markPaidCheck.allowed) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, markPaidCheck.reason)
     }
 
     if (order.paymentStatus === 'PAID') return order // idempotent
@@ -358,7 +424,7 @@ const markPaid = async (orderId) => {
       )
     }
 
-    // 1) Trừ tồn kho cho từng item (atomic update), nếu thiếu rollback các item đã trừ
+    // 1) Trừ tồn kho cho từng item (atomic update) và tăng selled, nếu thiếu rollback các item đã trừ
     const doneOps = [] // { productId, qty }
     for (const it of order.items) {
       const dec = await productModel.decrementStock(it.productId, it.quantity)
@@ -384,21 +450,39 @@ const markPaid = async (orderId) => {
       }
     }
 
-    // 3) Cập nhật order
-    const updated = await orderModel.update(orderId, {
+    // 3) Cập nhật order - Logic khác nhau cho COD vs Online Payment
+    const isCOD = isCODPayment(order.paymentMethod)
+
+    const updateData = {
       paymentStatus: 'PAID',
-      status: 'CONFIRMED',
       updatedAt: new Date()
-    })
+    }
+
+    // Với COD: Có thể mark paid khi DELIVERED, không cần change status
+    // Với Online Payment: Mark paid thường ở PENDING/CONFIRMED, auto chuyển CONFIRMED
+    if (!isCOD && order.status === 'PENDING') {
+      updateData.status = 'CONFIRMED'
+    }
+
+    const updated = await orderModel.update(orderId, updateData)
+
     // Audit log: markPaid (admin)
     try {
       await orderModel.appendLog(orderId, {
         action: 'markPaid',
         by: 'admin',
         byRole: 'admin',
-        note: 'Xác nhận thanh toán thành công',
+        note: `Xác nhận thanh toán thành công${
+          markPaidCheck.reason ? ` (${markPaidCheck.reason})` : ''
+        }`,
         fromStatus: order.status,
-        toStatus: 'CONFIRMED'
+        toStatus: updateData.status || order.status,
+        meta: {
+          paymentMethod: order.paymentMethod,
+          fromPaymentStatus: order.paymentStatus,
+          toPaymentStatus: 'PAID',
+          isCOD
+        }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -591,6 +675,7 @@ export const orderService = {
   getDetailsByOrderCode,
   adminGetOrders,
   updateStatus,
+  updatePaymentStatus,
   markPaid,
   cancel,
   cancelByOrderCode

@@ -70,6 +70,7 @@ const ORDER_COLLECTION_SCHEMA = Joi.object({
     .default('PENDING'),
   paymentMethod: Joi.string().allow('').default(''),
   logs: Joi.array().items(LOG_ENTRY_SCHEMA).default([]),
+  deliveredAt: Joi.date().timestamp().allow(null).default(null),
   createdAt: Joi.date().timestamp().default(Date.now),
   updatedAt: Joi.date().timestamp().default(Date.now)
 })

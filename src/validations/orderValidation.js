@@ -60,10 +60,38 @@ const updateStatus = async (req, res, next) => {
   const bodyCondition = Joi.object({
     status: Joi.string()
       .valid(...orderModel.ORDER_STATUS)
-      .optional(),
+      .required()
+      .messages({
+        'any.required': 'Trạng thái đơn hàng là bắt buộc'
+      })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.params, { abortEarly: false })
+    await bodyCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    next(
+      new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(error).message)
+    )
+  }
+}
+
+const updatePaymentStatus = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
+      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
+      'any.required': 'ID đơn hàng là bắt buộc'
+    })
+  })
+
+  const bodyCondition = Joi.object({
     paymentStatus: Joi.string()
       .valid(...orderModel.PAYMENT_STATUS)
-      .optional()
+      .required()
+      .messages({
+        'any.required': 'Trạng thái thanh toán là bắt buộc'
+      })
   })
 
   try {
@@ -98,5 +126,6 @@ const validateOrderCode = async (req, res, next) => {
 export const orderValidation = {
   create,
   updateStatus,
-  validateOrderCode
+  validateOrderCode,
+  updatePaymentStatus
 }
