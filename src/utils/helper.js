@@ -17,7 +17,10 @@ export const isValidStatusTransition = (fromStatus, toStatus) => {
 }
 
 // Helper: Kiểm tra chuyển đổi trạng thái thanh toán hợp lệ
-export const isValidPaymentStatusTransition = (fromPaymentStatus, toPaymentStatus) => {
+export const isValidPaymentStatusTransition = (
+  fromPaymentStatus,
+  toPaymentStatus
+) => {
   const validTransitions = {
     PENDING: ['PROCESSING', 'PAID', 'FAILED', 'EXPIRED', 'CANCELLED'],
     PROCESSING: ['PAID', 'FAILED', 'CANCELLED'],
@@ -31,24 +34,117 @@ export const isValidPaymentStatusTransition = (fromPaymentStatus, toPaymentStatu
   return validTransitions[fromPaymentStatus]?.includes(toPaymentStatus) || false
 }
 
+// Helper: Kiểm tra có phải COD không
+export const isCODPayment = (paymentMethod = '') => {
+  const method = paymentMethod.toLowerCase()
+  return method === 'cod' || method.includes('cod') || method.includes('cash')
+}
+
+// Helper: Kiểm tra có phải Online Payment không
+export const isOnlinePayment = (paymentMethod = '') => {
+  const method = paymentMethod.toLowerCase()
+  return (
+    ['card', 'ewallet', 'bank', 'credit', 'debit', 'momo', 'zalopay'].some(
+      (keyword) => method.includes(keyword)
+    ) ||
+    (!isCODPayment(paymentMethod) && paymentMethod.trim() !== '')
+  )
+}
+
+// Helper: Kiểm tra có thể update status hay không dựa trên payment method
+export const canUpdateStatus = (order, newStatus) => {
+  if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
+
+  const { paymentStatus, paymentMethod } = order
+
+  // Các status không cần kiểm tra payment
+  const freeStatusUpdates = ['PENDING', 'CONFIRMED', 'CANCELLED']
+  if (freeStatusUpdates.includes(newStatus)) {
+    return { allowed: true, reason: null }
+  }
+
+  // COD: Có thể update status mà không cần markPaid trước
+  if (isCODPayment(paymentMethod)) {
+    return {
+      allowed: true,
+      reason: null,
+      note: 'COD - Không cần thanh toán trước'
+    }
+  }
+
+  // Online Payment: Phải markPaid trước mới được update status
+  if (isOnlinePayment(paymentMethod)) {
+    const requiresPaymentStatuses = [
+      'PROCESSING',
+      'PACKED',
+      'SHIPPED',
+      'DELIVERED',
+      'COMPLETED'
+    ]
+
+    if (
+      requiresPaymentStatuses.includes(newStatus) &&
+      paymentStatus !== 'PAID'
+    ) {
+      return {
+        allowed: false,
+        reason: `Phương thức thanh toán online yêu cầu phải thanh toán trước khi chuyển sang ${newStatus}`
+      }
+    }
+  }
+
+  return { allowed: true, reason: null }
+}
+
 // Helper: Kiểm tra tính nhất quán giữa status và paymentStatus
-export const isConsistentStatusPayment = (status, paymentStatus) => {
+export const isConsistentStatusPayment = (
+  status,
+  paymentStatus,
+  paymentMethod = ''
+) => {
   // Các quy tắc nhất quán
   const rules = [
-    // Nếu đã hoàn thành thì phải đã thanh toán
+    // Rule 1: COMPLETED phải đã PAID
     () => (status === 'COMPLETED' ? paymentStatus === 'PAID' : true),
 
-    // Nếu đã thanh toán thì status phải >= CONFIRMED
+    // Rule 2: Nếu đã PAID thì status phải >= CONFIRMED
     () => (paymentStatus === 'PAID' ? !['PENDING'].includes(status) : true),
 
-    // Nếu đã refund payment thì status phải là CANCELLED hoặc REFUNDED
+    // Rule 3: REFUNDED logic
     () =>
       paymentStatus === 'REFUNDED'
         ? ['CANCELLED', 'REFUNDED'].includes(status)
         : true,
+    () => (status === 'REFUNDED' ? paymentStatus === 'REFUNDED' : true),
 
-    // Nếu status là REFUNDED thì payment cũng phải REFUNDED
-    () => (status === 'REFUNDED' ? paymentStatus === 'REFUNDED' : true)
+    // Rule 4: Online Payment logic - Phải PAID trước khi PROCESSING/PACKED/SHIPPED/DELIVERED
+    () => {
+      if (isOnlinePayment(paymentMethod)) {
+        const requiresPaymentStatuses = [
+          'PROCESSING',
+          'PACKED',
+          'SHIPPED',
+          'DELIVERED',
+          'COMPLETED'
+        ]
+        if (
+          requiresPaymentStatuses.includes(status) &&
+          paymentStatus === 'PENDING'
+        ) {
+          return false
+        }
+      }
+      return true
+    },
+
+    // Rule 5: COD logic - Cho phép DELIVERED + PENDING
+    () => {
+      if (isCODPayment(paymentMethod)) {
+        // COD có thể có status cao mà chưa thanh toán
+        return true
+      }
+      return true
+    }
   ]
 
   return rules.every((rule) => rule())
@@ -84,4 +180,78 @@ export const generateOrderCode = () => {
   const timestamp = Date.now().toString().slice(-6) // Lấy 6 số cuối của timestamp
   const random = Math.random().toString(36).substring(2, 8).toUpperCase() // 6 ký tự random
   return `ORD${timestamp}${random}`
+}
+
+// Helper: Kiểm tra có thể đánh dấu đã thanh toán hay không
+export const canMarkPaid = (order, isAdmin = false) => {
+  if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
+
+  const { status, paymentStatus, paymentMethod = '' } = order
+
+  // Chỉ admin mới có thể mark paid
+  if (!isAdmin) {
+    return {
+      allowed: false,
+      reason: 'Chỉ admin mới có thể xác nhận thanh toán'
+    }
+  }
+
+  // Không thể mark paid nếu đã cancelled/refunded
+  if (['CANCELLED', 'REFUNDED'].includes(status)) {
+    return {
+      allowed: false,
+      reason: `Không thể xác nhận thanh toán cho đơn hàng ${status}`
+    }
+  }
+
+  // Không thể mark paid nếu payment đã refunded/cancelled
+  if (['REFUNDED', 'CANCELLED'].includes(paymentStatus)) {
+    return {
+      allowed: false,
+      reason: `Không thể xác nhận thanh toán khi trạng thái thanh toán là ${paymentStatus}`
+    }
+  }
+
+  // Đã thanh toán rồi
+  if (paymentStatus === 'PAID') {
+    return {
+      allowed: false,
+      reason: 'Đơn hàng đã được thanh toán'
+    }
+  }
+
+  // Logic đặc biệt cho COD: Có thể mark paid ngay cả khi DELIVERED
+  if (isCODPayment(paymentMethod) && status === 'DELIVERED') {
+    return {
+      allowed: true,
+      reason: null,
+      note: 'COD - Thanh toán khi nhận hàng'
+    }
+  }
+
+  // Logic đặc biệt cho COD: Có thể mark paid khi COMPLETED (trường hợp đã giao nhưng admin chưa kịp mark paid)
+  if (
+    isCODPayment(paymentMethod) &&
+    status === 'COMPLETED' &&
+    paymentStatus === 'PENDING'
+  ) {
+    return {
+      allowed: true,
+      reason: null,
+      note: 'COD - Bổ sung xác nhận thanh toán'
+    }
+  }
+
+  // Với Online Payment: Không được mark paid nếu đã DELIVERED/COMPLETED (phải thanh toán trước)
+  if (
+    isOnlinePayment(paymentMethod) &&
+    ['DELIVERED', 'COMPLETED'].includes(status)
+  ) {
+    return {
+      allowed: false,
+      reason: 'Đơn hàng online payment phải được thanh toán trước khi giao hàng'
+    }
+  }
+
+  return { allowed: true, reason: null }
 }

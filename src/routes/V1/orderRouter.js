@@ -32,6 +32,11 @@ Router.put(
   orderValidation.updateStatus,
   orderController.adminUpdateStatus
 )
+Router.put(
+  '/admin/update-payment/:id',
+  orderValidation.updatePaymentStatus,
+  orderController.adminUpdatePaymentStatus
+)
 Router.post('/admin/mark-paid/:id', orderController.adminMarkPaid)
 Router.post('/admin/cancel/:id', orderController.adminCancel)
 

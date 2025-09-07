@@ -107,17 +107,34 @@ const adminGetDetails = async (req, res, next) => {
 const adminUpdateStatus = async (req, res, next) => {
   try {
     const id = req.params?.id
-    const { status, paymentStatus } = req.body
+    const { status } = req.body
 
-    // Ensure only valid status and paymentStatus are processed
-    const updated = await orderService.updateStatus(id, {
-      status,
+    // Chỉ update status, không đụng đến paymentStatus
+    const updated = await orderService.updateStatus(id, { status })
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Cập nhật trạng thái đơn hàng thành công',
+      data: updated
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const adminUpdatePaymentStatus = async (req, res, next) => {
+  try {
+    const id = req.params?.id
+    const { paymentStatus } = req.body
+
+    // Chỉ update paymentStatus, không đụng đến status
+    const updated = await orderService.updatePaymentStatus(id, {
       paymentStatus
     })
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
-      message: 'Cập nhật trạng thái đơn hàng thành công',
+      message: 'Cập nhật trạng thái thanh toán thành công',
       data: updated
     })
   } catch (error) {
@@ -191,6 +208,7 @@ export const orderController = {
   adminGetOrders,
   adminGetDetails,
   adminUpdateStatus,
+  adminUpdatePaymentStatus,
   adminMarkPaid,
   userCancel,
   userCancelByOrderCode,
