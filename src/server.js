@@ -7,6 +7,7 @@ import { APIs_V1 } from './routes/V1'
 import { CLOSE_DB, CONNECT_DB } from './config/mongodb'
 import cors from 'cors'
 import { corsOptions } from './config/cors'
+import '~/providers/passport'
 
 const START_SERVER = () => {
   const app = express()

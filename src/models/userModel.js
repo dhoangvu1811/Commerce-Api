@@ -8,7 +8,7 @@ const USER_COLLECTION_NAME = 'users'
 const USER_COLLECTION_SCHEMA = Joi.object({
   name: Joi.string().required().trim().min(2).max(100),
   email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim(),
-  password: Joi.string().required().pattern(PASSWORD_RULE),
+  password: Joi.string().optional().pattern(PASSWORD_RULE),
   phone: Joi.string()
     .trim()
     .pattern(/^[0-9+\-\s()]+$/)
