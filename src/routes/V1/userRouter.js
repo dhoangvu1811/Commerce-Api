@@ -3,6 +3,8 @@ import { userController } from '~/controllers/userController'
 import { userValidation } from '~/validations/userValidation'
 import { authMiddleware } from '~/middlewares/authMiddleware'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware'
+import { env } from '~/config/environment'
+import passport from 'passport'
 
 const Router = express.Router()
 
@@ -11,6 +13,25 @@ Router.post('/register', userValidation.register, userController.register)
 Router.post('/login', userValidation.login, userController.login)
 Router.post('/logout', userController.logout)
 Router.post('/refresh-token', userController.refreshToken)
+
+// Google OAuth routes
+Router.get(
+  '/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+)
+
+Router.get(
+  '/auth/google/callback',
+  passport.authenticate('google', {
+    session: false,
+    failureRedirect: `${env.CLIENT_URL}/auth/failure?error=oauth_failed`,
+    failureMessage: true
+  }),
+  userController.googleOAuthSuccess
+)
+
+// Explicit failure route (tùy chọn)
+Router.get('/auth/google/failure', userController.googleOAuthFailure)
 
 // Protected routes - cần xác thực
 Router.use(authMiddleware.verifyToken)

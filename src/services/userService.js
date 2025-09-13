@@ -215,17 +215,19 @@ const updatePassword = async (userId, passwordData) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra mật khẩu hiện tại
-    const isCurrentPasswordValid = await comparePassword(
-      passwordData.currentPassword,
-      user.password
-    )
-
-    if (!isCurrentPasswordValid) {
-      throw new ApiError(
-        StatusCodes.NOT_ACCEPTABLE,
-        'Mật khẩu hiện tại không đúng'
+    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải Google user
+    if (!passwordData.isGoogleUser) {
+      const isCurrentPasswordValid = await comparePassword(
+        passwordData.currentPassword,
+        user.password
       )
+
+      if (!isCurrentPasswordValid) {
+        throw new ApiError(
+          StatusCodes.NOT_ACCEPTABLE,
+          'Mật khẩu hiện tại không đúng'
+        )
+      }
     }
 
     // Hash mật khẩu mới
@@ -377,11 +379,12 @@ const getUsers = async (page = 1, itemsPerPage = 10, queryFilter = {}) => {
     )
 
     // Loại bỏ password khỏi tất cả user trong response
-    const usersWithoutPassword = result.users?.map((user) => {
-      // eslint-disable-next-line no-unused-vars
-      const { password, ...userWithoutPassword } = user || {}
-      return userWithoutPassword
-    }) || []
+    const usersWithoutPassword =
+      result.users?.map((user) => {
+        // eslint-disable-next-line no-unused-vars
+        const { password, ...userWithoutPassword } = user || {}
+        return userWithoutPassword
+      }) || []
 
     return {
       ...result,
