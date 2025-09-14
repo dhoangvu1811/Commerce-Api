@@ -8,7 +8,7 @@ const USER_COLLECTION_NAME = 'users'
 const USER_COLLECTION_SCHEMA = Joi.object({
   name: Joi.string().required().trim().min(2).max(100),
   email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim(),
-  password: Joi.string().optional().pattern(PASSWORD_RULE),
+  password: Joi.string().required().pattern(PASSWORD_RULE),
   phone: Joi.string()
     .trim()
     .pattern(/^[0-9+\-\s()]+$/)
@@ -23,6 +23,9 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   role: Joi.string().valid('admin', 'user').default('user'),
   isActive: Joi.boolean().default(true),
   emailVerified: Joi.boolean().default(false),
+  typeAccount: Joi.string()
+    .valid('LOCAL', 'GOOGLE', 'FACEBOOK')
+    .default('LOCAL'),
   lastLogin: Joi.date().allow(null).default(null),
   createdAt: Joi.date().timestamp().default(Date.now),
   updatedAt: Joi.date().timestamp().default(Date.now)

@@ -169,7 +169,6 @@ const updateUser = async (req, res, next) => {
 
 const updatePassword = async (req, res, next) => {
   const correctCondition = Joi.object({
-    isGoogleUser: Joi.boolean().optional(),
     currentPassword: Joi.string().optional().messages({
       'string.empty': 'Mật khẩu hiện tại không được để trống',
       'any.required': 'Mật khẩu hiện tại là bắt buộc'

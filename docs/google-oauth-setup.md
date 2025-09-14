@@ -123,7 +123,7 @@ Khi user đăng nhập bằng Google lần đầu, hệ thống sẽ tạo user 
 {
   name: "Google Display Name",
   email: "user@gmail.com",
-  password: "GOOGLE_AUTH", // Placeholder
+  password: "GOOGLE-AUTH1*#", // Placeholder
   avatar: "https://google-avatar-url.jpg",
   emailVerified: true,
   role: "user",
