@@ -37,6 +37,7 @@ const register = async (userData) => {
     const newUser = {
       ...userData,
       password: hashedPassword,
+      typeAccount: 'LOCAL', // Set mặc định cho user đăng ký thông thường
       createdAt: new Date(),
       updatedAt: new Date()
     }
@@ -215,8 +216,8 @@ const updatePassword = async (userId, passwordData) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải Google user
-    if (!passwordData.isGoogleUser) {
+    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải Google user (hoặc Google user đã set password)
+    if (user.typeAccount !== 'GOOGLE') {
       const isCurrentPasswordValid = await comparePassword(
         passwordData.currentPassword,
         user.password
@@ -233,11 +234,18 @@ const updatePassword = async (userId, passwordData) => {
     // Hash mật khẩu mới
     const hashedNewPassword = await hashPassword(passwordData.newPassword)
 
-    // Cập nhật mật khẩu
-    const updatedUser = await userModel.update(userId, {
+    // Cập nhật mật khẩu và typeAccount
+    const updateData = {
       password: hashedNewPassword,
       updatedAt: new Date()
-    })
+    }
+
+    // Nếu user Google lần đầu set password, chuyển về LOCAL để có thể login bằng cả 2 cách
+    if (user.typeAccount === 'GOOGLE' && user.password === 'GOOGLE-AUTH1*#') {
+      updateData.typeAccount = 'LOCAL'
+    }
+
+    const updatedUser = await userModel.update(userId, updateData)
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
@@ -455,6 +463,7 @@ const createUserByAdmin = async (userData) => {
       isActive: userData.isActive !== undefined ? userData.isActive : true,
       emailVerified:
         userData.emailVerified !== undefined ? userData.emailVerified : false,
+      typeAccount: userData.typeAccount || 'LOCAL', // Admin có thể chỉ định loại account
       createdAt: new Date(),
       updatedAt: new Date()
     }

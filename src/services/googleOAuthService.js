@@ -17,23 +17,33 @@ const handleGoogleOAuth = async (googleProfile) => {
 
     if (existingUser) {
       // User đã tồn tại, cập nhật thông tin từ Google
-      const updatedUser = await userModel.update(existingUser._id, {
+      const updateData = {
         name: displayName,
         avatar: avatar,
         emailVerified: true,
         lastLogin: new Date(),
         updatedAt: new Date()
-      })
+      }
+
+      // Chỉ set typeAccount = 'GOOGLE' nếu user chưa có password riêng (vẫn dùng GOOGLE-AUTH1*#)
+      // Nếu user đã set password thì giữ nguyên typeAccount = 'LOCAL'
+      if (existingUser.password === 'GOOGLE-AUTH1*#') {
+        updateData.typeAccount = 'GOOGLE'
+      }
+
+      const updatedUser = await userModel.update(existingUser._id, updateData)
       return updatedUser
     } else {
       // Tạo user mới từ Google profile
       const newUserData = {
         name: displayName,
         email: email,
+        password: 'GOOGLE-AUTH1*#', // Placeholder password for Google users
         avatar: avatar,
         emailVerified: true,
         role: 'user',
         isActive: true,
+        typeAccount: 'GOOGLE',
         lastLogin: new Date(),
         createdAt: new Date(),
         updatedAt: new Date()
