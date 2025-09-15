@@ -216,8 +216,12 @@ const updatePassword = async (userId, passwordData) => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải Google user (hoặc Google user đã set password)
-    if (user.typeAccount !== 'GOOGLE') {
+    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải OAuth user (Google/Facebook) chưa set password
+    const isOAuthUser =
+      user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
+    const hasOAuthPassword =
+      user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
+    if (!isOAuthUser || (isOAuthUser && !hasOAuthPassword)) {
       const isCurrentPasswordValid = await comparePassword(
         passwordData.currentPassword,
         user.password
@@ -240,8 +244,11 @@ const updatePassword = async (userId, passwordData) => {
       updatedAt: new Date()
     }
 
-    // Nếu user Google lần đầu set password, chuyển về LOCAL để có thể login bằng cả 2 cách
-    if (user.typeAccount === 'GOOGLE' && user.password === 'GOOGLE-AUTH1*#') {
+    // Nếu OAuth user lần đầu set password, chuyển về LOCAL để có thể login bằng cả 2 cách
+    if (
+      (user.typeAccount === 'GOOGLE' && user.password === 'GOOGLE-AUTH1*#') ||
+      (user.typeAccount === 'FACEBOOK' && user.password === 'FACEBOOK-AUTH1*#')
+    ) {
       updateData.typeAccount = 'LOCAL'
     }
 

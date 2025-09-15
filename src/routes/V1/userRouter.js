@@ -30,8 +30,27 @@ Router.get(
   userController.googleOAuthSuccess
 )
 
-// Explicit failure route (tùy chọn)
+// Explicit Google failure route
 Router.get('/auth/google/failure', userController.googleOAuthFailure)
+
+// Facebook OAuth routes
+Router.get(
+  '/auth/facebook',
+  passport.authenticate('facebook', { scope: ['email'] })
+)
+
+Router.get(
+  '/auth/facebook/callback',
+  passport.authenticate('facebook', {
+    session: false,
+    failureRedirect: `${env.CLIENT_URL}/auth/failure?error=oauth_failed`,
+    failureMessage: true
+  }),
+  userController.facebookOAuthSuccess
+)
+
+// Explicit Facebook failure route
+Router.get('/auth/facebook/failure', userController.facebookOAuthFailure)
 
 // Protected routes - cần xác thực
 Router.use(authMiddleware.verifyToken)

@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes'
 import { userService } from '~/services/userService'
-import { googleOAuthService } from '~/services/googleOAuthService'
+import { oAuthService } from '~/services/oAuthService'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import ms from 'ms'
 import { env } from '~/config/environment'
@@ -310,7 +310,7 @@ const googleOAuthSuccess = async (req, res, next) => {
     }
 
     // Sử dụng service để tạo JWT tokens
-    const authResult = googleOAuthService.generateAuthTokens(user)
+    const authResult = oAuthService.generateAuthTokens(user)
 
     // Set cookies
     res.cookie('accessToken', authResult.accessToken, {
@@ -362,6 +362,69 @@ const googleOAuthFailure = async (req, res, next) => {
   }
 }
 
+// Facebook OAuth Success Callback
+const facebookOAuthSuccess = async (req, res, next) => {
+  try {
+    // User đã được authenticate bởi passport và có trong req.user
+    const user = req.user
+
+    if (!user) {
+      return res.redirect(`${env.CLIENT_URL}/auth/failure?error=oauth_failed`)
+    }
+
+    // Sử dụng service để tạo JWT tokens
+    const authResult = oAuthService.generateAuthTokens(user)
+
+    // Set cookies
+    res.cookie('accessToken', authResult.accessToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: ms('15m') // 15 minutes
+    })
+
+    res.cookie('refreshToken', authResult.refreshToken, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'none',
+      maxAge: ms('7d') // 7 days
+    })
+
+    // Redirect về client với success
+    res.redirect(`${env.CLIENT_URL}/auth/success`)
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Facebook OAuth Failure Callback
+const facebookOAuthFailure = async (req, res, next) => {
+  try {
+    const errorMessage = req.query.error || 'oauth_failed'
+    const errorDescription =
+      req.query.error_description || 'Đăng nhập Facebook thất bại'
+
+    // Log lỗi để debug
+    if (env.BUILD_MODE === 'dev') {
+      // eslint-disable-next-line no-console
+      console.error('❌ Facebook OAuth Failure:', {
+        errorMessage,
+        errorDescription
+      })
+    }
+
+    res.redirect(
+      `${
+        env.CLIENT_URL
+      }/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
+        errorDescription
+      )}`
+    )
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -379,5 +442,7 @@ export const userController = {
   createUserByAdmin,
   uploadAvatar,
   googleOAuthSuccess,
-  googleOAuthFailure
+  googleOAuthFailure,
+  facebookOAuthSuccess,
+  facebookOAuthFailure
 }
