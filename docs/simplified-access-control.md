@@ -30,13 +30,20 @@
 - **Có thể**: Đăng nhập thành công
 - **Có thể**: Xem sản phẩm thông qua các public routes (giống guest)
 - **Không thể**: Sử dụng bất kỳ tính năng nào khác (sẽ bị chặn bởi `verifyActiveUser`)
+- **Lưu ý**: Chỉ áp dụng cho Local Registration users
 
-### 3. User Active (Đã đăng nhập và đã active)
+### 3. OAuth Users (Google/Facebook)
+
+- **Đặc biệt**: Tự động được kích hoạt (`isActive = true`) khi đăng nhập
+- **Có thể**: Sử dụng đầy đủ tất cả tính năng ngay lập tức
+- **Logic**: OAuth providers đã verify email → trusted users
+
+### 4. User Active (Đã đăng nhập và đã active)
 
 - **Có thể**: Sử dụng đầy đủ tất cả tính năng user
 - **Có thể**: Quản lý profile, đặt hàng, upload avatar...
 
-### 4. Admin
+### 5. Admin
 
 - **Có thể**: Sử dụng tất cả tính năng của hệ thống
 
@@ -57,24 +64,32 @@ Router.use(authMiddleware.verifyAdmin)
 Router.post('/admin-feature', controller.method)
 ```
 
-## 📋 Routes Matrix Đơn Giản
+## 📋 Routes Matrix Với OAuth Auto-Activation
 
-| Route                   | Guest | Inactive User | Active User | Admin |
-| ----------------------- | ----- | ------------- | ----------- | ----- |
-| `GET /products/*`       | ✅    | ✅            | ✅          | ✅    |
-| `GET /vouchers/active`  | ✅    | ✅            | ✅          | ✅    |
-| `POST /vouchers/verify` | ✅    | ✅            | ✅          | ✅    |
-| `GET /users/me`         | ❌    | ❌            | ✅          | ✅    |
-| `POST /orders/*`        | ❌    | ❌            | ✅          | ✅    |
-| Admin routes            | ❌    | ❌            | ❌          | ✅    |
+| Route                   | Guest | Local Inactive | OAuth Users | Local Active | Admin |
+| ----------------------- | ----- | -------------- | ----------- | ------------ | ----- |
+| `GET /products/*`       | ✅    | ✅             | ✅          | ✅           | ✅    |
+| `GET /vouchers/active`  | ✅    | ✅             | ✅          | ✅           | ✅    |
+| `POST /vouchers/verify` | ✅    | ✅             | ✅          | ✅           | ✅    |
+| `GET /users/me`         | ❌    | ❌             | ✅          | ✅           | ✅    |
+| `POST /orders/*`        | ❌    | ❌             | ✅          | ✅           | ✅    |
+| Admin routes            | ❌    | ❌             | ❌          | ❌           | ✅    |
+
+**Chú thích**:
+
+- **Local Inactive**: User đăng ký bằng email/password, chưa được admin kích hoạt
+- **OAuth Users**: User đăng nhập bằng Google/Facebook, tự động active
+- **Local Active**: User đăng ký local đã được admin kích hoạt
 
 ## ⚡ Ưu Điểm Của Hệ Thống Mới
 
 1. **Đơn Giản**: Chỉ sử dụng 4 middleware cốt lõi
 2. **Dễ Hiểu**: Logic rõ ràng - active thì được dùng, không active thì bị chặn
-3. **Dễ Maintain**: Ít code hơn, ít bug hơn
-4. **Performance**: Ít middleware check hơn
-5. **Consistent**: Tất cả user features đều yêu cầu active
+3. **OAuth Friendly**: User social login có trải nghiệm seamless
+4. **Security Balance**: OAuth users trusted, local users cần verification
+5. **Dễ Maintain**: Ít code hơn, ít bug hơn
+6. **Performance**: Ít middleware check hơn
+7. **Admin Control**: Vẫn kiểm soát được local registrations
 
 ## 🔒 Error Handling
 

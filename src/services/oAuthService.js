@@ -6,6 +6,10 @@ import { StatusCodes } from 'http-status-codes'
 
 /**
  * Generic OAuth Service cho tất cả providers (Google, Facebook, v.v.)
+ *
+ * QUAN TRỌNG:
+ * - OAuth users luôn được kích hoạt tự động (isActive = true)
+ * - Local registration users cần admin kích hoạt (isActive = false)
  */
 
 /**
@@ -92,11 +96,12 @@ const handleOAuth = async (profile, provider) => {
     let existingUser = await userModel.findOneByEmail(normalizedProfile.email)
 
     if (existingUser) {
-      // User đã tồn tại, cập nhật thông tin
+      // User đã tồn tại, cập nhật thông tin và đảm bảo active
       const updateData = {
         name: normalizedProfile.displayName,
         avatar: normalizedProfile.avatar,
         emailVerified: true,
+        isActive: true, // OAuth users luôn được kích hoạt
         lastLogin: new Date(),
         updatedAt: new Date()
       }
@@ -109,7 +114,7 @@ const handleOAuth = async (profile, provider) => {
       const updatedUser = await userModel.update(existingUser._id, updateData)
       return updatedUser
     } else {
-      // Tạo user mới từ OAuth profile
+      // Tạo user mới từ OAuth profile - luôn active
       const newUserData = {
         name: normalizedProfile.displayName,
         email: normalizedProfile.email,
@@ -117,7 +122,7 @@ const handleOAuth = async (profile, provider) => {
         avatar: normalizedProfile.avatar,
         emailVerified: true,
         role: 'user',
-        isActive: true,
+        isActive: true, // OAuth users luôn được kích hoạt ngay
         typeAccount: provider,
         lastLogin: new Date(),
         createdAt: new Date(),

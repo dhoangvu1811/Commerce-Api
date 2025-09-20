@@ -1,4 +1,7 @@
 import jwt from 'jsonwebtoken'
+import { v4 as uuidv4 } from 'uuid'
+import { StatusCodes } from 'http-status-codes'
+import ApiError from '~/utils/ApiError'
 import { env } from '~/config/environment'
 
 // Tạo Access Token
@@ -40,10 +43,43 @@ const decodeToken = (token) => {
   return jwt.decode(token)
 }
 
+// Tạo verification token cho xác minh email
+const generateVerificationToken = (email) => {
+  const payload = {
+    email,
+    type: 'email_verification',
+    uuid: uuidv4()
+  }
+
+  // Token có hiệu lực 24 giờ
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '24h' })
+}
+
+// Xác minh verification token
+const verifyVerificationToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET)
+
+    // Kiểm tra type token
+    if (decoded.type !== 'email_verification') {
+      throw new Error('Invalid token type')
+    }
+
+    return decoded
+  } catch {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Token xác minh không hợp lệ hoặc đã hết hạn'
+    )
+  }
+}
+
 export const JwtProvider = {
   generateAccessToken,
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
-  decodeToken
+  decodeToken,
+  generateVerificationToken,
+  verifyVerificationToken
 }
