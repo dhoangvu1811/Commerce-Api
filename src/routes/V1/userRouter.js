@@ -55,8 +55,10 @@ Router.get('/auth/facebook/failure', userController.facebookOAuthFailure)
 // Protected routes - cần xác thực
 Router.use(authMiddleware.verifyToken)
 
-// User routes - user có thể truy cập thông tin của chính mình
 Router.get('/me', userController.getCurrentUser)
+// User routes - user có thể truy cập thông tin của chính mình (cần active)
+Router.use(authMiddleware.verifyActiveUser) // Bắt buộc user phải active
+
 Router.put(
   '/me',
   multerUploadMiddleware.upload.single('avatar'),
@@ -109,6 +111,21 @@ Router.post(
   authMiddleware.verifyAdmin,
   userValidation.deleteMultipleUsers,
   userController.deleteMultipleUsers
+)
+
+// User activation/deactivation routes - chỉ admin mới có quyền
+Router.patch(
+  '/activate/:userId',
+  authMiddleware.verifyAdmin,
+  userValidation.userActivation,
+  userController.activateUser
+)
+
+Router.patch(
+  '/deactivate/:userId',
+  authMiddleware.verifyAdmin,
+  userValidation.userActivation,
+  userController.deactivateUser
 )
 
 export const userRoute = Router

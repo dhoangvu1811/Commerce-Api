@@ -1,6 +1,7 @@
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { JwtProvider } from '~/providers/JwtProvider'
+import { userModel } from '~/models/userModel'
 
 // Middleware xác thực JWT token
 const verifyToken = async (req, res, next) => {
@@ -72,8 +73,37 @@ const verifyUserOwnership = async (req, res, next) => {
   }
 }
 
+// Middleware kiểm tra tài khoản có bị khóa hay không (cho các tính năng đặc biệt)
+const verifyActiveUser = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded?._id
+
+    if (!userId) {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Vui lòng đăng nhập')
+    }
+
+    // Kiểm tra trạng thái active của user
+    const user = await userModel.findOneById(userId)
+    if (!user) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Người dùng không tồn tại')
+    }
+
+    if (!user.isActive) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Tài khoản chưa được kích hoạt. Vui lòng liên hệ admin để kích hoạt tài khoản.'
+      )
+    }
+
+    next()
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const authMiddleware = {
   verifyToken,
   verifyAdmin,
-  verifyUserOwnership
+  verifyUserOwnership,
+  verifyActiveUser
 }
