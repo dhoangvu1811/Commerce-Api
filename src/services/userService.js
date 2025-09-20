@@ -6,6 +6,8 @@ import { ObjectId } from 'mongodb'
 import bcrypt from 'bcrypt'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
+import { BrevoProvider } from '~/providers/BrevoProvider'
+import { WEBSITE_DOMAIN } from '~/utils/constants'
 
 // Hash mật khẩu
 const hashPassword = async (password) => {
@@ -580,6 +582,201 @@ const deactivateUser = async (userId) => {
   }
 }
 
+// Gửi email xác minh tài khoản
+const sendVerificationEmail = async (email) => {
+  try {
+    // Kiểm tra user có tồn tại không
+    const user = await userModel.findOneByEmail(email)
+    if (!user) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        'Email không tồn tại trong hệ thống'
+      )
+    }
+
+    // Kiểm tra user đã verify chưa
+    if (user.emailVerified) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được xác minh')
+    }
+
+    // Tạo verification token sử dụng JwtProvider
+    const verifyToken = JwtProvider.generateVerificationToken(email)
+
+    // Tạo verification link
+    const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(
+      email
+    )}&token=${verifyToken}`
+
+    // HTML email template
+    const emailSubject = 'Xác minh tài khoản - Commerce Web'
+    const emailContent = `
+        <!DOCTYPE html>
+    <html>
+    <head>
+      <meta charset="utf-8">
+      <title>Xác minh tài khoản</title>
+      <style>
+        body {
+          font-family: Arial, sans-serif;
+          background-color: #f4f6f9;
+          color: #333;
+          margin: 0;
+          padding: 0;
+        }
+        .container {
+          max-width: 600px;
+          margin: 30px auto;
+          background: #ffffff;
+          border-radius: 10px;
+          overflow: hidden;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header {
+          background: linear-gradient(90deg, #007bff, #0056b3);
+          color: #ffffff;
+          text-align: center;
+          padding: 30px 20px;
+        }
+        .header h1 {
+          margin: 0;
+          font-size: 24px;
+        }
+        .content {
+          padding: 30px 25px;
+          line-height: 1.6;
+        }
+        .content h2 {
+          margin-top: 0;
+          color: #007bff;
+          font-size: 20px;
+        }
+        .button {
+          display: inline-block;
+          background: #007bff;
+          color: #ffffff !important;
+          padding: 14px 35px;
+          text-decoration: none;
+          border-radius: 6px;
+          font-size: 16px;
+          margin: 20px 0;
+          transition: background 0.3s;
+        }
+        .button:hover {
+          background: #0056b3;
+        }
+        .link-box {
+          background: #f1f3f5;
+          padding: 12px;
+          border-radius: 6px;
+          font-size: 14px;
+          word-break: break-all;
+        }
+        .footer {
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+          padding: 20px;
+          border-top: 1px solid #eaeaea;
+          background: #fafafa;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="header">
+          <h1>Xác minh tài khoản của bạn</h1>
+        </div>
+        <div class="content">
+          <h2>Xin chào,</h2>
+          <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Commerce Web</strong>.</p>
+          <p>Để hoàn tất đăng ký, vui lòng nhấp vào nút bên dưới để xác minh địa chỉ email:</p>
+
+          <div style="text-align: center;">
+            <a href="${verificationLink}" class="button">Xác minh ngay</a>
+          </div>
+
+          <p>Nếu nút trên không hoạt động, bạn có thể sao chép và dán đường link sau vào trình duyệt của mình:</p>
+          <div class="link-box">
+            ${verificationLink}
+          </div>
+
+          <p><strong>Lưu ý:</strong></p>
+          <ul>
+            <li>Link xác minh có hiệu lực trong vòng <strong>24 giờ</strong>.</li>
+            <li>Nếu bạn không tạo tài khoản này, vui lòng bỏ qua email này.</li>
+          </ul>
+        </div>
+        <div class="footer">
+          <p>© ${new Date().getFullYear()} Commerce Web. Mọi quyền được bảo lưu.</p>
+        </div>
+      </div>
+    </body>
+    </html>
+    `
+
+    // Gửi email
+    await BrevoProvider.sendEmail(email, emailSubject, emailContent)
+
+    return {
+      email,
+      message: 'Email xác minh đã được gửi thành công',
+      expiresIn: '24 hours'
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+// Xác minh tài khoản người dùng
+const verifyUserAccount = async (email, token) => {
+  try {
+    // Xác minh token sử dụng JwtProvider
+    const decoded = JwtProvider.verifyVerificationToken(token)
+
+    // Kiểm tra email khớp với token
+    if (decoded.email !== email) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Email không khớp với token xác minh'
+      )
+    }
+
+    // Tìm user
+    const user = await userModel.findOneByEmail(email)
+    if (!user) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Người dùng không tồn tại')
+    }
+
+    // Kiểm tra đã verify chưa
+    if (user.emailVerified) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã được xác minh trước đó'
+      )
+    }
+
+    // Cập nhật trạng thái emailVerified và isActive
+    const updatedUser = await userModel.update(user._id, {
+      emailVerified: true,
+      isActive: true,
+      updatedAt: new Date()
+    })
+
+    return {
+      message: 'Xác minh tài khoản thành công',
+      user: {
+        _id: updatedUser._id,
+        email: updatedUser.email,
+        name: updatedUser.name,
+        emailVerified: updatedUser.emailVerified,
+        isActive: updatedUser.isActive
+      }
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
 export const userService = {
   register,
   login,
@@ -596,5 +793,7 @@ export const userService = {
   activateUser,
   deactivateUser,
   hashPassword,
-  comparePassword
+  comparePassword,
+  sendVerificationEmail,
+  verifyUserAccount
 }

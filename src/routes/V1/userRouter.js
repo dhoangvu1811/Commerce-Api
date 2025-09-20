@@ -3,7 +3,7 @@ import { userController } from '~/controllers/userController'
 import { userValidation } from '~/validations/userValidation'
 import { authMiddleware } from '~/middlewares/authMiddleware'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware'
-import { env } from '~/config/environment'
+import { WEBSITE_DOMAIN } from '~/utils/constants'
 import passport from 'passport'
 
 const Router = express.Router()
@@ -13,6 +13,18 @@ Router.post('/register', userValidation.register, userController.register)
 Router.post('/login', userValidation.login, userController.login)
 Router.post('/logout', userController.logout)
 Router.post('/refresh-token', userController.refreshToken)
+
+// Email verification routes
+Router.post(
+  '/send-verification-email',
+  userValidation.sendVerificationEmail,
+  userController.sendVerificationEmail
+)
+Router.get(
+  '/verify-account',
+  userValidation.verifyUserAccount,
+  userController.verifyUserAccount
+)
 
 // Google OAuth routes
 Router.get(
@@ -24,7 +36,7 @@ Router.get(
   '/auth/google/callback',
   passport.authenticate('google', {
     session: false,
-    failureRedirect: `${env.CLIENT_URL}/auth/failure?error=oauth_failed`,
+    failureRedirect: `${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`,
     failureMessage: true
   }),
   userController.googleOAuthSuccess
@@ -43,7 +55,7 @@ Router.get(
   '/auth/facebook/callback',
   passport.authenticate('facebook', {
     session: false,
-    failureRedirect: `${env.CLIENT_URL}/auth/failure?error=oauth_failed`,
+    failureRedirect: `${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`,
     failureMessage: true
   }),
   userController.facebookOAuthSuccess

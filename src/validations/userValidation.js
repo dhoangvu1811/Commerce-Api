@@ -409,6 +409,66 @@ const userActivation = async (req, res, next) => {
   }
 }
 
+// Validation gửi email xác minh
+const sendVerificationEmail = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
+// Validation xác minh tài khoản
+const verifyUserAccount = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
+    token: Joi.string().required().messages({
+      'string.empty': 'Token xác minh không được để trống',
+      'any.required': 'Token xác minh là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.query, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
 export const userValidation = {
   register,
   login,
@@ -418,5 +478,7 @@ export const userValidation = {
   deleteMultipleUsers,
   updateUserByAdmin,
   createUserByAdmin,
-  userActivation
+  userActivation,
+  sendVerificationEmail,
+  verifyUserAccount
 }

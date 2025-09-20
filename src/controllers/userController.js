@@ -2,8 +2,9 @@ import { StatusCodes } from 'http-status-codes'
 import { userService } from '~/services/userService'
 import { oAuthService } from '~/services/oAuthService'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
-import ms from 'ms'
+import { WEBSITE_DOMAIN } from '~/utils/constants'
 import { env } from '~/config/environment'
+import ms from 'ms'
 
 const register = async (req, res, next) => {
   try {
@@ -306,7 +307,7 @@ const googleOAuthSuccess = async (req, res, next) => {
     const user = req.user
 
     if (!user) {
-      return res.redirect(`${env.CLIENT_URL}/auth/failure?error=oauth_failed`)
+      return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
     }
 
     // Sử dụng service để tạo JWT tokens
@@ -328,7 +329,7 @@ const googleOAuthSuccess = async (req, res, next) => {
     })
 
     // Redirect về client với success
-    res.redirect(`${env.CLIENT_URL}/auth/success`)
+    res.redirect(`${WEBSITE_DOMAIN}/auth/success`)
   } catch (error) {
     next(error)
   }
@@ -351,9 +352,7 @@ const googleOAuthFailure = async (req, res, next) => {
     }
 
     res.redirect(
-      `${
-        env.CLIENT_URL
-      }/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
+      `${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
         errorDescription
       )}`
     )
@@ -369,7 +368,7 @@ const facebookOAuthSuccess = async (req, res, next) => {
     const user = req.user
 
     if (!user) {
-      return res.redirect(`${env.CLIENT_URL}/auth/failure?error=oauth_failed`)
+      return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
     }
 
     // Sử dụng service để tạo JWT tokens
@@ -391,7 +390,7 @@ const facebookOAuthSuccess = async (req, res, next) => {
     })
 
     // Redirect về client với success
-    res.redirect(`${env.CLIENT_URL}/auth/success`)
+    res.redirect(`${WEBSITE_DOMAIN}/auth/success`)
   } catch (error) {
     next(error)
   }
@@ -414,9 +413,7 @@ const facebookOAuthFailure = async (req, res, next) => {
     }
 
     res.redirect(
-      `${
-        env.CLIENT_URL
-      }/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
+      `${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
         errorDescription
       )}`
     )
@@ -457,6 +454,41 @@ const deactivateUser = async (req, res, next) => {
   }
 }
 
+// Gửi email xác minh tài khoản
+const sendVerificationEmail = async (req, res, next) => {
+  try {
+    const { email } = req.body
+    const result = await userService.sendVerificationEmail(email)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: result.message,
+      data: {
+        email: result.email,
+        expiresIn: result.expiresIn
+      }
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Xác minh tài khoản người dùng
+const verifyUserAccount = async (req, res, next) => {
+  try {
+    const { email, token } = req.query
+    const result = await userService.verifyUserAccount(email, token)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: result.message,
+      data: result.user
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -478,5 +510,7 @@ export const userController = {
   googleOAuthSuccess,
   googleOAuthFailure,
   facebookOAuthSuccess,
-  facebookOAuthFailure
+  facebookOAuthFailure,
+  sendVerificationEmail,
+  verifyUserAccount
 }
