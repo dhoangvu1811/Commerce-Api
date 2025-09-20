@@ -21,7 +21,7 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   dateOfBirth: Joi.date().max('now').allow(null).default(null),
   gender: Joi.string().valid('male', 'female', 'other').allow('').default(''),
   role: Joi.string().valid('admin', 'user').default('user'),
-  isActive: Joi.boolean().default(true),
+  isActive: Joi.boolean().default(false),
   emailVerified: Joi.boolean().default(false),
   typeAccount: Joi.string()
     .valid('LOCAL', 'GOOGLE', 'FACEBOOK')
@@ -178,6 +178,76 @@ const updateLastLogin = async (userId) => {
   }
 }
 
+const activateUser = async (userId) => {
+  try {
+    const result = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .findOneAndUpdate(
+        { _id: new ObjectId(userId) },
+        {
+          $set: {
+            isActive: true,
+            updatedAt: new Date()
+          }
+        },
+        { returnDocument: 'after' }
+      )
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const deactivateUser = async (userId) => {
+  try {
+    const result = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .findOneAndUpdate(
+        { _id: new ObjectId(userId) },
+        {
+          $set: {
+            isActive: false,
+            updatedAt: new Date()
+          }
+        },
+        { returnDocument: 'after' }
+      )
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const findActiveUserById = async (userId) => {
+  try {
+    const result = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .findOne({
+        _id: new ObjectId(userId),
+        isActive: true
+      })
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const findActiveUserByEmail = async (email) => {
+  try {
+    const result = await GET_DB().collection(USER_COLLECTION_NAME).findOne({
+      email: email.toLowerCase().trim(),
+      isActive: true
+    })
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 const deleteOneById = async (userId) => {
   try {
     const result = await GET_DB()
@@ -229,6 +299,10 @@ export const userModel = {
   getMany,
   update,
   updateLastLogin,
+  activateUser,
+  deactivateUser,
+  findActiveUserById,
+  findActiveUserByEmail,
   deleteOneById,
   deleteMany,
   deleteManyByIds

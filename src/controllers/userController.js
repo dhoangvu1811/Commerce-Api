@@ -28,7 +28,7 @@ const login = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('15m') // 15 minutes
+      maxAge: ms('10m')
     })
 
     res.cookie('refreshToken', loginResult.refreshToken, {
@@ -240,7 +240,7 @@ const refreshToken = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('15m') // 15 minutes
+      maxAge: ms('10m')
     })
 
     res.status(StatusCodes.OK).json({
@@ -317,7 +317,7 @@ const googleOAuthSuccess = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('15m') // 15 minutes
+      maxAge: ms('10m')
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
@@ -380,7 +380,7 @@ const facebookOAuthSuccess = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('15m') // 15 minutes
+      maxAge: ms('10m')
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
@@ -425,6 +425,38 @@ const facebookOAuthFailure = async (req, res, next) => {
   }
 }
 
+const activateUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params
+
+    const activatedUser = await userService.activateUser(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Kích hoạt tài khoản thành công',
+      data: activatedUser
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const deactivateUser = async (req, res, next) => {
+  try {
+    const { userId } = req.params
+
+    const deactivatedUser = await userService.deactivateUser(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Vô hiệu hóa tài khoản thành công',
+      data: deactivatedUser
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -441,6 +473,8 @@ export const userController = {
   refreshToken,
   createUserByAdmin,
   uploadAvatar,
+  activateUser,
+  deactivateUser,
   googleOAuthSuccess,
   googleOAuthFailure,
   facebookOAuthSuccess,

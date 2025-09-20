@@ -5,8 +5,9 @@ import { orderController } from '~/controllers/orderController'
 
 const Router = express.Router()
 
-// User
+// User - bắt buộc phải active mới có thể đặt hàng và quản lý order
 Router.use(authMiddleware.verifyToken)
+Router.use(authMiddleware.verifyActiveUser)
 
 Router.post('/create', orderValidation.create, orderController.create)
 Router.get('/my-orders', orderController.getMyOrders)

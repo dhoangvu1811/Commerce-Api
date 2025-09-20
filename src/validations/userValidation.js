@@ -386,6 +386,29 @@ const createUserByAdmin = async (req, res, next) => {
   }
 }
 
+const userActivation = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
+      'string.empty': 'User ID không được để trống',
+      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
+      'any.required': 'User ID là bắt buộc'
+    })
+  })
+
+  try {
+    // Validate params
+    await correctCondition.validateAsync(req.params, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
 export const userValidation = {
   register,
   login,
@@ -394,5 +417,6 @@ export const userValidation = {
   deleteUser,
   deleteMultipleUsers,
   updateUserByAdmin,
-  createUserByAdmin
+  createUserByAdmin,
+  userActivation
 }

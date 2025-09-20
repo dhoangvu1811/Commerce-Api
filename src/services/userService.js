@@ -71,10 +71,8 @@ const login = async (loginData) => {
       )
     }
 
-    // Kiểm tra tài khoản có bị khóa không
-    if (!user.isActive) {
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Tài khoản của bạn đã bị khóa')
-    }
+    // Lưu ý: User inactive vẫn có thể đăng nhập để xem sản phẩm
+    // Không chặn login dựa trên isActive nữa
 
     // So sánh mật khẩu
     const isPasswordValid = await comparePassword(password, user.password)
@@ -504,6 +502,84 @@ const uploadAvatar = async (fileBuffer, folderName = 'users-commerceweb') => {
   }
 }
 
+const activateUser = async (userId) => {
+  try {
+    // Kiểm tra user có tồn tại không
+    const existingUser = await userModel.findOneById(userId)
+    if (!existingUser) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+    }
+
+    // Kiểm tra user đã được kích hoạt chưa
+    if (existingUser.isActive) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã được kích hoạt trước đó'
+      )
+    }
+
+    // Kích hoạt user
+    const activatedUser = await userModel.activateUser(userId)
+    if (!activatedUser) {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể kích hoạt tài khoản'
+      )
+    }
+
+    // Loại bỏ password khỏi response
+    // eslint-disable-next-line no-unused-vars
+    const { password, ...userResponse } = activatedUser
+
+    return { user: userResponse }
+  } catch (error) {
+    throw error
+  }
+}
+
+const deactivateUser = async (userId) => {
+  try {
+    // Kiểm tra user có tồn tại không
+    const existingUser = await userModel.findOneById(userId)
+    if (!existingUser) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+    }
+
+    // Kiểm tra user có phải admin không (admin không thể bị vô hiệu hóa)
+    if (existingUser.role === 'admin') {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Không thể vô hiệu hóa tài khoản quản trị viên'
+      )
+    }
+
+    // Kiểm tra user đã bị vô hiệu hóa chưa
+    if (!existingUser.isActive) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã bị vô hiệu hóa trước đó'
+      )
+    }
+
+    // Vô hiệu hóa user
+    const deactivatedUser = await userModel.deactivateUser(userId)
+    if (!deactivatedUser) {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể vô hiệu hóa tài khoản'
+      )
+    }
+
+    // Loại bỏ password khỏi response
+    // eslint-disable-next-line no-unused-vars
+    const { password, ...userResponse } = deactivatedUser
+
+    return { user: userResponse }
+  } catch (error) {
+    throw error
+  }
+}
+
 export const userService = {
   register,
   login,
@@ -517,6 +593,8 @@ export const userService = {
   refreshToken,
   createUserByAdmin,
   uploadAvatar,
+  activateUser,
+  deactivateUser,
   hashPassword,
   comparePassword
 }
