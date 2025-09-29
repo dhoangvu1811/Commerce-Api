@@ -1,9 +1,11 @@
 import { StatusCodes } from 'http-status-codes'
 import { userService } from '~/services/userService'
 import { oAuthService } from '~/services/oAuthService'
+import { sessionService } from '~/services/sessionService'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { WEBSITE_DOMAIN } from '~/utils/constants'
 import { env } from '~/config/environment'
+import { sessionModel } from '~/models/sessionModel'
 import ms from 'ms'
 
 const register = async (req, res, next) => {
@@ -22,14 +24,18 @@ const register = async (req, res, next) => {
 
 const login = async (req, res, next) => {
   try {
-    const loginResult = await userService.login(req.body)
+    // Lấy thông tin device và IP cho session tracking
+    const deviceInfo = req.get('User-Agent') || ''
+    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+
+    const loginResult = await userService.login(req.body, deviceInfo, ipAddress)
 
     // Set cookie cho refresh token, access token
     res.cookie('accessToken', loginResult.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('10m')
+      maxAge: ms('30m')
     })
 
     res.cookie('refreshToken', loginResult.refreshToken, {
@@ -43,7 +49,8 @@ const login = async (req, res, next) => {
       code: StatusCodes.OK,
       message: 'Đăng nhập thành công',
       data: {
-        user: loginResult.user
+        user: loginResult.user,
+        sessionId: loginResult.sessionId // Thông tin debug (optional)
       }
     })
   } catch (error) {
@@ -53,6 +60,13 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
+    const sessionId = req.jwtDecoded?.sessionId
+
+    // Xóa session khỏi DB nếu có sessionId
+    if (sessionId) {
+      await sessionModel.deleteSession(sessionId)
+    }
+
     // Xóa cả access token và refresh token cookie
     res.clearCookie('accessToken')
     res.clearCookie('refreshToken')
@@ -222,6 +236,33 @@ const getUsers = async (req, res, next) => {
   }
 }
 
+// Lấy danh sách users với session summary cho table overview (Admin only)
+const getUsersWithSessionSummary = async (req, res, next) => {
+  try {
+    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
+    const queryFilter = {
+      search,
+      role,
+      isActive,
+      sort
+    }
+
+    const result = await sessionService.getUsersWithSessionSummary(
+      page,
+      itemsPerPage,
+      queryFilter
+    )
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách người dùng với thông tin sessions thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 const refreshToken = async (req, res, next) => {
   try {
     const refreshToken = req.cookies?.refreshToken
@@ -241,7 +282,7 @@ const refreshToken = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('10m')
+      maxAge: ms('30m')
     })
 
     res.status(StatusCodes.OK).json({
@@ -310,15 +351,23 @@ const googleOAuthSuccess = async (req, res, next) => {
       return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
     }
 
-    // Sử dụng service để tạo JWT tokens
-    const authResult = oAuthService.generateAuthTokens(user)
+    // Lấy thông tin device và IP cho session tracking
+    const deviceInfo = req.get('User-Agent') || 'Google OAuth'
+    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+
+    // Sử dụng service để tạo JWT tokens với session tracking
+    const authResult = await oAuthService.generateAuthTokens(
+      user,
+      deviceInfo,
+      ipAddress
+    )
 
     // Set cookies
     res.cookie('accessToken', authResult.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('10m')
+      maxAge: ms('30m')
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
@@ -371,15 +420,23 @@ const facebookOAuthSuccess = async (req, res, next) => {
       return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
     }
 
-    // Sử dụng service để tạo JWT tokens
-    const authResult = oAuthService.generateAuthTokens(user)
+    // Lấy thông tin device và IP cho session tracking
+    const deviceInfo = req.get('User-Agent') || 'Facebook OAuth'
+    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+
+    // Sử dụng service để tạo JWT tokens với session tracking
+    const authResult = await oAuthService.generateAuthTokens(
+      user,
+      deviceInfo,
+      ipAddress
+    )
 
     // Set cookies
     res.cookie('accessToken', authResult.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('10m')
+      maxAge: ms('30m')
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
@@ -489,6 +546,74 @@ const verifyUserAccount = async (req, res, next) => {
   }
 }
 
+// Revoke user session (Admin only)
+const revokeUserSession = async (req, res, next) => {
+  try {
+    const { sessionId } = req.body
+    const result = await sessionService.revokeUserSession(sessionId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Thu hồi phiên đăng nhập thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Revoke all sessions của một user (Admin only)
+const revokeAllUserSessions = async (req, res, next) => {
+  try {
+    const { userId } = req.params
+    const result = await sessionService.revokeAllUserSessions(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: `Thu hồi thành công ${result.revokedSessions} phiên đăng nhập`,
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Lấy danh sách sessions của user (Admin only)
+const getUserSessions = async (req, res, next) => {
+  try {
+    const { userId } = req.params
+    const result = await sessionService.getUserSessions(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách phiên đăng nhập thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+// Lấy sessions của user hiện tại
+const getCurrentUserSessions = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded?._id
+    const currentSessionId = req.jwtDecoded?.sessionId
+    const result = await sessionService.getCurrentUserSessions(
+      userId,
+      currentSessionId
+    )
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách phiên đăng nhập của bạn thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -512,5 +637,10 @@ export const userController = {
   facebookOAuthSuccess,
   facebookOAuthFailure,
   sendVerificationEmail,
-  verifyUserAccount
+  verifyUserAccount,
+  getUsersWithSessionSummary,
+  revokeUserSession,
+  revokeAllUserSessions,
+  getUserSessions,
+  getCurrentUserSessions
 }

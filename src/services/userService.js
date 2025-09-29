@@ -2,12 +2,16 @@
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { userModel } from '~/models/userModel'
+import { sessionModel } from '~/models/sessionModel'
 import { ObjectId } from 'mongodb'
 import bcrypt from 'bcrypt'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
 import { BrevoProvider } from '~/providers/BrevoProvider'
 import { WEBSITE_DOMAIN } from '~/utils/constants'
+import { v4 as uuidv4 } from 'uuid'
+import ms from 'ms'
+import { env } from '~/config/environment'
 
 // Hash mật khẩu
 const hashPassword = async (password) => {
@@ -59,7 +63,7 @@ const register = async (userData) => {
   }
 }
 
-const login = async (loginData) => {
+const login = async (loginData, deviceInfo = '', ipAddress = '') => {
   try {
     const { email, password } = loginData
 
@@ -89,9 +93,26 @@ const login = async (loginData) => {
     // Cập nhật thời gian đăng nhập cuối
     await userModel.updateLastLogin(user._id)
 
-    // Tạo token
-    const accessToken = JwtProvider.generateAccessToken(user)
-    const refreshToken = JwtProvider.generateRefreshToken(user)
+    // Tạo sessionId unique
+    const sessionId = uuidv4()
+
+    // Tạo token với sessionId
+    const accessToken = JwtProvider.generateAccessToken(user, sessionId)
+    const refreshToken = JwtProvider.generateRefreshToken(user, sessionId)
+
+    // Tính thời gian hết hạn của refresh token (7 ngày)
+    const refreshTokenExpiresIn = env.JWT_REFRESH_EXPIRES_IN || ms('7d')
+    const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
+
+    // Lưu session vào DB
+    await sessionModel.createNew({
+      sessionId,
+      userId: user._id.toString(),
+      refreshToken,
+      deviceInfo,
+      ipAddress,
+      expiresAt
+    })
 
     // Loại bỏ password khỏi response
     // eslint-disable-next-line no-unused-vars
@@ -100,7 +121,8 @@ const login = async (loginData) => {
     return {
       user: userResponse,
       accessToken,
-      refreshToken
+      refreshToken,
+      sessionId // Trả về sessionId cho client debug (optional)
     }
   } catch (error) {
     throw error
@@ -415,6 +437,29 @@ const refreshToken = async (refreshTokenValue) => {
     // Verify refresh token
     const decoded = JwtProvider.verifyRefreshToken(refreshTokenValue)
 
+    // Kiểm tra sessionId từ refresh token
+    const sessionId = decoded.sessionId
+
+    if (sessionId) {
+      // Kiểm tra session có còn active không
+      const activeSession = await sessionModel.findBySessionId(sessionId)
+
+      if (!activeSession) {
+        throw new ApiError(
+          StatusCodes.UNAUTHORIZED,
+          'Phiên đăng nhập đã bị thu hồi hoặc hết hạn. Vui lòng đăng nhập lại.'
+        )
+      }
+
+      // Kiểm tra session có khớp với user không
+      if (activeSession.userId !== decoded._id) {
+        throw new ApiError(
+          StatusCodes.UNAUTHORIZED,
+          'Phiên đăng nhập không hợp lệ'
+        )
+      }
+    }
+
     // Tìm user
     const user = await userModel.findOneById(decoded._id)
 
@@ -427,8 +472,8 @@ const refreshToken = async (refreshTokenValue) => {
       throw new ApiError(StatusCodes.FORBIDDEN, 'Tài khoản của bạn đã bị khóa')
     }
 
-    // Tạo access token mới
-    const newAccessToken = JwtProvider.generateAccessToken(user)
+    // Tạo access token mới với sessionId (nếu có)
+    const newAccessToken = JwtProvider.generateAccessToken(user, sessionId)
 
     return {
       accessToken: newAccessToken

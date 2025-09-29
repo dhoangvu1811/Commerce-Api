@@ -4,24 +4,30 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { env } from '~/config/environment'
 
-// Tạo Access Token
-const generateAccessToken = (userData) => {
+// Tạo Access Token với sessionId
+const generateAccessToken = (userData, sessionId = null) => {
+  const payload = {
+    _id: userData._id,
+    email: userData.email,
+    role: userData.role
+  }
+
+  // Thêm sessionId vào payload nếu có (cho việc revoke)
+  if (sessionId) {
+    payload.sessionId = sessionId
+  }
+
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, {
+    expiresIn: env.JWT_ACCESS_EXPIRES_IN || '5m'
+  })
+}
+
+// Tạo Refresh Token với sessionId
+const generateRefreshToken = (userData, sessionId) => {
   return jwt.sign(
     {
       _id: userData._id,
-      email: userData.email,
-      role: userData.role
-    },
-    env.JWT_ACCESS_SECRET,
-    { expiresIn: env.JWT_ACCESS_EXPIRES_IN || '5m' }
-  )
-}
-
-// Tạo Refresh Token
-const generateRefreshToken = (userData) => {
-  return jwt.sign(
-    {
-      _id: userData._id
+      sessionId: sessionId // Thêm sessionId vào metadata
     },
     env.JWT_REFRESH_SECRET,
     { expiresIn: env.JWT_REFRESH_EXPIRES_IN || '7d' }

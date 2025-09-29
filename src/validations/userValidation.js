@@ -469,6 +469,74 @@ const verifyUserAccount = async (req, res, next) => {
   }
 }
 
+// Validation for revoke session
+const revokeSession = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    sessionId: Joi.string().required().trim().messages({
+      'string.empty': 'SessionId không được để trống',
+      'any.required': 'SessionId là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
+// Validation for revoke all sessions
+const revokeAllSessions = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
+      'string.empty': 'UserId không được để trống',
+      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
+      'any.required': 'UserId là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.params, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
+// Validation for get user sessions
+const getUserSessions = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
+      'string.empty': 'UserId không được để trống',
+      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
+      'any.required': 'UserId là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.params, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
 export const userValidation = {
   register,
   login,
@@ -480,5 +548,8 @@ export const userValidation = {
   createUserByAdmin,
   userActivation,
   sendVerificationEmail,
-  verifyUserAccount
+  verifyUserAccount,
+  revokeSession,
+  revokeAllSessions,
+  getUserSessions
 }
