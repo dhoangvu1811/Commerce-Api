@@ -2,6 +2,7 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
 import { JwtProvider } from '~/providers/JwtProvider'
 import { userModel } from '~/models/userModel'
+import { sessionModel } from '~/models/sessionModel'
 
 // Middleware xác thực JWT token
 const verifyToken = async (req, res, next) => {
@@ -101,9 +102,44 @@ const verifyActiveUser = async (req, res, next) => {
   }
 }
 
+// Middleware kiểm tra session có còn active không (dùng cho revoke)
+const verifySession = async (req, res, next) => {
+  try {
+    const sessionId = req.jwtDecoded?.sessionId
+
+    // Nếu không có sessionId trong token, skip kiểm tra (backward compatibility)
+    if (!sessionId) {
+      return next()
+    }
+
+    // Kiểm tra session có còn active không
+    const activeSession = await sessionModel.findBySessionId(sessionId)
+
+    if (!activeSession) {
+      throw new ApiError(
+        StatusCodes.UNAUTHORIZED,
+        'Phiên đăng nhập đã bị thu hồi hoặc hết hạn. Vui lòng đăng nhập lại.'
+      )
+    }
+
+    // Kiểm tra session có khớp với user hiện tại không
+    if (activeSession.userId !== req.jwtDecoded._id) {
+      throw new ApiError(
+        StatusCodes.UNAUTHORIZED,
+        'Phiên đăng nhập không hợp lệ'
+      )
+    }
+
+    next()
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const authMiddleware = {
   verifyToken,
   verifyAdmin,
   verifyUserOwnership,
-  verifyActiveUser
+  verifyActiveUser,
+  verifySession
 }

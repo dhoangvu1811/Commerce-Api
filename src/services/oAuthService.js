@@ -1,8 +1,12 @@
 /* eslint-disable indent */
 import { userModel } from '~/models/userModel'
+import { sessionModel } from '~/models/sessionModel'
 import { JwtProvider } from '~/providers/JwtProvider'
 import ApiError from '~/utils/ApiError'
 import { StatusCodes } from 'http-status-codes'
+import { v4 as uuidv4 } from 'uuid'
+import ms from 'ms'
+import { env } from '~/config/environment'
 
 /**
  * Generic OAuth Service cho tất cả providers (Google, Facebook, v.v.)
@@ -138,16 +142,35 @@ const handleOAuth = async (profile, provider) => {
 }
 
 /**
- * Tạo JWT tokens cho user sau khi OAuth thành công
+ * Tạo JWT tokens cho user sau khi OAuth thành công với session tracking
  */
-const generateAuthTokens = (user) => {
+const generateAuthTokens = async (user, deviceInfo = '', ipAddress = '') => {
   try {
-    const accessToken = JwtProvider.generateAccessToken(user)
-    const refreshToken = JwtProvider.generateRefreshToken(user)
+    // Tạo sessionId unique
+    const sessionId = uuidv4()
+
+    // Tạo tokens với sessionId
+    const accessToken = JwtProvider.generateAccessToken(user, sessionId)
+    const refreshToken = JwtProvider.generateRefreshToken(user, sessionId)
+
+    // Tính thời gian hết hạn của refresh token (7 ngày)
+    const refreshTokenExpiresIn = env.JWT_REFRESH_EXPIRES_IN || ms('7d')
+    const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
+
+    // Lưu session vào DB
+    await sessionModel.createNew({
+      sessionId,
+      userId: user._id.toString(),
+      refreshToken,
+      deviceInfo: deviceInfo || 'OAuth Login',
+      ipAddress: ipAddress || '',
+      expiresAt
+    })
 
     return {
       accessToken,
       refreshToken,
+      sessionId,
       user: {
         _id: user._id,
         name: user.name,
