@@ -101,7 +101,7 @@ const login = async (loginData, deviceInfo = '', ipAddress = '') => {
     const refreshToken = JwtProvider.generateRefreshToken(user, sessionId)
 
     // Tính thời gian hết hạn của refresh token (7 ngày)
-    const refreshTokenExpiresIn = env.JWT_REFRESH_EXPIRES_IN || ms('7d')
+    const refreshTokenExpiresIn = ms(env.JWT_REFRESH_EXPIRES_IN) || ms('7d')
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
     // Lưu session vào DB

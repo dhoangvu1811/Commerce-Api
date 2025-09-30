@@ -184,10 +184,51 @@ const getUsersWithSessionSummary = async (page, itemsPerPage, queryFilter) => {
   }
 }
 
+// User tự revoke session của chính mình
+const revokeMySession = async (userId, sessionId) => {
+  try {
+    // Tìm session để verify
+    const session = await sessionModel.findBySessionId(sessionId)
+    if (!session) {
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        'Không tìm thấy phiên đăng nhập'
+      )
+    }
+
+    // Kiểm tra session có thuộc về user hiện tại không
+    if (session.userId !== userId) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Bạn không có quyền thu hồi phiên đăng nhập này'
+      )
+    }
+
+    // Revoke session
+    const result = await sessionModel.revokeSession(sessionId)
+
+    if (result.modifiedCount === 0) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Không thể thu hồi phiên đăng nhập'
+      )
+    }
+
+    return {
+      sessionId,
+      message:
+        'Thu hồi phiên đăng nhập thành công. Thiết bị này sẽ bị đăng xuất trong vòng 5 phút.'
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
 export const sessionService = {
   revokeUserSession,
   revokeAllUserSessions,
   getUserSessions,
   getCurrentUserSessions,
-  getUsersWithSessionSummary
+  getUsersWithSessionSummary,
+  revokeMySession
 }

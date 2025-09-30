@@ -614,6 +614,23 @@ const getCurrentUserSessions = async (req, res, next) => {
   }
 }
 
+// User tự revoke session của chính mình
+const revokeMySession = async (req, res, next) => {
+  try {
+    const userId = req.jwtDecoded?._id
+    const { sessionId } = req.body
+    const result = await sessionService.revokeMySession(userId, sessionId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Thu hồi phiên đăng nhập thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -642,5 +659,6 @@ export const userController = {
   revokeUserSession,
   revokeAllUserSessions,
   getUserSessions,
-  getCurrentUserSessions
+  getCurrentUserSessions,
+  revokeMySession
 }
