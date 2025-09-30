@@ -254,6 +254,42 @@ Xem danh sách sessions của user hiện tại.
 
 - `401`: Token không hợp lệ hoặc session đã bị revoke
 
+---
+
+### 5. Revoke My Session (User)
+
+User tự thu hồi session của chính mình.
+
+**Endpoint:** `POST /api/v1/users/revoke-my-session`  
+**Authorization:** User token required  
+**Request Body:**
+
+```json
+{
+  "sessionId": "uuid-session-id"
+}
+```
+
+**Response Success (200):**
+
+```json
+{
+  "code": 200,
+  "message": "Thu hồi phiên đăng nhập thành công",
+  "data": {
+    "sessionId": "uuid-session-id",
+    "message": "Thu hồi phiên đăng nhập thành công. Thiết bị này sẽ bị đăng xuất trong vòng 5 phút."
+  }
+}
+```
+
+**Response Error:**
+
+- `401`: Token không hợp lệ hoặc session đã bị revoke
+- `403`: Không có quyền thu hồi session này (session không thuộc về user)
+- `404`: Không tìm thấy phiên đăng nhập
+- `422`: Validation error (sessionId invalid)
+
 ## Database Schema
 
 ### Sessions Collection
@@ -314,8 +350,9 @@ ACCESS_TOKEN_COOKIE_MAX_AGE=30m # Cookie expire sau 30 phút
 1. **Login** → verify sessionId được tạo và lưu DB
 2. **Use Protected API** → verify middleware kiểm tra session
 3. **Admin Revoke Session** → verify session bị disable
-4. **Wait 5 minutes** → verify user bị logout
-5. **Logout** → verify session bị xóa khỏi DB
+4. **User Revoke Own Session** → verify user chỉ có thể revoke session của mình
+5. **Wait 5 minutes** → verify user bị logout
+6. **Logout** → verify session bị xóa khỏi DB
 
 ### Error Scenarios
 

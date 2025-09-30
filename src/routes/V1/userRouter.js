@@ -180,4 +180,11 @@ Router.get(
   userController.getCurrentUserSessions
 )
 
+Router.post(
+  '/revoke-my-session',
+  authMiddleware.verifyToken,
+  userValidation.revokeMySession,
+  userController.revokeMySession
+)
+
 export const userRoute = Router

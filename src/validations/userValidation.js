@@ -537,6 +537,28 @@ const getUserSessions = async (req, res, next) => {
   }
 }
 
+// Validation for user revoke own session
+const revokeMySession = async (req, res, next) => {
+  const correctCondition = Joi.object({
+    sessionId: Joi.string().required().trim().messages({
+      'string.empty': 'SessionId không được để trống',
+      'any.required': 'SessionId là bắt buộc'
+    })
+  })
+
+  try {
+    await correctCondition.validateAsync(req.body, { abortEarly: false })
+    next()
+  } catch (error) {
+    const errorMessage = new Error(error).message
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
+    next(customError)
+  }
+}
+
 export const userValidation = {
   register,
   login,
@@ -551,5 +573,6 @@ export const userValidation = {
   verifyUserAccount,
   revokeSession,
   revokeAllSessions,
-  getUserSessions
+  getUserSessions,
+  revokeMySession
 }
