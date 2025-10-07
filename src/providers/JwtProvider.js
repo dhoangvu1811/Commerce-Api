@@ -44,6 +44,14 @@ const verifyRefreshToken = (token) => {
   return jwt.verify(token, env.JWT_REFRESH_SECRET)
 }
 
+// Verify Refresh Token nhưng bỏ qua expiration (dùng cho logout)
+// Vẫn verify signature để đảm bảo token không bị giả mạo
+const verifyRefreshTokenIgnoreExpiration = (token) => {
+  return jwt.verify(token, env.JWT_REFRESH_SECRET, {
+    ignoreExpiration: true
+  })
+}
+
 // Decode token không verify (để debug hoặc lấy thông tin)
 const decodeToken = (token) => {
   return jwt.decode(token)
@@ -85,6 +93,7 @@ export const JwtProvider = {
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
+  verifyRefreshTokenIgnoreExpiration,
   decodeToken,
   generateVerificationToken,
   verifyVerificationToken
