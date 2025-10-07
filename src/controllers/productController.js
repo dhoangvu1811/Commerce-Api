@@ -65,9 +65,9 @@ const deleteProduct = async (req, res, next) => {
 
 const deleteSelectedProducts = async (req, res, next) => {
   try {
-    const { data } = req.body || {}
+    const { productIds } = req.body || {}
 
-    const result = await productService.deleteSelectedProducts(data?.productIds)
+    const result = await productService.deleteSelectedProducts(productIds)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
