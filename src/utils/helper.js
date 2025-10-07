@@ -86,9 +86,17 @@ export const canUpdateStatus = (order, newStatus) => {
       requiresPaymentStatuses.includes(newStatus) &&
       paymentStatus !== 'PAID'
     ) {
+      const statusNames = {
+        PROCESSING: 'Đang xử lý',
+        PACKED: 'Đã đóng gói',
+        SHIPPED: 'Đang giao hàng',
+        DELIVERED: 'Đã giao hàng',
+        COMPLETED: 'Hoàn thành'
+      }
+      const statusName = statusNames[newStatus] || newStatus
       return {
         allowed: false,
-        reason: `Phương thức thanh toán online yêu cầu phải thanh toán trước khi chuyển sang ${newStatus}`
+        reason: `Đơn hàng thanh toán online cần được thanh toán trước khi chuyển sang trạng thái "${statusName}"`
       }
     }
   }
@@ -192,23 +200,33 @@ export const canMarkPaid = (order, isAdmin = false) => {
   if (!isAdmin) {
     return {
       allowed: false,
-      reason: 'Chỉ admin mới có thể xác nhận thanh toán'
+      reason: 'Chỉ quản trị viên mới có thể xác nhận thanh toán'
     }
   }
 
   // Không thể mark paid nếu đã cancelled/refunded
   if (['CANCELLED', 'REFUNDED'].includes(status)) {
+    const statusNames = {
+      CANCELLED: 'đã hủy',
+      REFUNDED: 'đã hoàn tiền'
+    }
+    const statusName = statusNames[status] || status
     return {
       allowed: false,
-      reason: `Không thể xác nhận thanh toán cho đơn hàng ${status}`
+      reason: `Không thể xác nhận thanh toán cho đơn hàng ${statusName}`
     }
   }
 
   // Không thể mark paid nếu payment đã refunded/cancelled
   if (['REFUNDED', 'CANCELLED'].includes(paymentStatus)) {
+    const paymentStatusNames = {
+      REFUNDED: 'đã hoàn tiền',
+      CANCELLED: 'đã hủy thanh toán'
+    }
+    const paymentStatusName = paymentStatusNames[paymentStatus] || paymentStatus
     return {
       allowed: false,
-      reason: `Không thể xác nhận thanh toán khi trạng thái thanh toán là ${paymentStatus}`
+      reason: `Không thể xác nhận thanh toán khi đơn hàng ${paymentStatusName}`
     }
   }
 
@@ -216,7 +234,7 @@ export const canMarkPaid = (order, isAdmin = false) => {
   if (paymentStatus === 'PAID') {
     return {
       allowed: false,
-      reason: 'Đơn hàng đã được thanh toán'
+      reason: 'Đơn hàng đã được thanh toán rồi'
     }
   }
 
@@ -249,7 +267,8 @@ export const canMarkPaid = (order, isAdmin = false) => {
   ) {
     return {
       allowed: false,
-      reason: 'Đơn hàng online payment phải được thanh toán trước khi giao hàng'
+      reason:
+        'Đơn hàng thanh toán online phải được thanh toán trước khi giao hàng'
     }
   }
 

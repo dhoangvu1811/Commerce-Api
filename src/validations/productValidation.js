@@ -158,7 +158,7 @@ const deleteProduct = async (req, res, next) => {
 
 const deleteSelected = async (req, res, next) => {
   const correctCondition = Joi.object({
-    ids: Joi.array()
+    productIds: Joi.array()
       .required()
       .min(1)
       .items(

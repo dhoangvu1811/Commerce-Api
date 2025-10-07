@@ -63,9 +63,15 @@ Router.get(
 // Explicit Facebook failure route
 Router.get('/auth/facebook/failure', userController.facebookOAuthFailure)
 
+// Logout route - sử dụng middleware đặc biệt cho phép logout ngay cả khi AT hết hạn
+Router.post(
+  '/logout',
+  authMiddleware.verifyTokenForLogout,
+  userController.logout
+)
+
 // Protected routes - cần xác thực
 Router.use(authMiddleware.verifyToken)
-Router.post('/logout', userController.logout)
 Router.use(authMiddleware.verifySession) // Kiểm tra session có còn active không
 
 Router.get('/me', userController.getCurrentUser)

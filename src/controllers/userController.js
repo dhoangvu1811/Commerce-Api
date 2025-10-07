@@ -60,14 +60,23 @@ const login = async (req, res, next) => {
 
 const logout = async (req, res, next) => {
   try {
+    // sessionId có thể đến từ AT hoặc RT
     const sessionId = req.jwtDecoded?.sessionId
 
     // Xóa session khỏi DB nếu có sessionId
     if (sessionId) {
-      await sessionModel.deleteSession(sessionId)
+      try {
+        await sessionModel.deleteSession(sessionId)
+      } catch (error) {
+        // Log error nhưng vẫn tiếp tục xóa cookies
+        if (env.BUILD_MODE === 'dev') {
+          // eslint-disable-next-line no-console
+          console.error('❌ Lỗi khi xóa session:', error.message)
+        }
+      }
     }
 
-    // Xóa cả access token và refresh token cookie
+    // Luôn xóa cả access token và refresh token cookie
     res.clearCookie('accessToken')
     res.clearCookie('refreshToken')
 

@@ -276,9 +276,24 @@ const updateStatus = async (orderId, data) => {
     // Validate status transition
     if (status !== order.status) {
       if (!isValidStatusTransition(order.status, status)) {
+        // Map status sang ngôn ngữ dễ hiểu
+        const statusNames = {
+          PENDING: 'Chờ xác nhận',
+          CONFIRMED: 'Đã xác nhận',
+          PROCESSING: 'Đang xử lý',
+          PACKED: 'Đã đóng gói',
+          SHIPPED: 'Đang giao hàng',
+          DELIVERED: 'Đã giao hàng',
+          COMPLETED: 'Hoàn thành',
+          CANCELLED: 'Đã hủy',
+          RETURNED: 'Đã trả hàng',
+          REFUNDED: 'Đã hoàn tiền'
+        }
+        const fromStatusName = statusNames[order.status] || order.status
+        const toStatusName = statusNames[status] || status
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          `Không thể chuyển từ trạng thái ${order.status} sang ${status}`
+          `Không thể chuyển đơn hàng từ "${fromStatusName}" sang "${toStatusName}"`
         )
       }
     }
@@ -296,11 +311,37 @@ const updateStatus = async (orderId, data) => {
         order.paymentMethod
       )
     ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Trạng thái ${status} không tương thích với trạng thái thanh toán hiện tại ${order.paymentStatus}` +
-          (order.paymentMethod ? ` (${order.paymentMethod})` : '')
-      )
+      const statusNames = {
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận',
+        PROCESSING: 'Đang xử lý',
+        PACKED: 'Đã đóng gói',
+        SHIPPED: 'Đang giao hàng',
+        DELIVERED: 'Đã giao hàng',
+        COMPLETED: 'Hoàn thành',
+        CANCELLED: 'Đã hủy',
+        RETURNED: 'Đã trả hàng',
+        REFUNDED: 'Đã hoàn tiền'
+      }
+      const paymentStatusNames = {
+        PENDING: 'chưa thanh toán',
+        PROCESSING: 'đang xử lý thanh toán',
+        PAID: 'đã thanh toán',
+        FAILED: 'thanh toán thất bại',
+        EXPIRED: 'hết hạn thanh toán',
+        CANCELLED: 'đã hủy thanh toán',
+        REFUNDED: 'đã hoàn tiền'
+      }
+      const statusName = statusNames[status] || status
+      const paymentStatusName =
+        paymentStatusNames[order.paymentStatus] || order.paymentStatus
+
+      let errorMessage = `Không thể chuyển đơn hàng sang "${statusName}" khi đơn hàng ${paymentStatusName}`
+      if (order.paymentMethod) {
+        errorMessage += ` (Phương thức: ${order.paymentMethod})`
+      }
+
+      throw new ApiError(StatusCodes.BAD_REQUEST, errorMessage)
     }
 
     // Chuẩn bị data update
@@ -359,18 +400,55 @@ const updatePaymentStatus = async (orderId, data) => {
     // Validate paymentStatus transition
     if (paymentStatus !== order.paymentStatus) {
       if (!isValidPaymentStatusTransition(order.paymentStatus, paymentStatus)) {
+        const paymentStatusNames = {
+          PENDING: 'chưa thanh toán',
+          PROCESSING: 'đang xử lý thanh toán',
+          PAID: 'đã thanh toán',
+          FAILED: 'thanh toán thất bại',
+          EXPIRED: 'hết hạn thanh toán',
+          CANCELLED: 'đã hủy thanh toán',
+          REFUNDED: 'đã hoàn tiền'
+        }
+        const fromName =
+          paymentStatusNames[order.paymentStatus] || order.paymentStatus
+        const toName = paymentStatusNames[paymentStatus] || paymentStatus
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          `Không thể chuyển từ trạng thái thanh toán ${order.paymentStatus} sang ${paymentStatus}`
+          `Không thể chuyển trạng thái thanh toán từ "${fromName}" sang "${toName}"`
         )
       }
     }
 
     // Validate consistency với status hiện tại
     if (!isConsistentStatusPayment(order.status, paymentStatus)) {
+      const statusNames = {
+        PENDING: 'Chờ xác nhận',
+        CONFIRMED: 'Đã xác nhận',
+        PROCESSING: 'Đang xử lý',
+        PACKED: 'Đã đóng gói',
+        SHIPPED: 'Đang giao hàng',
+        DELIVERED: 'Đã giao hàng',
+        COMPLETED: 'Hoàn thành',
+        CANCELLED: 'Đã hủy',
+        RETURNED: 'Đã trả hàng',
+        REFUNDED: 'Đã hoàn tiền'
+      }
+      const paymentStatusNames = {
+        PENDING: 'chưa thanh toán',
+        PROCESSING: 'đang xử lý thanh toán',
+        PAID: 'đã thanh toán',
+        FAILED: 'thanh toán thất bại',
+        EXPIRED: 'hết hạn thanh toán',
+        CANCELLED: 'đã hủy thanh toán',
+        REFUNDED: 'đã hoàn tiền'
+      }
+      const statusName = statusNames[order.status] || order.status
+      const paymentStatusName =
+        paymentStatusNames[paymentStatus] || paymentStatus
+
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        `Trạng thái thanh toán ${paymentStatus} không tương thích với trạng thái đơn hàng hiện tại ${order.status}`
+        `Không thể chuyển trạng thái thanh toán sang "${paymentStatusName}" khi đơn hàng đang ở trạng thái "${statusName}"`
       )
     }
 
@@ -418,9 +496,20 @@ const markPaid = async (orderId) => {
 
     // Kiểm tra trạng thái thanh toán có thể chuyển thành PAID
     if (!['PENDING', 'PROCESSING', 'FAILED'].includes(order.paymentStatus)) {
+      const paymentStatusNames = {
+        PENDING: 'chưa thanh toán',
+        PROCESSING: 'đang xử lý thanh toán',
+        PAID: 'đã thanh toán',
+        FAILED: 'thanh toán thất bại',
+        EXPIRED: 'hết hạn thanh toán',
+        CANCELLED: 'đã hủy thanh toán',
+        REFUNDED: 'đã hoàn tiền'
+      }
+      const currentStatusName =
+        paymentStatusNames[order.paymentStatus] || order.paymentStatus
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        `Không thể xác nhận thanh toán từ trạng thái ${order.paymentStatus}`
+        `Không thể xác nhận thanh toán cho đơn hàng ${currentStatusName}`
       )
     }
 

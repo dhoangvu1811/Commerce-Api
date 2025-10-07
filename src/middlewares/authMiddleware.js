@@ -136,10 +136,56 @@ const verifySession = async (req, res, next) => {
   }
 }
 
+// Middleware đặc biệt cho logout - chỉ cần decode Refresh Token để lấy sessionId
+// RT có thời gian sống lâu (7 ngày) và luôn chứa sessionId
+// QUAN TRỌNG: Vẫn verify signature để tránh JWT giả mạo
+const verifyTokenForLogout = async (req, res, next) => {
+  try {
+    const refreshToken = req.cookies?.refreshToken
+
+    if (refreshToken) {
+      try {
+        // Thử verify RT bình thường (chưa hết hạn)
+        const decodedRT = JwtProvider.verifyRefreshToken(refreshToken)
+        req.jwtDecoded = {
+          _id: decodedRT._id,
+          sessionId: decodedRT.sessionId
+        }
+      } catch (error) {
+        // Nếu RT hết hạn, verify nhưng bỏ qua expiration
+        // VẪN VERIFY SIGNATURE để tránh token giả mạo
+        if (error.name === 'TokenExpiredError') {
+          const decodedRT = JwtProvider.verifyRefreshTokenIgnoreExpiration(
+            refreshToken
+          )
+          req.jwtDecoded = {
+            _id: decodedRT._id,
+            sessionId: decodedRT.sessionId
+          }
+        } else {
+          // Token không hợp lệ (signature sai, format sai, etc.)
+          req.jwtDecoded = {}
+        }
+      }
+    } else {
+      // Không có RT, gán object rỗng
+      req.jwtDecoded = {}
+    }
+
+    // Luôn cho phép tiếp tục để xóa cookies
+    next()
+  } catch {
+    // Ngay cả khi có lỗi, vẫn cho phép tiếp tục để xóa cookies
+    req.jwtDecoded = {}
+    next()
+  }
+}
+
 export const authMiddleware = {
   verifyToken,
   verifyAdmin,
   verifyUserOwnership,
   verifyActiveUser,
-  verifySession
+  verifySession,
+  verifyTokenForLogout
 }
