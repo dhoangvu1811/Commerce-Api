@@ -26,6 +26,12 @@ export const GET_DB = () => {
   return commerceapiDatabaseInstance
 }
 
+// Hàm GET_CLIENT để lấy mongoClientInstance cho transactions
+export const GET_CLIENT = () => {
+  if (!mongoClientInstance) throw new Error('Must connect to Database first!')
+  return mongoClientInstance
+}
+
 export const CLOSE_DB = async () => {
   await mongoClientInstance.close()
 }
