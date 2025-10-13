@@ -83,19 +83,20 @@ const validateBeforeCreate = async (data) => {
   return validData
 }
 
-const createNew = async (data) => {
+const createNew = async (data, options = {}) => {
   try {
     const validData = await validateBeforeCreate(data)
     const dataToInsert = {
       ...validData,
       userId: new ObjectId(validData.userId)
     }
+    const insertOptions = options.session ? { session: options.session } : {}
     const created = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
-      .insertOne(dataToInsert)
+      .insertOne(dataToInsert, insertOptions)
     return await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
-      .findOne({ _id: created.insertedId })
+      .findOne({ _id: created.insertedId }, insertOptions)
   } catch (error) {
     throw new Error(error)
   }
@@ -175,14 +176,28 @@ const findOneByOrderCode = async (orderCode) => {
   }
 }
 
-const appendLog = async (orderId, logEntry) => {
+const appendLog = async (orderId, logEntry, options = {}) => {
   try {
+    const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(orderId) },
-        { $push: { logs: logEntry }, $set: { updatedAt: new Date() } }
+        { $push: { logs: logEntry }, $set: { updatedAt: new Date() } },
+        updateOptions
       )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const deleteOneById = async (orderId, options = {}) => {
+  try {
+    const deleteOptions = options.session ? { session: options.session } : {}
+    const result = await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .deleteOne({ _id: new ObjectId(orderId) }, deleteOptions)
     return result
   } catch (error) {
     throw new Error(error)
@@ -199,5 +214,6 @@ export const orderModel = {
   findOneByOrderCode,
   getMany,
   update,
-  appendLog
+  appendLog,
+  deleteOneById
 }

@@ -174,13 +174,15 @@ const deleteMany = async (filter = {}) => {
 }
 
 // Giảm tồn kho atomically nếu đủ hàng
-const decrementStock = async (productId, qty) => {
+const decrementStock = async (productId, qty, options = {}) => {
   try {
+    const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(productId), countInStock: { $gte: qty } },
-        { $inc: { countInStock: -qty }, $set: { updatedAt: new Date() } }
+        { $inc: { countInStock: -qty }, $set: { updatedAt: new Date() } },
+        updateOptions
       )
     return result
   } catch (error) {
@@ -189,13 +191,15 @@ const decrementStock = async (productId, qty) => {
 }
 
 // Tăng tồn kho (dùng cho rollback khi thất bại)
-const incrementStock = async (productId, qty) => {
+const incrementStock = async (productId, qty, options = {}) => {
   try {
+    const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(productId) },
-        { $inc: { countInStock: qty }, $set: { updatedAt: new Date() } }
+        { $inc: { countInStock: qty }, $set: { updatedAt: new Date() } },
+        updateOptions
       )
     return result
   } catch (error) {
@@ -204,13 +208,15 @@ const incrementStock = async (productId, qty) => {
 }
 
 // Tăng số lượng đã bán
-const incrementSelled = async (productId, qty) => {
+const incrementSelled = async (productId, qty, options = {}) => {
   try {
+    const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(productId) },
-        { $inc: { selled: qty }, $set: { updatedAt: new Date() } }
+        { $inc: { selled: qty }, $set: { updatedAt: new Date() } },
+        updateOptions
       )
     return result
   } catch (error) {
@@ -219,13 +225,15 @@ const incrementSelled = async (productId, qty) => {
 }
 
 // Giảm số lượng đã bán (dùng khi hủy đơn đã thanh toán)
-const decrementSelled = async (productId, qty) => {
+const decrementSelled = async (productId, qty, options = {}) => {
   try {
+    const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(productId) },
-        { $inc: { selled: -qty }, $set: { updatedAt: new Date() } }
+        { $inc: { selled: -qty }, $set: { updatedAt: new Date() } },
+        updateOptions
       )
     return result
   } catch (error) {

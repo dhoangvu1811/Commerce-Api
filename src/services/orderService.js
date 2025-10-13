@@ -17,8 +17,13 @@ import {
   isValidStatusTransition
 } from '~/utils/helper'
 import { ObjectId } from 'mongodb'
+import { GET_CLIENT } from '~/config/mongodb'
 
 const create = async (userId, payload) => {
+  // Start MongoDB session for transaction
+  const client = GET_CLIENT()
+  const session = client.startSession()
+
   try {
     if (!ObjectId.isValid(userId)) {
       throw new ApiError(StatusCodes.UNAUTHORIZED, 'Access token không hợp lệ')
@@ -42,7 +47,7 @@ const create = async (userId, payload) => {
       )
     }
 
-    // 2) Map giá/discount hiện tại và kiểm tra tồn kho
+    // 2) Map giá/discount hiện tại và kiểm tra tồn kho (preliminary check)
     const orderItems = items.map((i) => {
       const prod = products.find((p) => p._id.toString() === i.productId)
       if (!prod) {
@@ -74,6 +79,8 @@ const create = async (userId, payload) => {
     // 4) Voucher (nếu có)
     let voucherSnapshot = null
     let discountValue = 0
+    let voucherId = null
+
     if (voucherCode) {
       const voucher = await voucherModel.findOneByCode(
         voucherCode.toUpperCase().trim()
@@ -113,6 +120,7 @@ const create = async (userId, payload) => {
 
       const { discount } = applyVoucher(voucher, subtotal)
       discountValue = discount
+      voucherId = voucher._id
       voucherSnapshot = {
         code: voucher.code,
         type: voucher.type,
@@ -148,27 +156,61 @@ const create = async (userId, payload) => {
       updatedAt: new Date()
     }
 
-    const created = await orderModel.createNew(orderDoc)
-    // Audit log: create
+    // 6) Execute all operations in a transaction
+    // MongoDB will automatically rollback if any operation fails
+    let created = null
+
+    await session.withTransaction(async () => {
+      // 6.1) Insert order
+      created = await orderModel.createNew(orderDoc, { session })
+
+      // 6.2) Reserve stock atomically (inside transaction)
+      for (const item of orderItems) {
+        const decrementResult = await productModel.decrementStock(
+          item.productId,
+          item.quantity,
+          { session }
+        )
+
+        if (!decrementResult.modifiedCount) {
+          // Transaction will auto-rollback
+          throw new ApiError(
+            StatusCodes.BAD_REQUEST,
+            `Sản phẩm "${item.name}" không đủ tồn kho (có thể đã được đặt bởi người khác)`
+          )
+        }
+      }
+
+      // 6.3) Reserve voucher usage (inside transaction)
+      if (voucherId) {
+        await voucherModel.incrementUsedCount(voucherId, 1, { session })
+      }
+    })
+
+    // 6.4) Audit log (outside transaction)
     try {
       await orderModel.appendLog(created._id, {
         action: 'create',
         by: userId,
         byRole: 'user',
-        note: 'Người dùng tạo đơn hàng',
+        note: 'Người dùng tạo đơn hàng - Tồn kho đã được reserve (transaction)',
         fromStatus: null,
-        toStatus: 'PENDING'
+        toStatus: 'PENDING',
+        meta: { useTransaction: true }
       })
     } catch (err) {
+      // Log error nhưng không throw để không break main flow
       if (process.env.NODE_ENV === 'development') {
-        // Không chặn luồng chính nếu ghi log thất bại
         console.warn('appendLog(create) failed:', err)
       }
     }
-    // Lưu ý: Trừ tồn kho / tăng usedCount voucher nên thực hiện khi thanh toán thành công (webhook/payment success)
+
     return created
   } catch (error) {
     throw error
+  } finally {
+    // Always end session
+    await session.endSession()
   }
 }
 
@@ -513,31 +555,13 @@ const markPaid = async (orderId) => {
       )
     }
 
-    // 1) Trừ tồn kho cho từng item (atomic update) và tăng selled, nếu thiếu rollback các item đã trừ
-    const doneOps = [] // { productId, qty }
+    // 1) Tăng selled cho từng item (countInStock đã trừ khi create order)
+    // Không cần decrementStock nữa vì đã reserve lúc create
     for (const it of order.items) {
-      const dec = await productModel.decrementStock(it.productId, it.quantity)
-      if (!dec.modifiedCount) {
-        // rollback
-        for (const op of doneOps) {
-          await productModel.incrementStock(op.productId, op.qty)
-        }
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Sản phẩm ${it.name} không đủ tồn kho để hoàn tất thanh toán`
-        )
-      }
-      doneOps.push({ productId: it.productId, qty: it.quantity })
       await productModel.incrementSelled(it.productId, it.quantity)
     }
 
-    // 2) Tăng usedCount voucher (nếu có)
-    if (order.voucher?.code) {
-      const voucher = await voucherModel.findOneByCode(order.voucher.code)
-      if (voucher?._id) {
-        await voucherModel.incrementUsedCount(voucher._id)
-      }
-    }
+    // 2) Voucher usedCount đã tăng khi create, không cần xử lý lại
 
     // 3) Cập nhật order - Logic khác nhau cho COD vs Online Payment
     const isCOD = isCODPayment(order.paymentMethod)
@@ -621,17 +645,26 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
     if (order.status === 'CANCELLED') return order
 
     // Xử lý restock và refund dựa trên trạng thái thanh toán
-    const needRestock = order.paymentStatus === 'PAID'
+    // Lưu ý: countInStock đã trừ khi create(), cần hoàn trả
+    // selled chỉ tăng khi markPaid(), chỉ trừ nếu đã PAID
+    const needRestockInventory = true // Luôn hoàn trả tồn kho vì đã reserve khi create
+    const needDecrementSelled = order.paymentStatus === 'PAID' // Chỉ trừ selled nếu đã thanh toán
 
-    if (needRestock) {
+    if (needRestockInventory) {
       try {
-        // Restock tồn kho và trừ lại selled cho cả user và admin
+        // Restock tồn kho (vì đã reserve khi create)
         for (const it of order.items) {
           await productModel.incrementStock(it.productId, it.quantity)
-          await productModel.decrementSelled(it.productId, it.quantity)
         }
 
-        // Rollback voucher usedCount
+        // Trừ lại selled nếu đã thanh toán
+        if (needDecrementSelled) {
+          for (const it of order.items) {
+            await productModel.decrementSelled(it.productId, it.quantity)
+          }
+        }
+
+        // Rollback voucher usedCount (vì đã tăng khi create)
         if (order.voucher?.code) {
           const voucher = await voucherModel.findOneByCode(order.voucher.code)
           if (voucher?._id) {
@@ -647,7 +680,7 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
 
     const updated = await orderModel.update(orderId, {
       status: 'CANCELLED',
-      paymentStatus: needRestock ? 'REFUNDED' : order.paymentStatus,
+      paymentStatus: needDecrementSelled ? 'REFUNDED' : order.paymentStatus,
       updatedAt: new Date()
     })
     // Audit log: cancel
@@ -706,17 +739,26 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
     if (order.status === 'CANCELLED') return order
 
     // Xử lý restock và refund dựa trên trạng thái thanh toán
-    const needRestock = order.paymentStatus === 'PAID'
+    // Lưu ý: countInStock đã trừ khi create(), cần hoàn trả
+    // selled chỉ tăng khi markPaid(), chỉ trừ nếu đã PAID
+    const needRestockInventory = true // Luôn hoàn trả tồn kho vì đã reserve khi create
+    const needDecrementSelled = order.paymentStatus === 'PAID' // Chỉ trừ selled nếu đã thanh toán
 
-    if (needRestock) {
+    if (needRestockInventory) {
       try {
-        // Restock tồn kho và trừ lại selled
+        // Restock tồn kho (vì đã reserve khi create)
         for (const it of order.items) {
           await productModel.incrementStock(it.productId, it.quantity)
-          await productModel.decrementSelled(it.productId, it.quantity)
         }
 
-        // Rollback voucher usedCount
+        // Trừ lại selled nếu đã thanh toán
+        if (needDecrementSelled) {
+          for (const it of order.items) {
+            await productModel.decrementSelled(it.productId, it.quantity)
+          }
+        }
+
+        // Rollback voucher usedCount (vì đã tăng khi create)
         if (order.voucher?.code) {
           const voucher = await voucherModel.findOneByCode(order.voucher.code)
           if (voucher?._id) {
@@ -731,7 +773,7 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
 
     const updated = await orderModel.update(order._id, {
       status: 'CANCELLED',
-      paymentStatus: needRestock ? 'REFUNDED' : order.paymentStatus,
+      paymentStatus: needDecrementSelled ? 'REFUNDED' : order.paymentStatus,
       updatedAt: new Date()
     })
 
