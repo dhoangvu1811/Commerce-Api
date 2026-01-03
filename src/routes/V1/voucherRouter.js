@@ -15,9 +15,8 @@ Router.post(
 // Public - danh sách voucher đang hoạt động
 Router.get('/active', voucherController.getActivePublic)
 
-// Admin management
-Router.use(authMiddleware.verifyToken)
-Router.use(authMiddleware.verifyAdmin)
+// Admin management - yêu cầu xác thực và quyền admin
+Router.use(authMiddleware.verifyToken, authMiddleware.verifyAdmin)
 
 Router.get('/all', voucherController.getVouchers)
 Router.get('/details/:id', voucherController.getDetails)

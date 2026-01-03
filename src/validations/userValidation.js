@@ -55,9 +55,14 @@ const register = async (req, res, next) => {
     address: Joi.string().optional().trim().max(500).allow('').messages({
       'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
     }),
-    dateOfBirth: Joi.date().optional().max('now').allow(null).messages({
-      'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-    }),
+    dateOfBirth: Joi.alternatives()
+      .try(
+        Joi.date().max('now').messages({
+          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
+        }),
+        Joi.valid(null, '')
+      )
+      .optional(),
     gender: Joi.string()
       .optional()
       .valid('male', 'female', 'other')
@@ -145,9 +150,14 @@ const updateUser = async (req, res, next) => {
     avatar: Joi.string().optional().uri().allow('').messages({
       'string.uri': 'Avatar phải là URL hợp lệ'
     }),
-    dateOfBirth: Joi.date().optional().max('now').allow(null).messages({
-      'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-    }),
+    dateOfBirth: Joi.alternatives()
+      .try(
+        Joi.date().max('now').messages({
+          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
+        }),
+        Joi.valid(null, '')
+      )
+      .optional(),
     gender: Joi.string()
       .optional()
       .valid('male', 'female', 'other')
@@ -276,9 +286,14 @@ const updateUserByAdmin = async (req, res, next) => {
     avatar: Joi.string().optional().uri().allow('').messages({
       'string.uri': 'Avatar phải là URL hợp lệ'
     }),
-    dateOfBirth: Joi.date().optional().max('now').allow(null).messages({
-      'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-    }),
+    dateOfBirth: Joi.alternatives()
+      .try(
+        Joi.date().max('now').messages({
+          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
+        }),
+        Joi.valid(null, '')
+      )
+      .optional(),
     gender: Joi.string()
       .optional()
       .valid('male', 'female', 'other')
@@ -348,9 +363,14 @@ const createUserByAdmin = async (req, res, next) => {
     address: Joi.string().optional().trim().max(500).allow('').messages({
       'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
     }),
-    dateOfBirth: Joi.date().optional().max('now').allow(null).messages({
-      'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-    }),
+    dateOfBirth: Joi.alternatives()
+      .try(
+        Joi.date().max('now').messages({
+          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
+        }),
+        Joi.valid(null, '')
+      )
+      .optional(),
     gender: Joi.string()
       .optional()
       .valid('male', 'female', 'other')

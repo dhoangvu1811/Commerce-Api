@@ -11,9 +11,8 @@ Router.get('/details/:id', productController.getDetails)
 Router.get('/getAll', productController.getProducts)
 Router.get('/getAllType', productController.getAllTypes)
 
-// Protected routes - cần xác thực và quyền admin
-Router.use(authMiddleware.verifyToken)
-Router.use(authMiddleware.verifyAdmin)
+// Protected routes - yêu cầu xác thực và quyền admin
+Router.use(authMiddleware.verifyToken, authMiddleware.verifyAdmin)
 
 // Admin-only routes - quản lý sản phẩm
 Router.post('/create', productValidation.createNew, productController.createNew)

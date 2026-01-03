@@ -11,8 +11,8 @@ import { userService } from './userService'
 // Revoke một session cụ thể
 const revokeUserSession = async (sessionId) => {
   try {
-    // Tìm session để verify
-    const session = await sessionModel.findBySessionId(sessionId)
+    // Tìm session bất kể trạng thái để verify tồn tại
+    const session = await sessionModel.findBySessionIdAny(sessionId)
     if (!session) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -20,19 +20,33 @@ const revokeUserSession = async (sessionId) => {
       )
     }
 
+    // Kiểm tra session đã bị revoke chưa
+    if (!session.isActive) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Phiên đăng nhập đã được thu hồi trước đó'
+      )
+    }
+
+    // Kiểm tra session đã hết hạn chưa
+    if (session.expiresAt < new Date()) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Phiên đăng nhập đã hết hạn')
+    }
+
     // Revoke session
     const result = await sessionModel.revokeSession(sessionId)
 
     if (result.modifiedCount === 0) {
       throw new ApiError(
-        StatusCodes.BAD_REQUEST,
+        StatusCodes.INTERNAL_SERVER_ERROR,
         'Không thể thu hồi phiên đăng nhập'
       )
     }
 
     return {
       sessionId,
-      message: 'User sẽ bị logout trong vòng 5 phút (khi AccessToken hết hạn)'
+      message:
+        'Thu hồi phiên đăng nhập thành công. User sẽ bị logout trong vòng 5 phút'
     }
   } catch (error) {
     throw error
@@ -54,7 +68,7 @@ const revokeAllUserSessions = async (userId) => {
     return {
       userId,
       revokedSessions: result.modifiedCount,
-      message: 'User sẽ bị logout trong vòng 5 phút (khi AccessToken hết hạn)'
+      message: `Đã thu hồi ${result.modifiedCount} phiên đăng nhập. User sẽ bị logout trong vòng 5 phút`
     }
   } catch (error) {
     throw error
@@ -77,6 +91,17 @@ const getUserSessions = async (userId) => {
     const safeSessions = sessions.map((session) => {
       const now = new Date()
       const isExpired = session.expiresAt < now
+      const hasLogout = !!session.logoutAt
+
+      // Xác định trạng thái session
+      let status = 'active'
+      if (hasLogout) {
+        status = 'logout' // User tự logout
+      } else if (!session.isActive) {
+        status = 'revoked' // Admin revoke hoặc bị thu hồi
+      } else if (isExpired) {
+        status = 'expired' // Hết hạn tự nhiên
+      }
 
       return {
         sessionId: session.sessionId,
@@ -84,9 +109,10 @@ const getUserSessions = async (userId) => {
         ipAddress: session.ipAddress,
         createdAt: session.createdAt,
         expiresAt: session.expiresAt,
+        logoutAt: session.logoutAt, // Thời điểm logout (nếu có)
         isActive: session.isActive,
         isExpired: isExpired,
-        status: !session.isActive ? 'revoked' : isExpired ? 'expired' : 'active'
+        status: status
       }
     })
 
@@ -100,6 +126,9 @@ const getUserSessions = async (userId) => {
     const expiredSessions = safeSessions.filter(
       (s) => s.status === 'expired'
     ).length
+    const logoutSessions = safeSessions.filter(
+      (s) => s.status === 'logout'
+    ).length
 
     return {
       userId,
@@ -108,7 +137,8 @@ const getUserSessions = async (userId) => {
       summary: {
         active: activeSessions,
         revoked: revokedSessions,
-        expired: expiredSessions
+        expired: expiredSessions,
+        logout: logoutSessions
       }
     }
   } catch (error) {
@@ -187,8 +217,8 @@ const getUsersWithSessionSummary = async (page, itemsPerPage, queryFilter) => {
 // User tự revoke session của chính mình
 const revokeMySession = async (userId, sessionId) => {
   try {
-    // Tìm session để verify
-    const session = await sessionModel.findBySessionId(sessionId)
+    // Tìm session bất kể trạng thái để verify tồn tại
+    const session = await sessionModel.findBySessionIdAny(sessionId)
     if (!session) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -204,12 +234,25 @@ const revokeMySession = async (userId, sessionId) => {
       )
     }
 
+    // Kiểm tra session đã bị revoke chưa
+    if (!session.isActive) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Phiên đăng nhập đã được thu hồi trước đó'
+      )
+    }
+
+    // Kiểm tra session đã hết hạn chưa
+    if (session.expiresAt < new Date()) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Phiên đăng nhập đã hết hạn')
+    }
+
     // Revoke session
     const result = await sessionModel.revokeSession(sessionId)
 
     if (result.modifiedCount === 0) {
       throw new ApiError(
-        StatusCodes.BAD_REQUEST,
+        StatusCodes.INTERNAL_SERVER_ERROR,
         'Không thể thu hồi phiên đăng nhập'
       )
     }

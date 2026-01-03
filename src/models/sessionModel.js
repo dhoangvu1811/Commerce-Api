@@ -15,6 +15,7 @@ const SESSION_COLLECTION_SCHEMA = Joi.object({
   deviceInfo: Joi.string().allow('').default(''), // User-Agent hoặc device info
   ipAddress: Joi.string().allow('').default(''),
   isActive: Joi.boolean().default(true),
+  logoutAt: Joi.date().timestamp().allow(null).default(null), // Thời điểm user logout
   createdAt: Joi.date().timestamp().default(Date.now),
   expiresAt: Joi.date().timestamp().required() // Thời gian hết hạn của refresh token
 })
@@ -44,7 +45,7 @@ const createNew = async (data) => {
   }
 }
 
-// Tìm session theo sessionId
+// Tìm session theo sessionId (chỉ active và chưa hết hạn)
 const findBySessionId = async (sessionId) => {
   try {
     const result = await GET_DB()
@@ -52,8 +53,21 @@ const findBySessionId = async (sessionId) => {
       .findOne({
         sessionId: sessionId,
         isActive: true,
-        expiresAt: { $gt: new Date() } // Chỉ lấy session chưa hết hạn
+        expiresAt: { $gt: new Date() }
       })
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+// Tìm session theo sessionId (bất kể trạng thái)
+const findBySessionIdAny = async (sessionId) => {
+  try {
+    const result = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .findOne({ sessionId: sessionId })
 
     return result
   } catch (error) {
@@ -176,7 +190,29 @@ const revokeAllUserSessions = async (userId) => {
   }
 }
 
-// Xóa session (logout)
+// Đánh dấu logout (soft delete) - Giữ session để tracking
+const logoutSession = async (sessionId) => {
+  try {
+    const result = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .updateOne(
+        { sessionId: sessionId },
+        {
+          $set: {
+            isActive: false,
+            logoutAt: new Date(),
+            updatedAt: Date.now()
+          }
+        }
+      )
+
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+// Xóa session (hard delete) - Chỉ dùng cho cleanup cron job
 const deleteSession = async (sessionId) => {
   try {
     const result = await GET_DB()
@@ -189,13 +225,26 @@ const deleteSession = async (sessionId) => {
   }
 }
 
-// Cleanup sessions hết hạn (cron job)
-const cleanupExpiredSessions = async () => {
+// Cleanup sessions cũ (cron job) - Xóa sessions hết hạn và đã logout > 90 ngày
+const cleanupExpiredSessions = async (retentionDays = 90) => {
   try {
+    const retentionDate = new Date()
+    retentionDate.setDate(retentionDate.getDate() - retentionDays)
+
     const result = await GET_DB()
       .collection(SESSION_COLLECTION_NAME)
       .deleteMany({
-        expiresAt: { $lt: new Date() }
+        $or: [
+          // Sessions đã hết hạn và cũ hơn retention period
+          {
+            expiresAt: { $lt: retentionDate }
+          },
+          // Sessions đã logout và cũ hơn retention period
+          {
+            isActive: false,
+            logoutAt: { $lt: retentionDate, $ne: null }
+          }
+        ]
       })
 
     return result
@@ -209,11 +258,13 @@ export const sessionModel = {
   SESSION_COLLECTION_SCHEMA,
   createNew,
   findBySessionId,
+  findBySessionIdAny,
   findByUserId,
   findAllSessionsByUserId,
   getSessionsSummaryByUserId,
   revokeSession,
   revokeAllUserSessions,
+  logoutSession,
   deleteSession,
   cleanupExpiredSessions
 }
