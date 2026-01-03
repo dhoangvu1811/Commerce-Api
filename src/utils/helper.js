@@ -7,7 +7,7 @@ export const isValidStatusTransition = (fromStatus, toStatus) => {
     PACKED: ['SHIPPED', 'CANCELLED'],
     SHIPPED: ['DELIVERED', 'RETURNED'],
     DELIVERED: ['COMPLETED', 'RETURNED'],
-    COMPLETED: [], // final state
+    COMPLETED: ['RETURNED'], // Cho phép trả hàng sau khi hoàn thành
     CANCELLED: [], // final state
     RETURNED: ['REFUNDED'],
     REFUNDED: [] // final state

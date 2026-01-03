@@ -150,15 +150,19 @@ const getMany = async (
   }
 }
 
-const update = async (orderId, updateData) => {
+const update = async (orderId, updateData, options = {}) => {
   try {
     const dataToUpdate = { ...updateData, updatedAt: new Date() }
+    const updateOptions = options.session
+      ? { returnDocument: 'after', session: options.session }
+      : { returnDocument: 'after' }
+
     const result = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
       .findOneAndUpdate(
         { _id: new ObjectId(orderId) },
         { $set: dataToUpdate },
-        { returnDocument: 'after' }
+        updateOptions
       )
     return result
   } catch (error) {

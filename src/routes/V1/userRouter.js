@@ -74,28 +74,10 @@ Router.post(
 Router.use(authMiddleware.verifyToken)
 Router.use(authMiddleware.verifySession) // Kiểm tra session có còn active không
 
+// Routes không yêu cầu active user
 Router.get('/me', userController.getCurrentUser)
-// User routes - user có thể truy cập thông tin của chính mình (cần active)
-Router.use(authMiddleware.verifyActiveUser) // Bắt buộc user phải active
 
-Router.put(
-  '/me',
-  multerUploadMiddleware.upload.single('avatar'),
-  userValidation.updateUser,
-  userController.updateCurrentUser
-)
-Router.put(
-  '/me/password',
-  userValidation.updatePassword,
-  userController.updatePassword
-)
-Router.post(
-  '/upload-avatar',
-  multerUploadMiddleware.upload.single('avatar'),
-  userController.uploadAvatar
-)
-
-// Admin routes - chỉ admin mới có quyền
+// Admin routes - chỉ admin mới có quyền (admin luôn active)
 Router.get('/all', authMiddleware.verifyAdmin, userController.getUsers)
 
 // Lấy users với session summary cho table overview
@@ -154,9 +136,7 @@ Router.patch(
   userController.deactivateUser
 )
 
-// Session management routes
-
-// Admin routes - quản lý sessions
+// Session management routes - Admin
 Router.post(
   '/revoke-session',
   authMiddleware.verifyAdmin,
@@ -178,17 +158,31 @@ Router.get(
   userController.getUserSessions
 )
 
-// User routes - quản lý sessions của chính mình
-Router.get(
-  '/my-sessions',
-  authMiddleware.verifyToken,
-  authMiddleware.verifySession,
-  userController.getCurrentUserSessions
+// User routes - yêu cầu user phải active
+Router.use(authMiddleware.verifyActiveUser) // Bắt buộc user phải active
+
+Router.put(
+  '/me',
+  multerUploadMiddleware.upload.single('avatar'),
+  userValidation.updateUser,
+  userController.updateCurrentUser
 )
+Router.put(
+  '/me/password',
+  userValidation.updatePassword,
+  userController.updatePassword
+)
+Router.post(
+  '/upload-avatar',
+  multerUploadMiddleware.upload.single('avatar'),
+  userController.uploadAvatar
+)
+
+// Session management routes - User quản lý sessions của chính mình
+Router.get('/my-sessions', userController.getCurrentUserSessions)
 
 Router.post(
   '/revoke-my-session',
-  authMiddleware.verifyToken,
   userValidation.revokeMySession,
   userController.revokeMySession
 )

@@ -53,12 +53,7 @@ const create = async (userId, payload) => {
       if (!prod) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Sản phẩm không tồn tại')
       }
-      if (prod.countInStock < i.quantity) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Sản phẩm ${prod.name} không đủ tồn kho`
-        )
-      }
+
       const unitPrice = Number(prod.price)
       const discount = Number(prod.discount || 0)
       const lineTotal = calcLineTotal(unitPrice, discount, i.quantity)
@@ -176,7 +171,7 @@ const create = async (userId, payload) => {
           // Transaction will auto-rollback
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            `Sản phẩm "${item.name}" không đủ tồn kho (có thể đã được đặt bởi người khác)`
+            `Sản phẩm "${item.name}" không đủ tồn kho.`
           )
         }
       }
@@ -439,6 +434,15 @@ const updatePaymentStatus = async (orderId, data) => {
       )
     }
 
+    // ⚠️ CRITICAL: Không cho phép set PAID qua route này
+    // Phải dùng /admin/mark-paid để đảm bảo stock/voucher được xử lý đúng
+    if (paymentStatus === 'PAID') {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Không thể set trạng thái PAID qua route này. Vui lòng sử dụng /admin/mark-paid để xác nhận thanh toán'
+      )
+    }
+
     // Validate paymentStatus transition
     if (paymentStatus !== order.paymentStatus) {
       if (!isValidPaymentStatusTransition(order.paymentStatus, paymentStatus)) {
@@ -519,8 +523,11 @@ const updatePaymentStatus = async (orderId, data) => {
   }
 }
 
-// Xác nhận thanh toán thành công: trừ tồn kho, tăng selled, tăng usedCount voucher, cập nhật order
+// Xác nhận thanh toán thành công: tăng selled, cập nhật order (với transaction)
 const markPaid = async (orderId) => {
+  const client = GET_CLIENT()
+  const session = client.startSession()
+
   try {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
@@ -537,7 +544,11 @@ const markPaid = async (orderId) => {
     if (order.paymentStatus === 'PAID') return order // idempotent
 
     // Kiểm tra trạng thái thanh toán có thể chuyển thành PAID
-    if (!['PENDING', 'PROCESSING', 'FAILED'].includes(order.paymentStatus)) {
+    if (
+      !['PENDING', 'PROCESSING', 'FAILED', 'EXPIRED'].includes(
+        order.paymentStatus
+      )
+    ) {
       const paymentStatusNames = {
         PENDING: 'chưa thanh toán',
         PROCESSING: 'đang xử lý thanh toán',
@@ -555,15 +566,7 @@ const markPaid = async (orderId) => {
       )
     }
 
-    // 1) Tăng selled cho từng item (countInStock đã trừ khi create order)
-    // Không cần decrementStock nữa vì đã reserve lúc create
-    for (const it of order.items) {
-      await productModel.incrementSelled(it.productId, it.quantity)
-    }
-
-    // 2) Voucher usedCount đã tăng khi create, không cần xử lý lại
-
-    // 3) Cập nhật order - Logic khác nhau cho COD vs Online Payment
+    // Logic khác nhau cho COD vs Online Payment
     const isCOD = isCODPayment(order.paymentMethod)
 
     const updateData = {
@@ -577,9 +580,24 @@ const markPaid = async (orderId) => {
       updateData.status = 'CONFIRMED'
     }
 
-    const updated = await orderModel.update(orderId, updateData)
+    let updated = null
 
-    // Audit log: markPaid (admin)
+    // Execute all operations in a transaction
+    await session.withTransaction(async () => {
+      // 1) Tăng selled cho từng item (countInStock đã trừ khi create order)
+      for (const it of order.items) {
+        await productModel.incrementSelled(it.productId, it.quantity, {
+          session
+        })
+      }
+
+      // 2) Voucher usedCount đã tăng khi create, không cần xử lý lại
+
+      // 3) Cập nhật order
+      updated = await orderModel.update(orderId, updateData, { session })
+    })
+
+    // Audit log: markPaid (admin) - outside transaction
     try {
       await orderModel.appendLog(orderId, {
         action: 'markPaid',
@@ -594,7 +612,8 @@ const markPaid = async (orderId) => {
           paymentMethod: order.paymentMethod,
           fromPaymentStatus: order.paymentStatus,
           toPaymentStatus: 'PAID',
-          isCOD
+          isCOD,
+          useTransaction: true
         }
       })
     } catch (err) {
@@ -605,6 +624,8 @@ const markPaid = async (orderId) => {
     return updated
   } catch (error) {
     throw error
+  } finally {
+    await session.endSession()
   }
 }
 

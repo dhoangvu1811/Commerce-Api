@@ -63,15 +63,15 @@ const logout = async (req, res, next) => {
     // sessionId có thể đến từ AT hoặc RT
     const sessionId = req.jwtDecoded?.sessionId
 
-    // Xóa session khỏi DB nếu có sessionId
+    // Đánh dấu logout session thay vì xóa (để tracking)
     if (sessionId) {
       try {
-        await sessionModel.deleteSession(sessionId)
+        await sessionModel.logoutSession(sessionId)
       } catch (error) {
         // Log error nhưng vẫn tiếp tục xóa cookies
         if (env.BUILD_MODE === 'dev') {
           // eslint-disable-next-line no-console
-          console.error('❌ Lỗi khi xóa session:', error.message)
+          console.error('❌ Lỗi khi logout session:', error.message)
         }
       }
     }

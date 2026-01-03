@@ -5,40 +5,72 @@ import { orderController } from '~/controllers/orderController'
 
 const Router = express.Router()
 
-// User - bắt buộc phải active mới có thể đặt hàng và quản lý order
+// All routes require authentication
 Router.use(authMiddleware.verifyToken)
-Router.use(authMiddleware.verifyActiveUser)
 
-Router.post('/create', orderValidation.create, orderController.create)
-Router.get('/my-orders', orderController.getMyOrders)
-Router.get('/details/:id', orderController.getDetails)
+// User routes - yêu cầu user phải active
+Router.post(
+  '/create',
+  authMiddleware.verifyActiveUser,
+  orderValidation.create,
+  orderController.create
+)
+Router.get(
+  '/my-orders',
+  authMiddleware.verifyActiveUser,
+  orderController.getMyOrders
+)
+Router.get(
+  '/details/:id',
+  authMiddleware.verifyActiveUser,
+  orderController.getDetails
+)
 Router.get(
   '/details-by-code/:orderCode',
+  authMiddleware.verifyActiveUser,
   orderValidation.validateOrderCode,
   orderController.getDetailsByOrderCode
 )
-Router.post('/cancel/:id', orderController.userCancel)
+Router.post(
+  '/cancel/:id',
+  authMiddleware.verifyActiveUser,
+  orderController.userCancel
+)
 Router.post(
   '/cancel-by-code/:orderCode',
+  authMiddleware.verifyActiveUser,
   orderValidation.validateOrderCode,
   orderController.userCancelByOrderCode
 )
 
-// Admin
-Router.use(authMiddleware.verifyAdmin)
-Router.get('/all', orderController.adminGetOrders)
-Router.get('/admin/details/:id', orderController.adminGetDetails)
+// Admin routes - admin luôn active, chỉ cần verify admin
+Router.get('/all', authMiddleware.verifyAdmin, orderController.adminGetOrders)
+Router.get(
+  '/admin/details/:id',
+  authMiddleware.verifyAdmin,
+  orderController.adminGetDetails
+)
 Router.put(
   '/admin/update/:id',
+  authMiddleware.verifyAdmin,
   orderValidation.updateStatus,
   orderController.adminUpdateStatus
 )
 Router.put(
   '/admin/update-payment/:id',
+  authMiddleware.verifyAdmin,
   orderValidation.updatePaymentStatus,
   orderController.adminUpdatePaymentStatus
 )
-Router.post('/admin/mark-paid/:id', orderController.adminMarkPaid)
-Router.post('/admin/cancel/:id', orderController.adminCancel)
+Router.post(
+  '/admin/mark-paid/:id',
+  authMiddleware.verifyAdmin,
+  orderController.adminMarkPaid
+)
+Router.post(
+  '/admin/cancel/:id',
+  authMiddleware.verifyAdmin,
+  orderController.adminCancel
+)
 
 export const orderRoute = Router

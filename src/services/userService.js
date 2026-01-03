@@ -467,10 +467,6 @@ const refreshToken = async (refreshTokenValue) => {
       throw new ApiError(StatusCodes.UNAUTHORIZED, 'Token không hợp lệ')
     }
 
-    // Kiểm tra tài khoản có bị khóa không
-    if (!user.isActive) {
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Tài khoản của bạn đã bị khóa')
-    }
 
     // Tạo access token mới với sessionId (nếu có)
     const newAccessToken = JwtProvider.generateAccessToken(user, sessionId)
