@@ -1,3 +1,4 @@
+/* eslint-disable no-lonely-if */
 /* eslint-disable no-console */
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError'
@@ -630,9 +631,12 @@ const markPaid = async (orderId) => {
 }
 
 // Hủy đơn hàng
-// - User: chỉ hủy khi status = PENDING và paymentStatus = PENDING
-// - Admin: có thể hủy bất kỳ; nếu đã PAID thì restock tồn kho (tùy chính sách), đặt paymentStatus='REFUNDED'
+// - User: chỉ hủy khi status = PENDING hoặc CONFIRMED
+// - Admin: có thể hủy ở các trạng thái trước khi giao; nếu đã PAID thì restock tồn kho, đặt paymentStatus='REFUNDED'
 const cancel = async (orderId, requesterId = null, isAdmin = false) => {
+  const client = GET_CLIENT()
+  const session = client.startSession()
+
   try {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
@@ -649,15 +653,24 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
           'Bạn không có quyền hủy đơn hàng này'
         )
       }
-      // User được hủy khi: PENDING (chưa thanh toán) hoặc CONFIRMED (đã thanh toán nhưng chưa xử lý)
+      // User được hủy khi đơn chưa được xử lý (PENDING hoặc CONFIRMED)
+      // Bất kể trạng thái thanh toán là gì
       const canUserCancel =
-        (order.status === 'PENDING' && order.paymentStatus === 'PENDING') ||
-        (order.status === 'CONFIRMED' && order.paymentStatus === 'PAID')
+        order.status === 'PENDING' || order.status === 'CONFIRMED'
 
       if (!canUserCancel) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          'Chỉ có thể hủy đơn khi đơn đang chờ xử lý hoặc vừa được xác nhận'
+          'Chỉ có thể hủy đơn khi đơn đang ở trạng thái chờ xử lý (PENDING) hoặc đã xác nhận (CONFIRMED)'
+        )
+      }
+    } else {
+      // Admin không được hủy đơn đã giao hoặc hoàn thành
+      // Với những đơn này cần dùng chức năng hoàn trả (RETURNED/REFUNDED)
+      if (order.status === 'DELIVERED' || order.status === 'COMPLETED') {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'Không thể hủy đơn hàng đã giao hoặc hoàn thành. Vui lòng sử dụng chức năng hoàn trả.'
         )
       }
     }
@@ -668,43 +681,51 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
     // Xử lý restock và refund dựa trên trạng thái thanh toán
     // Lưu ý: countInStock đã trừ khi create(), cần hoàn trả
     // selled chỉ tăng khi markPaid(), chỉ trừ nếu đã PAID
-    const needRestockInventory = true // Luôn hoàn trả tồn kho vì đã reserve khi create
-    const needDecrementSelled = order.paymentStatus === 'PAID' // Chỉ trừ selled nếu đã thanh toán
+    const needDecrementSelled = order.paymentStatus === 'PAID'
 
-    if (needRestockInventory) {
-      try {
-        // Restock tồn kho (vì đã reserve khi create)
-        for (const it of order.items) {
-          await productModel.incrementStock(it.productId, it.quantity)
-        }
+    let updated = null
 
-        // Trừ lại selled nếu đã thanh toán
-        if (needDecrementSelled) {
-          for (const it of order.items) {
-            await productModel.decrementSelled(it.productId, it.quantity)
-          }
-        }
-
-        // Rollback voucher usedCount (vì đã tăng khi create)
-        if (order.voucher?.code) {
-          const voucher = await voucherModel.findOneByCode(order.voucher.code)
-          if (voucher?._id) {
-            await voucherModel.decrementUsedCount(voucher._id)
-          }
-        }
-      } catch (rollbackError) {
-        // Log lỗi rollback nhưng không chặn cancel
-        console.error('Rollback error during cancel:', rollbackError)
-        // Trong production nên có compensation mechanism hoặc manual review
+    // Execute all operations in a transaction
+    await session.withTransaction(async () => {
+      // 1) Restock tồn kho (vì đã reserve khi create)
+      for (const it of order.items) {
+        await productModel.incrementStock(it.productId, it.quantity, {
+          session
+        })
       }
-    }
 
-    const updated = await orderModel.update(orderId, {
-      status: 'CANCELLED',
-      paymentStatus: needDecrementSelled ? 'REFUNDED' : order.paymentStatus,
-      updatedAt: new Date()
+      // 2) Trừ lại selled nếu đã thanh toán
+      if (needDecrementSelled) {
+        for (const it of order.items) {
+          await productModel.decrementSelled(it.productId, it.quantity, {
+            session
+          })
+        }
+      }
+
+      // 3) Rollback voucher usedCount (vì đã tăng khi create)
+      if (order.voucher?.code) {
+        const voucher = await voucherModel.findOneByCode(order.voucher.code)
+        if (voucher?._id) {
+          await voucherModel.decrementUsedCount(voucher._id, 1, { session })
+        }
+      }
+
+      // 4) Cập nhật order
+      updated = await orderModel.update(
+        orderId,
+        {
+          status: 'CANCELLED',
+          // Nếu đã thanh toán → REFUNDED, nếu chưa thanh toán → CANCELLED
+          paymentStatus:
+            order.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED',
+          updatedAt: new Date()
+        },
+        { session }
+      )
     })
-    // Audit log: cancel
+
+    // Audit log: cancel (outside transaction)
     try {
       await orderModel.appendLog(orderId, {
         action: 'cancel',
@@ -713,7 +734,10 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
         note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn',
         fromStatus: order.status,
         toStatus: 'CANCELLED',
-        meta: { previousPaymentStatus: order.paymentStatus }
+        meta: {
+          previousPaymentStatus: order.paymentStatus,
+          useTransaction: true
+        }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -723,11 +747,16 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
     return updated
   } catch (error) {
     throw error
+  } finally {
+    await session.endSession()
   }
 }
 
 // Hủy đơn hàng bằng orderCode cho user
 const cancelByOrderCode = async (orderCode, requesterId) => {
+  const client = GET_CLIENT()
+  const session = client.startSession()
+
   try {
     if (!orderCode) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã đơn hàng không hợp lệ')
@@ -744,15 +773,15 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
       )
     }
 
-    // User được hủy khi: PENDING (chưa thanh toán) hoặc CONFIRMED (đã thanh toán nhưng chưa xử lý)
+    // User được hủy khi đơn chưa được xử lý (PENDING hoặc CONFIRMED)
+    // Bất kể trạng thái thanh toán là gì
     const canUserCancel =
-      (order.status === 'PENDING' && order.paymentStatus === 'PENDING') ||
-      (order.status === 'CONFIRMED' && order.paymentStatus === 'PAID')
+      order.status === 'PENDING' || order.status === 'CONFIRMED'
 
     if (!canUserCancel) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Chỉ có thể hủy đơn khi đơn đang chờ xử lý hoặc vừa được xác nhận'
+        'Chỉ có thể hủy đơn khi đơn đang ở trạng thái chờ xử lý (PENDING) hoặc đã xác nhận (CONFIRMED)'
       )
     }
 
@@ -762,43 +791,51 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
     // Xử lý restock và refund dựa trên trạng thái thanh toán
     // Lưu ý: countInStock đã trừ khi create(), cần hoàn trả
     // selled chỉ tăng khi markPaid(), chỉ trừ nếu đã PAID
-    const needRestockInventory = true // Luôn hoàn trả tồn kho vì đã reserve khi create
-    const needDecrementSelled = order.paymentStatus === 'PAID' // Chỉ trừ selled nếu đã thanh toán
+    const needDecrementSelled = order.paymentStatus === 'PAID'
 
-    if (needRestockInventory) {
-      try {
-        // Restock tồn kho (vì đã reserve khi create)
-        for (const it of order.items) {
-          await productModel.incrementStock(it.productId, it.quantity)
-        }
+    let updated = null
 
-        // Trừ lại selled nếu đã thanh toán
-        if (needDecrementSelled) {
-          for (const it of order.items) {
-            await productModel.decrementSelled(it.productId, it.quantity)
-          }
-        }
-
-        // Rollback voucher usedCount (vì đã tăng khi create)
-        if (order.voucher?.code) {
-          const voucher = await voucherModel.findOneByCode(order.voucher.code)
-          if (voucher?._id) {
-            await voucherModel.decrementUsedCount(voucher._id)
-          }
-        }
-      } catch (rollbackError) {
-        // Log lỗi rollback nhưng không chặn cancel
-        console.error('Rollback error during cancelByOrderCode:', rollbackError)
+    // Execute all operations in a transaction
+    await session.withTransaction(async () => {
+      // 1) Restock tồn kho (vì đã reserve khi create)
+      for (const it of order.items) {
+        await productModel.incrementStock(it.productId, it.quantity, {
+          session
+        })
       }
-    }
 
-    const updated = await orderModel.update(order._id, {
-      status: 'CANCELLED',
-      paymentStatus: needDecrementSelled ? 'REFUNDED' : order.paymentStatus,
-      updatedAt: new Date()
+      // 2) Trừ lại selled nếu đã thanh toán
+      if (needDecrementSelled) {
+        for (const it of order.items) {
+          await productModel.decrementSelled(it.productId, it.quantity, {
+            session
+          })
+        }
+      }
+
+      // 3) Rollback voucher usedCount (vì đã tăng khi create)
+      if (order.voucher?.code) {
+        const voucher = await voucherModel.findOneByCode(order.voucher.code)
+        if (voucher?._id) {
+          await voucherModel.decrementUsedCount(voucher._id, 1, { session })
+        }
+      }
+
+      // 4) Cập nhật order
+      updated = await orderModel.update(
+        order._id,
+        {
+          status: 'CANCELLED',
+          // Nếu đã thanh toán → REFUNDED, nếu chưa thanh toán → CANCELLED
+          paymentStatus:
+            order.paymentStatus === 'PAID' ? 'REFUNDED' : 'CANCELLED',
+          updatedAt: new Date()
+        },
+        { session }
+      )
     })
 
-    // Audit log: cancel
+    // Audit log: cancel (outside transaction)
     try {
       await orderModel.appendLog(order._id, {
         action: 'cancel',
@@ -807,7 +844,11 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
         note: 'Người dùng hủy đơn bằng mã đơn hàng',
         fromStatus: order.status,
         toStatus: 'CANCELLED',
-        meta: { previousPaymentStatus: order.paymentStatus, orderCode }
+        meta: {
+          previousPaymentStatus: order.paymentStatus,
+          orderCode,
+          useTransaction: true
+        }
       })
     } catch (err) {
       if (process.env.NODE_ENV === 'development') {
@@ -817,6 +858,8 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
     return updated
   } catch (error) {
     throw error
+  } finally {
+    await session.endSession()
   }
 }
 
