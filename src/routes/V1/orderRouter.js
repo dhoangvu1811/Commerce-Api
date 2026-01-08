@@ -72,5 +72,16 @@ Router.post(
   authMiddleware.verifyAdmin,
   orderController.adminCancel
 )
+Router.get(
+  '/admin/logs/:id',
+  authMiddleware.verifyAdmin,
+  orderController.adminGetOrderLogs
+)
+Router.get(
+  '/admin/logs-by-code/:orderCode',
+  authMiddleware.verifyAdmin,
+  orderValidation.validateOrderCode,
+  orderController.adminGetOrderLogsByCode
+)
 
 export const orderRoute = Router

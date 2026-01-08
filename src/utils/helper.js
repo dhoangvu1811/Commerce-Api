@@ -17,6 +17,10 @@ export const isValidStatusTransition = (fromStatus, toStatus) => {
 }
 
 // Helper: Kiểm tra chuyển đổi trạng thái thanh toán hợp lệ
+// Helper: Kiểm tra payment status transition hợp lệ
+// Lưu ý:
+// - PAID → REFUNDED: Chỉ được thực hiện qua /admin/cancel (không cho set trực tiếp)
+// - Transition này kiểm tra logic flow, business logic được enforce ở service layer
 export const isValidPaymentStatusTransition = (
   fromPaymentStatus,
   toPaymentStatus
@@ -24,7 +28,7 @@ export const isValidPaymentStatusTransition = (
   const validTransitions = {
     PENDING: ['PROCESSING', 'PAID', 'FAILED', 'EXPIRED', 'CANCELLED'],
     PROCESSING: ['PAID', 'FAILED', 'CANCELLED'],
-    PAID: ['REFUNDED'],
+    PAID: ['REFUNDED'], // Chỉ qua /admin/cancel, không được set trực tiếp
     FAILED: ['PENDING', 'CANCELLED'], // allow retry
     EXPIRED: ['CANCELLED'],
     CANCELLED: [], // final state

@@ -208,6 +208,34 @@ const deleteOneById = async (orderId, options = {}) => {
   }
 }
 
+const getLogsByOrderId = async (orderId) => {
+  try {
+    const order = await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .findOne(
+        { _id: new ObjectId(orderId) },
+        { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } }
+      )
+    return order
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
+const getLogsByOrderCode = async (orderCode) => {
+  try {
+    const order = await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .findOne(
+        { orderCode },
+        { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } }
+      )
+    return order
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 export const orderModel = {
   ORDER_COLLECTION_NAME,
   ORDER_COLLECTION_SCHEMA,
@@ -219,5 +247,7 @@ export const orderModel = {
   getMany,
   update,
   appendLog,
-  deleteOneById
+  deleteOneById,
+  getLogsByOrderId,
+  getLogsByOrderCode
 }
