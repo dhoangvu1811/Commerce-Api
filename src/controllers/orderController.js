@@ -108,9 +108,10 @@ const adminUpdateStatus = async (req, res, next) => {
   try {
     const id = req.params?.id
     const { status } = req.body
+    const adminId = req.jwtDecoded?._id
 
     // Chỉ update status, không đụng đến paymentStatus
-    const updated = await orderService.updateStatus(id, { status })
+    const updated = await orderService.updateStatus(id, { status }, adminId)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -126,11 +127,14 @@ const adminUpdatePaymentStatus = async (req, res, next) => {
   try {
     const id = req.params?.id
     const { paymentStatus } = req.body
+    const adminId = req.jwtDecoded?._id
 
     // Chỉ update paymentStatus, không đụng đến status
-    const updated = await orderService.updatePaymentStatus(id, {
-      paymentStatus
-    })
+    const updated = await orderService.updatePaymentStatus(
+      id,
+      { paymentStatus },
+      adminId
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -145,7 +149,8 @@ const adminUpdatePaymentStatus = async (req, res, next) => {
 const adminMarkPaid = async (req, res, next) => {
   try {
     const id = req.params?.id
-    const updated = await orderService.markPaid(id)
+    const adminId = req.jwtDecoded?._id
+    const updated = await orderService.markPaid(id, adminId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Xác nhận thanh toán thành công',
@@ -174,7 +179,8 @@ const userCancel = async (req, res, next) => {
 const adminCancel = async (req, res, next) => {
   try {
     const id = req.params?.id
-    const updated = await orderService.cancel(id, null, true)
+    const adminId = req.jwtDecoded?._id
+    const updated = await orderService.cancel(id, adminId, true)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Hủy đơn hàng (admin) thành công',
@@ -200,6 +206,34 @@ const userCancelByOrderCode = async (req, res, next) => {
   }
 }
 
+const adminGetOrderLogs = async (req, res, next) => {
+  try {
+    const orderId = req.params?.id
+    const result = await orderService.adminGetOrderLogs(orderId)
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy lịch sử thay đổi đơn hàng thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+const adminGetOrderLogsByCode = async (req, res, next) => {
+  try {
+    const orderCode = req.params?.orderCode
+    const result = await orderService.adminGetOrderLogsByCode(orderCode)
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy lịch sử thay đổi đơn hàng thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const orderController = {
   create,
   getMyOrders,
@@ -212,5 +246,7 @@ export const orderController = {
   adminMarkPaid,
   userCancel,
   userCancelByOrderCode,
-  adminCancel
+  adminCancel,
+  adminGetOrderLogs,
+  adminGetOrderLogsByCode
 }

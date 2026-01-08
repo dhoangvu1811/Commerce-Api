@@ -5,6 +5,7 @@ import ApiError from '~/utils/ApiError'
 import { orderModel } from '~/models/orderModel'
 import { productModel } from '~/models/productModel'
 import { voucherModel } from '~/models/voucherModel'
+import { userModel } from '~/models/userModel'
 import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants'
 import {
   applyVoucher,
@@ -189,6 +190,7 @@ const create = async (userId, payload) => {
         action: 'create',
         by: userId,
         byRole: 'user',
+        at: new Date(),
         note: 'Người dùng tạo đơn hàng - Tồn kho đã được reserve (transaction)',
         fromStatus: null,
         toStatus: 'PENDING',
@@ -291,10 +293,17 @@ const adminGetOrders = async (page = 1, itemsPerPage = 10, query = {}) => {
   }
 }
 
-const updateStatus = async (orderId, data) => {
+const updateStatus = async (orderId, data, adminId) => {
   try {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+    }
+
+    if (!adminId || !ObjectId.isValid(adminId)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Admin ID là bắt buộc và phải hợp lệ'
+      )
     }
 
     const order = await orderModel.findOneById(orderId)
@@ -396,8 +405,9 @@ const updateStatus = async (orderId, data) => {
     try {
       await orderModel.appendLog(orderId, {
         action: 'updateStatus',
-        by: 'admin',
+        by: adminId,
         byRole: 'admin',
+        at: new Date(),
         note: 'Admin cập nhật trạng thái đơn hàng',
         fromStatus: order.status,
         toStatus: status,
@@ -415,10 +425,17 @@ const updateStatus = async (orderId, data) => {
   }
 }
 
-const updatePaymentStatus = async (orderId, data) => {
+const updatePaymentStatus = async (orderId, data, adminId) => {
   try {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+    }
+
+    if (!adminId || !ObjectId.isValid(adminId)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Admin ID là bắt buộc và phải hợp lệ'
+      )
     }
 
     const order = await orderModel.findOneById(orderId)
@@ -435,12 +452,35 @@ const updatePaymentStatus = async (orderId, data) => {
       )
     }
 
-    // ⚠️ CRITICAL: Không cho phép set PAID qua route này
-    // Phải dùng /admin/mark-paid để đảm bảo stock/voucher được xử lý đúng
+    // ⚠️ CRITICAL: Không cho phép set PAID hoặc REFUNDED qua route này
+    // - PAID: Phải dùng /admin/mark-paid để đảm bảo selled được tăng đúng
+    // - REFUNDED: Phải dùng /admin/cancel để đảm bảo stock/selled/voucher được rollback đúng
     if (paymentStatus === 'PAID') {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Không thể set trạng thái PAID qua route này. Vui lòng sử dụng /admin/mark-paid để xác nhận thanh toán'
+      )
+    }
+
+    if (paymentStatus === 'REFUNDED') {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Không thể set trạng thái REFUNDED qua route này. Vui lòng sử dụng /admin/cancel để hủy đơn và hoàn tiền'
+      )
+    }
+
+    // Không cho phép update payment status của các đơn hàng ở trạng thái final
+    const finalStatuses = ['CANCELLED', 'COMPLETED', 'REFUNDED']
+    if (finalStatuses.includes(order.status)) {
+      const statusNames = {
+        CANCELLED: 'đã hủy',
+        COMPLETED: 'đã hoàn thành',
+        REFUNDED: 'đã hoàn tiền'
+      }
+      const statusName = statusNames[order.status] || order.status
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Không thể thay đổi trạng thái thanh toán của đơn hàng ${statusName}`
       )
     }
 
@@ -505,8 +545,9 @@ const updatePaymentStatus = async (orderId, data) => {
     try {
       await orderModel.appendLog(orderId, {
         action: 'updatePaymentStatus',
-        by: 'admin',
+        by: adminId,
         byRole: 'admin',
+        at: new Date(),
         note: 'Admin cập nhật trạng thái thanh toán',
         fromPaymentStatus: order.paymentStatus,
         toPaymentStatus: paymentStatus,
@@ -525,13 +566,20 @@ const updatePaymentStatus = async (orderId, data) => {
 }
 
 // Xác nhận thanh toán thành công: tăng selled, cập nhật order (với transaction)
-const markPaid = async (orderId) => {
+const markPaid = async (orderId, adminId) => {
   const client = GET_CLIENT()
   const session = client.startSession()
 
   try {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+    }
+
+    if (!adminId || !ObjectId.isValid(adminId)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Admin ID là bắt buộc và phải hợp lệ'
+      )
     }
     const order = await orderModel.findOneById(orderId)
     if (!order)
@@ -602,8 +650,9 @@ const markPaid = async (orderId) => {
     try {
       await orderModel.appendLog(orderId, {
         action: 'markPaid',
-        by: 'admin',
+        by: adminId,
         byRole: 'admin',
+        at: new Date(),
         note: `Xác nhận thanh toán thành công${
           markPaidCheck.reason ? ` (${markPaidCheck.reason})` : ''
         }`,
@@ -633,7 +682,7 @@ const markPaid = async (orderId) => {
 // Hủy đơn hàng
 // - User: chỉ hủy khi status = PENDING hoặc CONFIRMED
 // - Admin: có thể hủy ở các trạng thái trước khi giao; nếu đã PAID thì restock tồn kho, đặt paymentStatus='REFUNDED'
-const cancel = async (orderId, requesterId = null, isAdmin = false) => {
+const cancel = async (orderId, requesterId, isAdmin = false) => {
   const client = GET_CLIENT()
   const session = client.startSession()
 
@@ -641,6 +690,15 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
     if (!ObjectId.isValid(orderId)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
     }
+
+    // requesterId bắt buộc (user ID hoặc admin ID) để audit trail
+    if (!requesterId || !ObjectId.isValid(requesterId)) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Requester ID là bắt buộc và phải hợp lệ'
+      )
+    }
+
     const order = await orderModel.findOneById(orderId)
     if (!order)
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
@@ -729,8 +787,9 @@ const cancel = async (orderId, requesterId = null, isAdmin = false) => {
     try {
       await orderModel.appendLog(orderId, {
         action: 'cancel',
-        by: isAdmin ? 'admin' : requesterId,
+        by: requesterId,
         byRole: isAdmin ? 'admin' : 'user',
+        at: new Date(),
         note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn',
         fromStatus: order.status,
         toStatus: 'CANCELLED',
@@ -841,6 +900,7 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
         action: 'cancel',
         by: requesterId,
         byRole: 'user',
+        at: new Date(),
         note: 'Người dùng hủy đơn bằng mã đơn hàng',
         fromStatus: order.status,
         toStatus: 'CANCELLED',
@@ -863,6 +923,116 @@ const cancelByOrderCode = async (orderCode, requesterId) => {
   }
 }
 
+const adminGetOrderLogs = async (orderId) => {
+  try {
+    if (!ObjectId.isValid(orderId)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+    }
+
+    const order = await orderModel.getLogsByOrderId(orderId)
+
+    if (!order) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+    }
+
+    // Populate thông tin user/admin cho mỗi log entry
+    const logsWithUserInfo = await Promise.all(
+      (order.logs || []).map(async (log) => {
+        let performedBy = null
+
+        // Nếu có by field và không phải null, lấy thông tin user/admin
+        if (log.by && ObjectId.isValid(log.by)) {
+          try {
+            const user = await userModel.findOneById(log.by)
+            if (user) {
+              performedBy = {
+                _id: user._id,
+                email: user.email,
+                displayName: user.name || user.userName || user.email,
+                role: user.role
+              }
+            }
+          } catch (err) {
+            // Nếu không tìm thấy user, giữ nguyên null
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`User not found for log.by: ${log.by}`, err)
+            }
+          }
+        }
+
+        return {
+          ...log,
+          performedBy
+        }
+      })
+    )
+
+    return {
+      orderCode: order.orderCode,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      logs: logsWithUserInfo
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+const adminGetOrderLogsByCode = async (orderCode) => {
+  try {
+    if (!orderCode || typeof orderCode !== 'string') {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã đơn hàng không hợp lệ')
+    }
+
+    const order = await orderModel.getLogsByOrderCode(orderCode)
+
+    if (!order) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng')
+    }
+
+    // Populate thông tin user/admin cho mỗi log entry
+    const logsWithUserInfo = await Promise.all(
+      (order.logs || []).map(async (log) => {
+        let performedBy = null
+
+        // Nếu có by field và không phải null, lấy thông tin user/admin
+        if (log.by && ObjectId.isValid(log.by)) {
+          try {
+            const user = await userModel.findOneById(log.by)
+            if (user) {
+              performedBy = {
+                _id: user._id,
+                email: user.email,
+                displayName: user.name || user.userName || user.email,
+                role: user.role
+              }
+            }
+          } catch (err) {
+            // Nếu không tìm thấy user, giữ nguyên null
+            if (process.env.NODE_ENV === 'development') {
+              console.warn(`User not found for log.by: ${log.by}`, err)
+            }
+          }
+        }
+
+        return {
+          ...log,
+          performedBy
+        }
+      })
+    )
+
+    return {
+      orderCode: order.orderCode,
+      status: order.status,
+      paymentStatus: order.paymentStatus,
+      logs: logsWithUserInfo
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
 export const orderService = {
   create,
   getMyOrders,
@@ -873,5 +1043,7 @@ export const orderService = {
   updatePaymentStatus,
   markPaid,
   cancel,
-  cancelByOrderCode
+  cancelByOrderCode,
+  adminGetOrderLogs,
+  adminGetOrderLogsByCode
 }
