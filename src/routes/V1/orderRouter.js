@@ -23,24 +23,14 @@ Router.get(
 Router.get(
   '/details/:id',
   authMiddleware.verifyActiveUser,
+  orderValidation.validateOrderId,
   orderController.getDetails
-)
-Router.get(
-  '/details-by-code/:orderCode',
-  authMiddleware.verifyActiveUser,
-  orderValidation.validateOrderCode,
-  orderController.getDetailsByOrderCode
 )
 Router.post(
   '/cancel/:id',
   authMiddleware.verifyActiveUser,
+  orderValidation.validateOrderId,
   orderController.userCancel
-)
-Router.post(
-  '/cancel-by-code/:orderCode',
-  authMiddleware.verifyActiveUser,
-  orderValidation.validateOrderCode,
-  orderController.userCancelByOrderCode
 )
 
 // Admin routes - admin luôn active, chỉ cần verify admin
@@ -48,6 +38,7 @@ Router.get('/all', authMiddleware.verifyAdmin, orderController.adminGetOrders)
 Router.get(
   '/admin/details/:id',
   authMiddleware.verifyAdmin,
+  orderValidation.validateOrderId,
   orderController.adminGetDetails
 )
 Router.put(
@@ -65,23 +56,20 @@ Router.put(
 Router.post(
   '/admin/mark-paid/:id',
   authMiddleware.verifyAdmin,
+  orderValidation.validateOrderId,
   orderController.adminMarkPaid
 )
 Router.post(
   '/admin/cancel/:id',
   authMiddleware.verifyAdmin,
+  orderValidation.validateOrderId,
   orderController.adminCancel
 )
 Router.get(
   '/admin/logs/:id',
   authMiddleware.verifyAdmin,
+  orderValidation.validateOrderId,
   orderController.adminGetOrderLogs
-)
-Router.get(
-  '/admin/logs-by-code/:orderCode',
-  authMiddleware.verifyAdmin,
-  orderValidation.validateOrderCode,
-  orderController.adminGetOrderLogsByCode
 )
 
 export const orderRoute = Router

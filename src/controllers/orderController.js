@@ -55,21 +55,6 @@ const getDetails = async (req, res, next) => {
   }
 }
 
-const getDetailsByOrderCode = async (req, res, next) => {
-  try {
-    const userId = req.jwtDecoded?._id
-    const orderCode = req.params?.orderCode
-    const order = await orderService.getDetailsByOrderCode(orderCode, userId)
-    res.status(StatusCodes.OK).json({
-      code: StatusCodes.OK,
-      message: 'Lấy chi tiết đơn hàng thành công',
-      data: order
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
 // Admin
 const adminGetOrders = async (req, res, next) => {
   try {
@@ -191,21 +176,6 @@ const adminCancel = async (req, res, next) => {
   }
 }
 
-const userCancelByOrderCode = async (req, res, next) => {
-  try {
-    const orderCode = req.params?.orderCode
-    const userId = req.jwtDecoded?._id
-    const updated = await orderService.cancelByOrderCode(orderCode, userId)
-    res.status(StatusCodes.OK).json({
-      code: StatusCodes.OK,
-      message: 'Hủy đơn hàng thành công',
-      data: { orderCode: updated.orderCode, status: updated.status }
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
 const adminGetOrderLogs = async (req, res, next) => {
   try {
     const orderId = req.params?.id
@@ -220,33 +190,16 @@ const adminGetOrderLogs = async (req, res, next) => {
   }
 }
 
-const adminGetOrderLogsByCode = async (req, res, next) => {
-  try {
-    const orderCode = req.params?.orderCode
-    const result = await orderService.adminGetOrderLogsByCode(orderCode)
-    res.status(StatusCodes.OK).json({
-      code: StatusCodes.OK,
-      message: 'Lấy lịch sử thay đổi đơn hàng thành công',
-      data: result
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
 export const orderController = {
   create,
   getMyOrders,
   getDetails,
-  getDetailsByOrderCode,
   adminGetOrders,
   adminGetDetails,
   adminUpdateStatus,
   adminUpdatePaymentStatus,
   adminMarkPaid,
   userCancel,
-  userCancelByOrderCode,
   adminCancel,
-  adminGetOrderLogs,
-  adminGetOrderLogsByCode
+  adminGetOrderLogs
 }

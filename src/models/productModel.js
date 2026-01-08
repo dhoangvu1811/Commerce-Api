@@ -225,16 +225,27 @@ const incrementSelled = async (productId, qty, options = {}) => {
 }
 
 // Giảm số lượng đã bán (dùng khi hủy đơn đã thanh toán)
+// Sử dụng atomic operation với condition selled >= qty để tránh negative value
 const decrementSelled = async (productId, qty, options = {}) => {
   try {
     const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .updateOne(
-        { _id: new ObjectId(productId) },
+        { _id: new ObjectId(productId), selled: { $gte: qty } },
         { $inc: { selled: -qty }, $set: { updatedAt: new Date() } },
         updateOptions
       )
+    // Nếu không match (selled < qty), set selled = 0 thay vì để negative
+    if (result.matchedCount === 0) {
+      await GET_DB()
+        .collection(PRODUCT_COLLECTION_NAME)
+        .updateOne(
+          { _id: new ObjectId(productId) },
+          { $set: { selled: 0, updatedAt: new Date() } },
+          updateOptions
+        )
+    }
     return result
   } catch (error) {
     throw new Error(error)
