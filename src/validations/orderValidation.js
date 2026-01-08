@@ -11,8 +11,8 @@ const create = async (req, res, next) => {
       .items(
         Joi.object({
           productId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-            'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-            'any.required': 'productId là bắt buộc'
+            'string.pattern.base': 'Sản phẩm không hợp lệ. Vui lòng thử lại.',
+            'any.required': 'Vui lòng chọn sản phẩm'
           }),
           quantity: Joi.number()
             .integer()
@@ -20,10 +20,10 @@ const create = async (req, res, next) => {
             .max(1000)
             .required()
             .messages({
-              'number.base': 'Số lượng phải là số nguyên',
-              'number.min': 'Số lượng tối thiểu là 1',
-              'number.max': 'Số lượng tối đa là 1000 cho mỗi sản phẩm',
-              'any.required': 'Số lượng là bắt buộc'
+              'number.base': 'Số lượng phải là số',
+              'number.min': 'Số lượng phải ít nhất là 1',
+              'number.max': 'Số lượng tối đa là 1000 sản phẩm',
+              'any.required': 'Vui lòng nhập số lượng'
             })
         })
       )
@@ -31,8 +31,8 @@ const create = async (req, res, next) => {
       .max(100)
       .required()
       .messages({
-        'array.min': 'Cần ít nhất 1 sản phẩm',
-        'array.max': 'Tối đa 100 sản phẩm trong 1 đơn hàng'
+        'array.min': 'Giỏ hàng cần có ít nhất 1 sản phẩm',
+        'array.max': 'Đơn hàng chỉ được tối đa 100 sản phẩm'
       }),
     voucherCode: Joi.string().optional().trim().allow(''),
     shippingAddress: Joi.object({
@@ -59,9 +59,7 @@ const create = async (req, res, next) => {
       .optional()
       .valid(...ALLOWED_PAYMENT_METHODS)
       .messages({
-        'any.only': `Phương thức thanh toán phải là một trong: ${ALLOWED_PAYMENT_METHODS.filter(
-          (m) => m
-        ).join(', ')}`
+        'any.only': 'Phương thức thanh toán không hợp lệ. Vui lòng chọn: COD, Thẻ, Ví điện tử hoặc Chuyển khoản.'
       })
   })
 
@@ -78,8 +76,8 @@ const create = async (req, res, next) => {
 const updateStatus = async (req, res, next) => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'ID đơn hàng là bắt buộc'
+      'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
+      'any.required': 'Vui lòng chọn đơn hàng cần cập nhật'
     })
   })
 
@@ -88,7 +86,7 @@ const updateStatus = async (req, res, next) => {
       .valid(...orderModel.ORDER_STATUS)
       .required()
       .messages({
-        'any.required': 'Trạng thái đơn hàng là bắt buộc'
+        'any.required': 'Vui lòng chọn trạng thái đơn hàng'
       })
   })
 
@@ -106,8 +104,8 @@ const updateStatus = async (req, res, next) => {
 const updatePaymentStatus = async (req, res, next) => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'ID đơn hàng là bắt buộc'
+      'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
+      'any.required': 'Vui lòng chọn đơn hàng cần cập nhật'
     })
   })
 
@@ -116,7 +114,7 @@ const updatePaymentStatus = async (req, res, next) => {
       .valid(...orderModel.PAYMENT_STATUS)
       .required()
       .messages({
-        'any.required': 'Trạng thái thanh toán là bắt buộc'
+        'any.required': 'Vui lòng chọn trạng thái thanh toán'
       })
   })
 
@@ -135,8 +133,8 @@ const updatePaymentStatus = async (req, res, next) => {
 const validateOrderId = async (req, res, next) => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'ID đơn hàng là bắt buộc'
+      'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
+      'any.required': 'Vui lòng chọn đơn hàng'
     })
   })
 

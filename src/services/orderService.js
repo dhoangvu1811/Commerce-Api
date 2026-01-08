@@ -63,7 +63,7 @@ const create = async (userId, payload) => {
 
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        `Các sản phẩm sau không tồn tại: ${missingIds.join(', ')}`
+        'Một số sản phẩm trong giỏ hàng không còn tồn tại. Vui lòng kiểm tra lại giỏ hàng của bạn.'
       )
     }
 
@@ -78,7 +78,7 @@ const create = async (userId, payload) => {
       if (prod.countInStock < i.quantity) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          `Sản phẩm "${prod.name}" không đủ tồn kho. Còn lại: ${prod.countInStock}, yêu cầu: ${i.quantity}`
+          `Rất tiếc, sản phẩm "${prod.name}" chỉ còn ${prod.countInStock} sản phẩm. Vui lòng giảm số lượng hoặc chọn sản phẩm khác.`
         )
       }
 
@@ -109,26 +109,26 @@ const create = async (userId, payload) => {
         voucherCode.toUpperCase().trim()
       )
       if (!voucher)
-        throw new ApiError(StatusCodes.NOT_FOUND, 'Mã giảm giá không tồn tại')
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Mã giảm giá không đúng. Vui lòng kiểm tra lại mã bạn đã nhập.')
       if (!voucher.isActive)
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          'Mã giảm giá đã bị vô hiệu hóa'
+          'Mã giảm giá này hiện không còn được sử dụng. Vui lòng thử mã khác.'
         )
       const now = new Date()
       if (voucher.startDate && new Date(voucher.startDate) > now) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          'Mã giảm giá chưa bắt đầu hiệu lực'
+          'Mã giảm giá này chưa đến thời gian sử dụng. Vui lòng quay lại sau.'
         )
       }
       if (voucher.endDate && new Date(voucher.endDate) < now) {
-        throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã hết hạn')
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã hết hạn sử dụng. Vui lòng thử mã khác.')
       }
       if (voucher.usageLimit && voucher.usedCount >= voucher.usageLimit) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          'Mã giảm giá đã đạt giới hạn sử dụng'
+          'Mã giảm giá đã được sử dụng hết. Vui lòng thử mã khác.'
         )
       }
       if (
@@ -137,7 +137,7 @@ const create = async (userId, payload) => {
       ) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          `Đơn tối thiểu để áp dụng là ${voucher.minOrderValue}`
+          `Đơn hàng cần có giá trị tối thiểu ${voucher.minOrderValue.toLocaleString('vi-VN')}đ để sử dụng mã giảm giá này.`
         )
       }
 
@@ -200,7 +200,7 @@ const create = async (userId, payload) => {
           // Transaction will auto-rollback
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            `Sản phẩm "${item.name}" không đủ tồn kho.`
+            `Rất tiếc, sản phẩm "${item.name}" vừa hết hàng. Vui lòng thử lại hoặc chọn sản phẩm khác.`
           )
         }
       }
@@ -216,7 +216,7 @@ const create = async (userId, payload) => {
         if (!voucherResult.modifiedCount) {
           throw new ApiError(
             StatusCodes.BAD_REQUEST,
-            'Mã giảm giá đã đạt giới hạn sử dụng'
+            'Mã giảm giá đã được sử dụng hết. Vui lòng thử mã khác.'
           )
         }
       }
@@ -270,7 +270,7 @@ const getMyOrders = async (userId, page = 1, itemsPerPage = 10) => {
 const getDetails = async (orderId, userId, isAdmin = false) => {
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại thông tin.')
     }
     const order = await orderModel.findOneById(orderId)
     if (!order)
@@ -314,13 +314,13 @@ const adminGetOrders = async (page = 1, itemsPerPage = 10, query = {}) => {
 const updateStatus = async (orderId, data, adminId) => {
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại.')
     }
 
     if (!adminId || !ObjectId.isValid(adminId)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Admin ID là bắt buộc và phải hợp lệ'
+        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
       )
     }
 
@@ -473,13 +473,13 @@ const updateStatus = async (orderId, data, adminId) => {
 const updatePaymentStatus = async (orderId, data, adminId) => {
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại.')
     }
 
     if (!adminId || !ObjectId.isValid(adminId)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Admin ID là bắt buộc và phải hợp lệ'
+        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
       )
     }
 
@@ -624,13 +624,13 @@ const markPaid = async (orderId, adminId) => {
 
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại.')
     }
 
     if (!adminId || !ObjectId.isValid(adminId)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Admin ID là bắt buộc và phải hợp lệ'
+        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
       )
     }
     const order = await orderModel.findOneById(orderId)
@@ -740,14 +740,14 @@ const cancel = async (orderId, requesterId, isAdmin = false) => {
 
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại.')
     }
 
     // requesterId bắt buộc (user ID hoặc admin ID) để audit trail
     if (!requesterId || !ObjectId.isValid(requesterId)) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Requester ID là bắt buộc và phải hợp lệ'
+        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
       )
     }
 
@@ -872,7 +872,7 @@ const cancel = async (orderId, requesterId, isAdmin = false) => {
 const adminGetOrderLogs = async (orderId) => {
   try {
     if (!ObjectId.isValid(orderId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID đơn hàng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không tìm thấy đơn hàng. Vui lòng kiểm tra lại.')
     }
 
     const order = await orderModel.getLogsByOrderId(orderId)
