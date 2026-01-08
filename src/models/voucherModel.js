@@ -157,6 +157,37 @@ const incrementUsedCount = async (voucherId, step = 1, options = {}) => {
   }
 }
 
+// Atomic increment với check usageLimit - Giải quyết race condition
+// Chỉ tăng usedCount nếu chưa đạt limit hoặc không có limit (usageLimit = 0)
+const incrementUsedCountWithLimit = async (
+  voucherId,
+  step = 1,
+  options = {}
+) => {
+  try {
+    const updateOptions = options.session ? { session: options.session } : {}
+    // Atomic operation: Chỉ increment nếu:
+    // - usageLimit = 0 (không giới hạn) HOẶC
+    // - usedCount + step <= usageLimit
+    const result = await GET_DB()
+      .collection(VOUCHER_COLLECTION_NAME)
+      .updateOne(
+        {
+          _id: new ObjectId(voucherId),
+          $or: [
+            { usageLimit: 0 }, // Không giới hạn
+            { $expr: { $lte: [{ $add: ['$usedCount', step] }, '$usageLimit'] } }
+          ]
+        },
+        { $inc: { usedCount: step }, $set: { updatedAt: new Date() } },
+        updateOptions
+      )
+    return result
+  } catch (error) {
+    throw new Error(error)
+  }
+}
+
 // Giảm số lần đã sử dụng voucher (dùng khi hủy đơn đã thanh toán)
 const decrementUsedCount = async (voucherId, step = 1, options = {}) => {
   try {
@@ -208,6 +239,7 @@ export const voucherModel = {
   update,
   deleteOneById,
   incrementUsedCount,
+  incrementUsedCountWithLimit,
   decrementUsedCount,
   findByIds,
   deleteManyByIds

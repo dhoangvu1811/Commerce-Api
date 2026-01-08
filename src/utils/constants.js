@@ -31,3 +31,13 @@ export const PAYMENT_STATUS = [
   'REFUNDED',
   'EXPIRED'
 ]
+
+export const ALLOWED_PAYMENT_METHODS = [
+  'COD',
+  'CARD',
+  'EWALLET',
+  'BANK',
+  'MOMO',
+  'ZALOPAY',
+  '' // Allow empty string for not specified
+]

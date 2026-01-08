@@ -133,13 +133,13 @@ const getDetails = async (userId) => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID người dùng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
     }
 
     const user = await userModel.findOneById(userId)
 
     if (!user) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Không tìm thấy người dùng')
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Loại bỏ password khỏi response
@@ -156,13 +156,13 @@ const updateUser = async (userId, updateData) => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID người dùng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
     }
 
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userId)
     if (!existingUser) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Cập nhật user
@@ -187,7 +187,7 @@ const updateUserByAdmin = async (userId, updateData) => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID người dùng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin người dùng không hợp lệ')
     }
 
     // Kiểm tra user có tồn tại không
@@ -229,13 +229,13 @@ const updatePassword = async (userId, passwordData) => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID người dùng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
     }
 
     // Tìm user
     const user = await userModel.findOneById(userId)
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải OAuth user (Google/Facebook) chưa set password
@@ -290,7 +290,7 @@ const deleteUser = async (userId) => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID người dùng không hợp lệ')
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin người dùng không hợp lệ')
     }
 
     // Kiểm tra user có tồn tại không
@@ -314,7 +314,7 @@ const deleteMultipleUsers = async (userIds) => {
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        'Danh sách ID người dùng không hợp lệ'
+        'Vui lòng chọn ít nhất một người dùng để xóa'
       )
     }
 
@@ -323,7 +323,7 @@ const deleteMultipleUsers = async (userIds) => {
     if (invalidIds.length > 0) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
-        `ID người dùng không hợp lệ: ${invalidIds.join(', ')}`
+        'Một số người dùng được chọn không hợp lệ. Vui lòng làm mới trang và thử lại.'
       )
     }
 
@@ -338,7 +338,7 @@ const deleteMultipleUsers = async (userIds) => {
     if (notFoundIds.length > 0) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
-        `Không tìm thấy người dùng với ID: ${notFoundIds.join(', ')}`
+        'Một số người dùng không tồn tại. Vui lòng làm mới trang và thử lại.'
       )
     }
 
@@ -464,7 +464,7 @@ const refreshToken = async (refreshTokenValue) => {
     const user = await userModel.findOneById(decoded._id)
 
     if (!user) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Token không hợp lệ')
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
     }
 
 
@@ -481,7 +481,7 @@ const refreshToken = async (refreshTokenValue) => {
     ) {
       throw new ApiError(
         StatusCodes.UNAUTHORIZED,
-        'Token không hợp lệ hoặc đã hết hạn'
+        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
       )
     }
     throw error

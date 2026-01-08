@@ -48,6 +48,7 @@ const ORDER_COLLECTION_SCHEMA = Joi.object({
     fullAddress: Joi.string().allow('').optional()
   }).required(),
   voucher: Joi.object({
+    voucherId: Joi.string().optional(), // Lưu ID để tránh lookup khi cancel
     code: Joi.string().required(),
     type: Joi.string().valid('percent', 'fixed').required(),
     amount: Joi.number().required(),
@@ -170,16 +171,6 @@ const update = async (orderId, updateData, options = {}) => {
   }
 }
 
-const findOneByOrderCode = async (orderCode) => {
-  try {
-    return await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOne({ orderCode })
-  } catch (error) {
-    throw new Error(error)
-  }
-}
-
 const appendLog = async (orderId, logEntry, options = {}) => {
   try {
     const updateOptions = options.session ? { session: options.session } : {}
@@ -222,20 +213,6 @@ const getLogsByOrderId = async (orderId) => {
   }
 }
 
-const getLogsByOrderCode = async (orderCode) => {
-  try {
-    const order = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOne(
-        { orderCode },
-        { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } }
-      )
-    return order
-  } catch (error) {
-    throw new Error(error)
-  }
-}
-
 export const orderModel = {
   ORDER_COLLECTION_NAME,
   ORDER_COLLECTION_SCHEMA,
@@ -243,11 +220,9 @@ export const orderModel = {
   PAYMENT_STATUS,
   createNew,
   findOneById,
-  findOneByOrderCode,
   getMany,
   update,
   appendLog,
   deleteOneById,
-  getLogsByOrderId,
-  getLogsByOrderCode
+  getLogsByOrderId
 }

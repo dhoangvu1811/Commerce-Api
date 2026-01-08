@@ -16,7 +16,7 @@ const verifyToken = async (req, res, next) => {
     }
 
     if (!token) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Access token không tồn tại')
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Vui lòng đăng nhập để tiếp tục')
     }
 
     // Verify token
@@ -28,9 +28,9 @@ const verifyToken = async (req, res, next) => {
     next()
   } catch (error) {
     if (error.name === 'JsonWebTokenError') {
-      next(new ApiError(StatusCodes.UNAUTHORIZED, 'Access token không hợp lệ'))
+      next(new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'))
     } else if (error.name === 'TokenExpiredError') {
-      next(new ApiError(StatusCodes.GONE, 'Access token đã hết hạn'))
+      next(new ApiError(StatusCodes.GONE, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'))
     } else {
       next(error)
     }
@@ -43,7 +43,7 @@ const verifyAdmin = async (req, res, next) => {
     if (req.jwtDecoded?.role !== 'admin') {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
-        'Bạn không có quyền truy cập chức năng này'
+        'Bạn cần quyền quản trị viên để thực hiện chức năng này'
       )
     }
     next()
@@ -86,7 +86,7 @@ const verifyActiveUser = async (req, res, next) => {
     // Kiểm tra trạng thái active của user
     const user = await userModel.findOneById(userId)
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Người dùng không tồn tại')
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Tài khoản không tồn tại. Vui lòng đăng ký tài khoản mới.')
     }
 
     if (!user.isActive) {
