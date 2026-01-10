@@ -79,6 +79,16 @@ export interface JwtDecodedPayload {
 }
 
 /**
+ * Cấu trúc phản hồi lỗi
+ */
+export interface ErrorResponse {
+  code: number
+  message: string
+  data: null
+  stack?: string
+}
+
+/**
  * Device và IP info cho session tracking
  */
 export interface DeviceInfo {

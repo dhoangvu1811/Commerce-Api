@@ -69,6 +69,18 @@ const verifyAccessToken = (token: string): AccessTokenPayload => {
 }
 
 /**
+ * Xác thực Access Token nhưng bỏ qua expiration (dùng cho logout)
+ * Vẫn verify signature để đảm bảo token không bị giả mạo
+ * @param {string} token - Access token cần verify
+ * @returns {AccessTokenPayload} Payload đã decode
+ */
+const verifyAccessTokenIgnoreExpiration = (token: string): AccessTokenPayload => {
+  return jwt.verify(token, env.JWT_ACCESS_SECRET, {
+    ignoreExpiration: true
+  }) as AccessTokenPayload
+}
+
+/**
  * Xác thực Refresh Token
  * @param {string} token - Refresh token cần verify
  * @returns {RefreshTokenPayload} Payload đã decode
@@ -142,6 +154,7 @@ export const JwtProvider = {
   generateAccessToken,
   generateRefreshToken,
   verifyAccessToken,
+  verifyAccessTokenIgnoreExpiration,
   verifyRefreshToken,
   verifyRefreshTokenIgnoreExpiration,
   decodeToken,
