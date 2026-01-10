@@ -85,6 +85,11 @@ export interface OrderVoucher {
 }
 
 /**
+ * Alias cho VoucherSnapshot (dùng trong orderService)
+ */
+export type VoucherSnapshot = OrderVoucher
+
+/**
  * Tổng tiền đơn hàng
  */
 export interface OrderTotals {
@@ -105,6 +110,8 @@ export interface LogEntry {
   note?: string
   fromStatus?: OrderStatus | null
   toStatus?: OrderStatus | null
+  fromPaymentStatus?: PaymentStatus
+  toPaymentStatus?: PaymentStatus
   meta?: Record<string, unknown>
 }
 

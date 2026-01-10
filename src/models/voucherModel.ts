@@ -69,6 +69,7 @@ interface UpdateVoucherInput {
   startDate?: Date | null
   endDate?: Date | null
   isActive?: boolean
+  updatedAt?: Date
 }
 
 /** Kết quả phân trang */

@@ -109,7 +109,9 @@ interface CreateOrderInput {
   status?: OrderStatus
   paymentStatus?: PaymentStatus
   paymentMethod?: string
-  logs: LogEntry[]
+  logs?: LogEntry[]
+  createdAt?: Date
+  updatedAt?: Date
 }
 
 /** Input data để update order */
@@ -119,6 +121,7 @@ interface UpdateOrderInput {
   paymentMethod?: string
   deliveredAt?: Date | null
   voucher?: OrderVoucher | null
+  updatedAt?: Date
 }
 
 /** Kết quả phân trang */

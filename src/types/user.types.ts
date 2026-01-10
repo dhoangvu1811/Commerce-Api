@@ -21,6 +21,11 @@ export type Gender = 'male' | 'female' | 'other' | ''
 export type AccountType = 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
 
 /**
+ * Alias cho TypeAccount (backward compatibility)
+ */
+export type TypeAccount = AccountType
+
+/**
  * User document trong MongoDB
  */
 export interface User extends Timestamps {

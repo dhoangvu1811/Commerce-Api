@@ -77,6 +77,8 @@ interface UpdateUserInput {
   isActive?: boolean
   emailVerified?: boolean
   password?: string
+  typeAccount?: AccountType
+  updatedAt?: Date
 }
 
 /** Kết quả phân trang */
