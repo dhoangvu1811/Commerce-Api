@@ -1,47 +1,56 @@
+/**
+ * Server Entry Point
+ * Điểm khởi động chính của ứng dụng Express
+ */
+
 /* eslint-disable no-console */
 import cookieParser from 'cookie-parser'
-import express from 'express'
-import { errorHandlingMiddleware } from './middlewares/errorHandlingMiddleware'
-import { env } from './config/environment'
-import { APIs_V1 } from './routes/V1'
-import { CLOSE_DB, CONNECT_DB } from './config/mongodb'
+import express, { Request, Response, NextFunction } from 'express'
+import errorHandlingMiddleware from './middlewares/errorHandlingMiddleware.js'
+import { env } from './config/environment.js'
+import { APIs_V1 } from './routes/V1/index.js'
+import { CLOSE_DB, CONNECT_DB } from './config/mongodb.js'
 import cors from 'cors'
-import { corsOptions } from './config/cors'
-import '~/providers/passport'
+import { corsOptions } from './config/cors.js'
+import '~/providers/passport.js'
 
-const START_SERVER = () => {
+/**
+ * Khởi động Express server
+ */
+const START_SERVER = (): void => {
   const app = express()
 
-  //Fix cái vụ Cache from disk của ExpressJS
-  app.use((req, res, next) => {
+  // Fix cái vụ Cache from disk của ExpressJS
+  app.use((_req: Request, res: Response, next: NextFunction) => {
     res.set('Cache-Control', 'no-store')
     next()
   })
 
-  //Cấu hình Cookie parser
+  // Cấu hình Cookie parser
   app.use(cookieParser())
 
-  //Xử lý cors
+  // Xử lý cors
   app.use(cors(corsOptions))
 
-  //Enable req.body json data
+  // Enable req.body json data
   app.use(express.json())
 
-  //Use APIs V1
+  // Use APIs V1
   app.use('/V1', APIs_V1)
 
   // Middleware xử lý lỗi tập trung
   app.use(errorHandlingMiddleware)
 
-  //Môi trường production
+  // Môi trường production
   if (env.BUILD_MODE === 'production') {
-    app.listen(process.env.PORT, () => {
+    const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
+    app.listen(port, () => {
       console.log(
-        `3. PRODUCTION Hello ${env.AUTHOR}, I am running at PORT: ${process.env?.PORT}`
+        `3. PRODUCTION Hello ${env.AUTHOR}, I am running at PORT: ${port}`
       )
     })
   } else {
-    //Môi trường Local dev
+    // Môi trường Local dev
     app.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
       console.log(
         `3. LOCAL_DEV Hello ${env.AUTHOR}, I am running at HOST: ${env.LOCAL_DEV_APP_HOST} and PORT: ${env.LOCAL_DEV_APP_PORT}`
@@ -49,8 +58,11 @@ const START_SERVER = () => {
     })
   }
 
-  // Graceful shutdown function
-  const gracefulShutdown = async (signal) => {
+  /**
+   * Graceful shutdown function
+   * Đóng kết nối database trước khi tắt server
+   */
+  const gracefulShutdown = async (signal: string): Promise<void> => {
     console.log(`4. Server is shutting down... (${signal})`)
     try {
       await CLOSE_DB()
@@ -68,9 +80,11 @@ const START_SERVER = () => {
   process.on('SIGUSR2', () => gracefulShutdown('SIGUSR2')) // Nodemon restart
 }
 
-//Chỉ khi kết nối thành công mới start server
-//Immediately Invoked / Anonymous Async Functions (IIFE)
-;(async () => {
+/**
+ * Chỉ khi kết nối thành công mới start server
+ * Immediately Invoked / Anonymous Async Functions (IIFE)
+ */
+;(async (): Promise<void> => {
   try {
     console.log('1. Connecting to MongoDB Cloud Atlas...')
     await CONNECT_DB()

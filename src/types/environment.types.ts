@@ -18,8 +18,9 @@ export interface EnvironmentConfig {
 
   // App
   LOCAL_DEV_APP_HOST: string
-  LOCAL_DEV_APP_PORT: string | number
+  LOCAL_DEV_APP_PORT: number
   BUILD_MODE: BuildMode
+  AUTHOR: string
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string
