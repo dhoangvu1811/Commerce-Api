@@ -1,14 +1,32 @@
-import { StatusCodes } from 'http-status-codes'
-import { userService } from '~/services/userService'
-import { oAuthService } from '~/services/oAuthService'
-import { sessionService } from '~/services/sessionService'
-import { CloudinaryProvider } from '~/providers/CloudinaryProvider'
-import { WEBSITE_DOMAIN } from '~/utils/constants'
-import { env } from '~/config/environment'
-import { sessionModel } from '~/models/sessionModel'
-import ms from 'ms'
+/**
+ * User Controller
+ * Điều phối API requests cho users, auth, sessions
+ */
 
-const register = async (req, res, next) => {
+import { Request, Response, NextFunction } from 'express'
+import { StatusCodes } from 'http-status-codes'
+import { userService } from '~/services/userService.js'
+import { oAuthService } from '~/services/oAuthService.js'
+import { sessionService } from '~/services/sessionService.js'
+import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
+import { WEBSITE_DOMAIN } from '~/utils/constants.js'
+import { env } from '~/config/environment.js'
+import { sessionModel } from '~/models/sessionModel.js'
+import ms from 'ms'
+import type { User, UserRole } from '~/types/user.types.js'
+
+// Extend Request type to include jwtDecoded and file
+interface AuthRequest extends Request {
+  jwtDecoded?: {
+    _id: string
+    email: string
+    role: string
+    sessionId?: string
+  }
+  file?: Express.Multer.File
+}
+
+const register = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const createdUser = await userService.register(req.body)
 
@@ -22,11 +40,11 @@ const register = async (req, res, next) => {
   }
 }
 
-const login = async (req, res, next) => {
+const login = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Lấy thông tin device và IP cho session tracking
     const deviceInfo = req.get('User-Agent') || ''
-    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+    const ipAddress = req.ip || req.socket?.remoteAddress || ''
 
     const loginResult = await userService.login(req.body, deviceInfo, ipAddress)
 
@@ -35,14 +53,14 @@ const login = async (req, res, next) => {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('30m')
+      maxAge: ms('30m' as ms.StringValue)
     })
 
     res.cookie('refreshToken', loginResult.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('7d') // 7 ngày
+      maxAge: ms('7d' as ms.StringValue) // 7 ngày
     })
 
     res.status(StatusCodes.OK).json({
@@ -58,7 +76,7 @@ const login = async (req, res, next) => {
   }
 }
 
-const logout = async (req, res, next) => {
+const logout = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // sessionId có thể đến từ AT hoặc RT
     const sessionId = req.jwtDecoded?.sessionId
@@ -70,8 +88,7 @@ const logout = async (req, res, next) => {
       } catch (error) {
         // Log error nhưng vẫn tiếp tục xóa cookies
         if (env.BUILD_MODE === 'dev') {
-          // eslint-disable-next-line no-console
-          console.error('❌ Lỗi khi logout session:', error.message)
+          console.error('❌ Lỗi khi logout session:', (error as Error).message)
         }
       }
     }
@@ -90,9 +107,9 @@ const logout = async (req, res, next) => {
   }
 }
 
-const getDetails = async (req, res, next) => {
+const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.params?.id
+    const userId = req.params.id!
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -105,9 +122,9 @@ const getDetails = async (req, res, next) => {
   }
 }
 
-const getCurrentUser = async (req, res, next) => {
+const getCurrentUser = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -120,9 +137,9 @@ const getCurrentUser = async (req, res, next) => {
   }
 }
 
-const updateUser = async (req, res, next) => {
+const updateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.params?.id
+    const userId = req.params.id!
     const updatedUser = await userService.updateUser(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -135,17 +152,14 @@ const updateUser = async (req, res, next) => {
   }
 }
 
-const updateCurrentUser = async (req, res, next) => {
+const updateCurrentUser = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const updateData = { ...req.body }
 
     // Xử lý upload avatar nếu có file
     if (req.file) {
-      const uploadResult = await CloudinaryProvider.streamUpload(
-        req.file?.buffer,
-        'users-commerceweb'
-      )
+      const uploadResult = await CloudinaryProvider.streamUpload(req.file.buffer, 'users-commerceweb')
       updateData.avatar = uploadResult?.secure_url
     }
 
@@ -161,9 +175,9 @@ const updateCurrentUser = async (req, res, next) => {
   }
 }
 
-const updateUserByAdmin = async (req, res, next) => {
+const updateUserByAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.params?.id
+    const userId = req.params.id!
     const updateData = { ...req.body }
 
     const updatedUser = await userService.updateUserByAdmin(userId, updateData)
@@ -178,9 +192,9 @@ const updateUserByAdmin = async (req, res, next) => {
   }
 }
 
-const updatePassword = async (req, res, next) => {
+const updatePassword = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const updatedUser = await userService.updatePassword(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -193,9 +207,9 @@ const updatePassword = async (req, res, next) => {
   }
 }
 
-const deleteUser = async (req, res, next) => {
+const deleteUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.params?.id
+    const userId = req.params.id!
     const result = await userService.deleteUser(userId)
 
     res.status(StatusCodes.OK).json({
@@ -208,7 +222,7 @@ const deleteUser = async (req, res, next) => {
   }
 }
 
-const deleteMultipleUsers = async (req, res, next) => {
+const deleteMultipleUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { userIds } = req.body || {}
     const result = await userService.deleteMultipleUsers(userIds)
@@ -223,17 +237,21 @@ const deleteMultipleUsers = async (req, res, next) => {
   }
 }
 
-const getUsers = async (req, res, next) => {
+const getUsers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
     const queryFilter = {
-      search,
-      role,
-      isActive,
-      sort
+      search: search as string | undefined,
+      role: role as UserRole | undefined,
+      isActive: isActive as string | undefined,
+      sort: sort as string | undefined
     }
 
-    const result = await userService.getUsers(page, itemsPerPage, queryFilter)
+    const result = await userService.getUsers(
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10,
+      queryFilter
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -246,19 +264,19 @@ const getUsers = async (req, res, next) => {
 }
 
 // Lấy danh sách users với session summary cho table overview (Admin only)
-const getUsersWithSessionSummary = async (req, res, next) => {
+const getUsersWithSessionSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
     const queryFilter = {
-      search,
-      role,
-      isActive,
-      sort
+      search: search as string | undefined,
+      role: role as UserRole | undefined,
+      isActive: isActive as string | undefined,
+      sort: sort as string | undefined
     }
 
     const result = await sessionService.getUsersWithSessionSummary(
-      page,
-      itemsPerPage,
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10,
       queryFilter
     )
 
@@ -272,26 +290,27 @@ const getUsersWithSessionSummary = async (req, res, next) => {
   }
 }
 
-const refreshToken = async (req, res, next) => {
+const refreshToken = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const refreshToken = req.cookies?.refreshToken
+    const refreshTokenValue = req.cookies?.refreshToken
 
-    if (!refreshToken) {
-      return res.status(StatusCodes.UNAUTHORIZED).json({
+    if (!refreshTokenValue) {
+      res.status(StatusCodes.UNAUTHORIZED).json({
         code: StatusCodes.UNAUTHORIZED,
         message: 'Refresh token không tồn tại',
         data: null
       })
+      return
     }
 
-    const result = await userService.refreshToken(refreshToken)
+    const result = await userService.refreshToken(refreshTokenValue)
 
     // Set cookie cho access token mới
     res.cookie('accessToken', result.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('30m')
+      maxAge: ms('30m' as ms.StringValue)
     })
 
     res.status(StatusCodes.OK).json({
@@ -304,7 +323,7 @@ const refreshToken = async (req, res, next) => {
   }
 }
 
-const createUserByAdmin = async (req, res, next) => {
+const createUserByAdmin = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const createData = { ...req.body }
 
@@ -320,22 +339,20 @@ const createUserByAdmin = async (req, res, next) => {
   }
 }
 
-const uploadAvatar = async (req, res, next) => {
+const uploadAvatar = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Kiểm tra xem có file được upload không
     if (!req.file) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
+      res.status(StatusCodes.BAD_REQUEST).json({
         code: StatusCodes.BAD_REQUEST,
         message: 'Vui lòng chọn ảnh avatar để upload',
         data: null
       })
+      return
     }
 
     // Upload avatar thông qua service
-    const uploadResult = await userService.uploadAvatar(
-      req.file?.buffer,
-      'users-commerceweb'
-    )
+    const uploadResult = await userService.uploadAvatar(req.file.buffer, 'users-commerceweb')
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -351,39 +368,36 @@ const uploadAvatar = async (req, res, next) => {
 }
 
 // Google OAuth Success Callback
-const googleOAuthSuccess = async (req, res, next) => {
+const googleOAuthSuccess = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // User đã được authenticate bởi passport và có trong req.user
-    const user = req.user
+    const user = req.user as User | undefined
 
     if (!user) {
-      return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      return
     }
 
     // Lấy thông tin device và IP cho session tracking
     const deviceInfo = req.get('User-Agent') || 'Google OAuth'
-    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+    const ipAddress = req.ip || req.socket?.remoteAddress || ''
 
     // Sử dụng service để tạo JWT tokens với session tracking
-    const authResult = await oAuthService.generateAuthTokens(
-      user,
-      deviceInfo,
-      ipAddress
-    )
+    const authResult = await oAuthService.generateAuthTokens(user, deviceInfo, ipAddress)
 
     // Set cookies
     res.cookie('accessToken', authResult.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('30m')
+      maxAge: ms('30m' as ms.StringValue)
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('7d') // 7 days
+      maxAge: ms('7d' as ms.StringValue) // 7 days
     })
 
     // Redirect về client với success
@@ -394,65 +408,56 @@ const googleOAuthSuccess = async (req, res, next) => {
 }
 
 // Google OAuth Failure Callback
-const googleOAuthFailure = async (req, res, next) => {
+const googleOAuthFailure = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const errorMessage = req.query.error || 'oauth_failed'
-    const errorDescription =
-      req.query.error_description || 'Đăng nhập Google thất bại'
+    const errorMessage = (req.query.error as string) || 'oauth_failed'
+    const errorDescription = (req.query.error_description as string) || 'Đăng nhập Google thất bại'
 
     // Log lỗi để debug
     if (env.BUILD_MODE === 'dev') {
-      // eslint-disable-next-line no-console
       console.error('❌ Google OAuth Failure:', {
         errorMessage,
         errorDescription
       })
     }
 
-    res.redirect(
-      `${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
-        errorDescription
-      )}`
-    )
+    res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(errorDescription)}`)
   } catch (error) {
     next(error)
   }
 }
 
 // Facebook OAuth Success Callback
-const facebookOAuthSuccess = async (req, res, next) => {
+const facebookOAuthSuccess = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     // User đã được authenticate bởi passport và có trong req.user
-    const user = req.user
+    const user = req.user as User | undefined
 
     if (!user) {
-      return res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      return
     }
 
     // Lấy thông tin device và IP cho session tracking
     const deviceInfo = req.get('User-Agent') || 'Facebook OAuth'
-    const ipAddress = req.ip || req.connection?.remoteAddress || ''
+    const ipAddress = req.ip || req.socket?.remoteAddress || ''
 
     // Sử dụng service để tạo JWT tokens với session tracking
-    const authResult = await oAuthService.generateAuthTokens(
-      user,
-      deviceInfo,
-      ipAddress
-    )
+    const authResult = await oAuthService.generateAuthTokens(user, deviceInfo, ipAddress)
 
     // Set cookies
     res.cookie('accessToken', authResult.accessToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('30m')
+      maxAge: ms('30m' as ms.StringValue)
     })
 
     res.cookie('refreshToken', authResult.refreshToken, {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
-      maxAge: ms('7d') // 7 days
+      maxAge: ms('7d' as ms.StringValue) // 7 days
     })
 
     // Redirect về client với success
@@ -463,34 +468,28 @@ const facebookOAuthSuccess = async (req, res, next) => {
 }
 
 // Facebook OAuth Failure Callback
-const facebookOAuthFailure = async (req, res, next) => {
+const facebookOAuthFailure = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const errorMessage = req.query.error || 'oauth_failed'
-    const errorDescription =
-      req.query.error_description || 'Đăng nhập Facebook thất bại'
+    const errorMessage = (req.query.error as string) || 'oauth_failed'
+    const errorDescription = (req.query.error_description as string) || 'Đăng nhập Facebook thất bại'
 
     // Log lỗi để debug
     if (env.BUILD_MODE === 'dev') {
-      // eslint-disable-next-line no-console
       console.error('❌ Facebook OAuth Failure:', {
         errorMessage,
         errorDescription
       })
     }
 
-    res.redirect(
-      `${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(
-        errorDescription
-      )}`
-    )
+    res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=${errorMessage}&message=${encodeURIComponent(errorDescription)}`)
   } catch (error) {
     next(error)
   }
 }
 
-const activateUser = async (req, res, next) => {
+const activateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { userId } = req.params
+    const userId = req.params.userId!
 
     const activatedUser = await userService.activateUser(userId)
 
@@ -504,9 +503,9 @@ const activateUser = async (req, res, next) => {
   }
 }
 
-const deactivateUser = async (req, res, next) => {
+const deactivateUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { userId } = req.params
+    const userId = req.params.userId!
 
     const deactivatedUser = await userService.deactivateUser(userId)
 
@@ -521,7 +520,7 @@ const deactivateUser = async (req, res, next) => {
 }
 
 // Gửi email xác minh tài khoản
-const sendVerificationEmail = async (req, res, next) => {
+const sendVerificationEmail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email } = req.body
     const result = await userService.sendVerificationEmail(email)
@@ -540,10 +539,10 @@ const sendVerificationEmail = async (req, res, next) => {
 }
 
 // Xác minh tài khoản người dùng
-const verifyUserAccount = async (req, res, next) => {
+const verifyUserAccount = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { email, token } = req.query
-    const result = await userService.verifyUserAccount(email, token)
+    const result = await userService.verifyUserAccount(email as string, token as string)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -556,7 +555,7 @@ const verifyUserAccount = async (req, res, next) => {
 }
 
 // Revoke user session (Admin only)
-const revokeUserSession = async (req, res, next) => {
+const revokeUserSession = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { sessionId } = req.body
     const result = await sessionService.revokeUserSession(sessionId)
@@ -572,9 +571,9 @@ const revokeUserSession = async (req, res, next) => {
 }
 
 // Revoke all sessions của một user (Admin only)
-const revokeAllUserSessions = async (req, res, next) => {
+const revokeAllUserSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { userId } = req.params
+    const userId = req.params.userId!
     const result = await sessionService.revokeAllUserSessions(userId)
 
     res.status(StatusCodes.OK).json({
@@ -588,9 +587,9 @@ const revokeAllUserSessions = async (req, res, next) => {
 }
 
 // Lấy danh sách sessions của user (Admin only)
-const getUserSessions = async (req, res, next) => {
+const getUserSessions = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { userId } = req.params
+    const userId = req.params.userId!
     const result = await sessionService.getUserSessions(userId)
 
     res.status(StatusCodes.OK).json({
@@ -604,14 +603,11 @@ const getUserSessions = async (req, res, next) => {
 }
 
 // Lấy sessions của user hiện tại
-const getCurrentUserSessions = async (req, res, next) => {
+const getCurrentUserSessions = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const currentSessionId = req.jwtDecoded?.sessionId
-    const result = await sessionService.getCurrentUserSessions(
-      userId,
-      currentSessionId
-    )
+    const result = await sessionService.getCurrentUserSessions(userId, currentSessionId)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -624,9 +620,9 @@ const getCurrentUserSessions = async (req, res, next) => {
 }
 
 // User tự revoke session của chính mình
-const revokeMySession = async (req, res, next) => {
+const revokeMySession = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const { sessionId } = req.body
     const result = await sessionService.revokeMySession(userId, sessionId)
 

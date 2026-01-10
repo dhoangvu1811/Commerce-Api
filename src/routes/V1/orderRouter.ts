@@ -1,32 +1,33 @@
-import express from 'express'
-import { authMiddleware } from '~/middlewares/authMiddleware'
-import { orderValidation } from '~/validations/orderValidation'
-import { orderController } from '~/controllers/orderController'
+/**
+ * Order Router
+ * Định nghĩa các routes cho orders
+ */
 
-const Router = express.Router()
+import express, { Router } from 'express'
+import { authMiddleware } from '~/middlewares/authMiddleware.js'
+import { orderValidation } from '~/validations/orderValidation.js'
+import { orderController } from '~/controllers/orderController.js'
+
+const RouterInstance: Router = express.Router()
 
 // All routes require authentication
-Router.use(authMiddleware.verifyToken)
+RouterInstance.use(authMiddleware.verifyToken)
 
 // User routes - yêu cầu user phải active
-Router.post(
+RouterInstance.post(
   '/create',
   authMiddleware.verifyActiveUser,
   orderValidation.create,
   orderController.create
 )
-Router.get(
-  '/my-orders',
-  authMiddleware.verifyActiveUser,
-  orderController.getMyOrders
-)
-Router.get(
+RouterInstance.get('/my-orders', authMiddleware.verifyActiveUser, orderController.getMyOrders)
+RouterInstance.get(
   '/details/:id',
   authMiddleware.verifyActiveUser,
   orderValidation.validateOrderId,
   orderController.getDetails
 )
-Router.post(
+RouterInstance.post(
   '/cancel/:id',
   authMiddleware.verifyActiveUser,
   orderValidation.validateOrderId,
@@ -34,42 +35,42 @@ Router.post(
 )
 
 // Admin routes - admin luôn active, chỉ cần verify admin
-Router.get('/all', authMiddleware.verifyAdmin, orderController.adminGetOrders)
-Router.get(
+RouterInstance.get('/all', authMiddleware.verifyAdmin, orderController.adminGetOrders)
+RouterInstance.get(
   '/admin/details/:id',
   authMiddleware.verifyAdmin,
   orderValidation.validateOrderId,
   orderController.adminGetDetails
 )
-Router.put(
+RouterInstance.put(
   '/admin/update/:id',
   authMiddleware.verifyAdmin,
   orderValidation.updateStatus,
   orderController.adminUpdateStatus
 )
-Router.put(
+RouterInstance.put(
   '/admin/update-payment/:id',
   authMiddleware.verifyAdmin,
   orderValidation.updatePaymentStatus,
   orderController.adminUpdatePaymentStatus
 )
-Router.post(
+RouterInstance.post(
   '/admin/mark-paid/:id',
   authMiddleware.verifyAdmin,
   orderValidation.validateOrderId,
   orderController.adminMarkPaid
 )
-Router.post(
+RouterInstance.post(
   '/admin/cancel/:id',
   authMiddleware.verifyAdmin,
   orderValidation.validateOrderId,
   orderController.adminCancel
 )
-Router.get(
+RouterInstance.get(
   '/admin/logs/:id',
   authMiddleware.verifyAdmin,
   orderValidation.validateOrderId,
   orderController.adminGetOrderLogs
 )
 
-export const orderRoute = Router
+export const orderRoute = RouterInstance

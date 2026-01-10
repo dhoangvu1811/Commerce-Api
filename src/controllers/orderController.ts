@@ -1,9 +1,26 @@
-import { StatusCodes } from 'http-status-codes'
-import { orderService } from '~/services/orderService'
+/**
+ * Order Controller
+ * Điều phối API requests cho orders
+ */
 
-const create = async (req, res, next) => {
+import { Request, Response, NextFunction } from 'express'
+import { StatusCodes } from 'http-status-codes'
+import { orderService } from '~/services/orderService.js'
+import type { OrderStatus, PaymentStatus } from '~/types/order.types.js'
+
+// Extend Request type to include jwtDecoded
+interface AuthRequest extends Request {
+  jwtDecoded?: {
+    _id: string
+    email: string
+    role: string
+    sessionId?: string
+  }
+}
+
+const create = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const created = await orderService.create(userId, req.body)
 
     // Chỉ trả về thông tin cần thiết cho user, không bao gồm ID internal
@@ -25,11 +42,15 @@ const create = async (req, res, next) => {
   }
 }
 
-const getMyOrders = async (req, res, next) => {
+const getMyOrders = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
+    const userId = req.jwtDecoded!._id
     const { page, itemsPerPage } = req.query || {}
-    const result = await orderService.getMyOrders(userId, page, itemsPerPage)
+    const result = await orderService.getMyOrders(
+      userId,
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10
+    )
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Lấy danh sách đơn hàng của tôi thành công',
@@ -40,10 +61,10 @@ const getMyOrders = async (req, res, next) => {
   }
 }
 
-const getDetails = async (req, res, next) => {
+const getDetails = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const userId = req.jwtDecoded?._id
-    const id = req.params?.id
+    const userId = req.jwtDecoded!._id
+    const id = req.params.id!
     const order = await orderService.getDetails(id, userId, false)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -56,15 +77,18 @@ const getDetails = async (req, res, next) => {
 }
 
 // Admin
-const adminGetOrders = async (req, res, next) => {
+const adminGetOrders = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { page, itemsPerPage, status, paymentStatus, search } =
-      req.query || {}
-    const result = await orderService.adminGetOrders(page, itemsPerPage, {
-      status,
-      paymentStatus,
-      search
-    })
+    const { page, itemsPerPage, status, paymentStatus, search } = req.query || {}
+    const result = await orderService.adminGetOrders(
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10,
+      {
+        status: status as OrderStatus | undefined,
+        paymentStatus: paymentStatus as PaymentStatus | undefined,
+        search: search as string | undefined
+      }
+    )
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Lấy danh sách đơn hàng thành công',
@@ -75,10 +99,10 @@ const adminGetOrders = async (req, res, next) => {
   }
 }
 
-const adminGetDetails = async (req, res, next) => {
+const adminGetDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
-    const order = await orderService.getDetails(id, null, true)
+    const id = req.params.id!
+    const order = await orderService.getDetails(id, '', true)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Lấy chi tiết đơn hàng thành công',
@@ -89,11 +113,11 @@ const adminGetDetails = async (req, res, next) => {
   }
 }
 
-const adminUpdateStatus = async (req, res, next) => {
+const adminUpdateStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
+    const id = req.params.id!
     const { status } = req.body
-    const adminId = req.jwtDecoded?._id
+    const adminId = req.jwtDecoded!._id
 
     // Chỉ update status, không đụng đến paymentStatus
     const updated = await orderService.updateStatus(id, { status }, adminId)
@@ -108,18 +132,14 @@ const adminUpdateStatus = async (req, res, next) => {
   }
 }
 
-const adminUpdatePaymentStatus = async (req, res, next) => {
+const adminUpdatePaymentStatus = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
+    const id = req.params.id!
     const { paymentStatus } = req.body
-    const adminId = req.jwtDecoded?._id
+    const adminId = req.jwtDecoded!._id
 
     // Chỉ update paymentStatus, không đụng đến status
-    const updated = await orderService.updatePaymentStatus(
-      id,
-      { paymentStatus },
-      adminId
-    )
+    const updated = await orderService.updatePaymentStatus(id, { paymentStatus }, adminId)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -131,10 +151,10 @@ const adminUpdatePaymentStatus = async (req, res, next) => {
   }
 }
 
-const adminMarkPaid = async (req, res, next) => {
+const adminMarkPaid = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
-    const adminId = req.jwtDecoded?._id
+    const id = req.params.id!
+    const adminId = req.jwtDecoded!._id
     const updated = await orderService.markPaid(id, adminId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -146,10 +166,10 @@ const adminMarkPaid = async (req, res, next) => {
   }
 }
 
-const userCancel = async (req, res, next) => {
+const userCancel = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
-    const userId = req.jwtDecoded?._id
+    const id = req.params.id!
+    const userId = req.jwtDecoded!._id
     const updated = await orderService.cancel(id, userId, false)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -161,10 +181,10 @@ const userCancel = async (req, res, next) => {
   }
 }
 
-const adminCancel = async (req, res, next) => {
+const adminCancel = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
-    const adminId = req.jwtDecoded?._id
+    const id = req.params.id!
+    const adminId = req.jwtDecoded!._id
     const updated = await orderService.cancel(id, adminId, true)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -176,9 +196,9 @@ const adminCancel = async (req, res, next) => {
   }
 }
 
-const adminGetOrderLogs = async (req, res, next) => {
+const adminGetOrderLogs = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const orderId = req.params?.id
+    const orderId = req.params.id!
     const result = await orderService.adminGetOrderLogs(orderId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,

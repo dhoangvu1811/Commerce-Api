@@ -1,7 +1,14 @@
-import { StatusCodes } from 'http-status-codes'
-import { voucherService } from '~/services/voucherService'
+/**
+ * Voucher Controller
+ * Điều phối API requests cho vouchers
+ */
 
-const createNew = async (req, res, next) => {
+import { Request, Response, NextFunction } from 'express'
+import { StatusCodes } from 'http-status-codes'
+import { voucherService } from '~/services/voucherService.js'
+import type { VoucherType } from '~/types/voucher.types.js'
+
+const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const created = await voucherService.createNew(req.body)
     res.status(StatusCodes.CREATED).json({
@@ -14,9 +21,9 @@ const createNew = async (req, res, next) => {
   }
 }
 
-const getDetails = async (req, res, next) => {
+const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
+    const id = req.params.id!
     const voucher = await voucherService.getDetails(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -28,9 +35,9 @@ const getDetails = async (req, res, next) => {
   }
 }
 
-const update = async (req, res, next) => {
+const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
+    const id = req.params.id!
     const updated = await voucherService.update(id, req.body)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -42,9 +49,9 @@ const update = async (req, res, next) => {
   }
 }
 
-const deleteVoucher = async (req, res, next) => {
+const deleteVoucher = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const id = req.params?.id
+    const id = req.params.id!
     const result = await voucherService.deleteVoucher(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -56,11 +63,20 @@ const deleteVoucher = async (req, res, next) => {
   }
 }
 
-const getVouchers = async (req, res, next) => {
+const getVouchers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { page, itemsPerPage, search, type, isActive, sort } = req.query || {}
-    const query = { search, type, isActive, sort }
-    const result = await voucherService.getVouchers(page, itemsPerPage, query)
+    const query = {
+      search: search as string | undefined,
+      type: type as VoucherType | undefined,
+      isActive: isActive as string | undefined,
+      sort: sort as string | undefined
+    }
+    const result = await voucherService.getVouchers(
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10,
+      query
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -72,7 +88,7 @@ const getVouchers = async (req, res, next) => {
   }
 }
 
-const verifyVoucher = async (req, res, next) => {
+const verifyVoucher = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { code, orderTotal } = req.body || {}
     const result = await voucherService.verifyVoucher(code, orderTotal)
@@ -86,7 +102,7 @@ const verifyVoucher = async (req, res, next) => {
   }
 }
 
-const deleteMultiple = async (req, res, next) => {
+const deleteMultiple = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { voucherIds } = req.body || {}
     const result = await voucherService.deleteMultiple(voucherIds)
@@ -100,10 +116,10 @@ const deleteMultiple = async (req, res, next) => {
   }
 }
 
-const getActivePublic = async (req, res, next) => {
+const getActivePublic = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { limit } = req.query || {}
-    const vouchers = await voucherService.getActivePublic(limit)
+    const vouchers = await voucherService.getActivePublic(limit ? parseInt(limit as string) : undefined)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Lấy danh sách voucher đang hoạt động thành công',

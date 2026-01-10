@@ -1,7 +1,18 @@
-import { StatusCodes } from 'http-status-codes'
-import { productService } from '~/services/productService'
+/**
+ * Product Controller
+ * Điều phối API requests cho products
+ */
 
-const createNew = async (req, res, next) => {
+import { Request, Response, NextFunction } from 'express'
+import { StatusCodes } from 'http-status-codes'
+import { productService } from '~/services/productService.js'
+
+// Extend Request type to include file from multer
+interface MulterRequest extends Request {
+  file?: Express.Multer.File
+}
+
+const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const createProduct = await productService.createNew(req.body)
 
@@ -15,9 +26,9 @@ const createNew = async (req, res, next) => {
   }
 }
 
-const getDetails = async (req, res, next) => {
+const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const productId = req.params?.id
+    const productId = req.params.id!
 
     const product = await productService.getDetails(productId)
 
@@ -31,9 +42,9 @@ const getDetails = async (req, res, next) => {
   }
 }
 
-const update = async (req, res, next) => {
+const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const productId = req.params?.id
+    const productId = req.params.id!
 
     const updatedProduct = await productService.update(productId, req.body)
 
@@ -47,9 +58,9 @@ const update = async (req, res, next) => {
   }
 }
 
-const deleteProduct = async (req, res, next) => {
+const deleteProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const productId = req.params?.id
+    const productId = req.params.id!
 
     const result = await productService.deleteProduct(productId)
 
@@ -63,7 +74,7 @@ const deleteProduct = async (req, res, next) => {
   }
 }
 
-const deleteSelectedProducts = async (req, res, next) => {
+const deleteSelectedProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { productIds } = req.body || {}
 
@@ -79,18 +90,18 @@ const deleteSelectedProducts = async (req, res, next) => {
   }
 }
 
-const getProducts = async (req, res, next) => {
+const getProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { page, itemsPerPage, search, type, sort } = req.query || {}
     const queryFilter = {
-      search,
-      type,
-      sort
+      search: search as string | undefined,
+      type: type as string | undefined,
+      sort: sort as string | undefined
     }
 
     const result = await productService.getProducts(
-      page,
-      itemsPerPage,
+      page ? parseInt(page as string) : 1,
+      itemsPerPage ? parseInt(itemsPerPage as string) : 10,
       queryFilter
     )
 
@@ -104,7 +115,7 @@ const getProducts = async (req, res, next) => {
   }
 }
 
-const getAllTypes = async (req, res, next) => {
+const getAllTypes = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await productService.getAllTypes()
 
@@ -118,22 +129,20 @@ const getAllTypes = async (req, res, next) => {
   }
 }
 
-const uploadImage = async (req, res, next) => {
+const uploadImage = async (req: MulterRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Kiểm tra xem có file được upload không
     if (!req.file) {
-      return res.status(StatusCodes.BAD_REQUEST).json({
+      res.status(StatusCodes.BAD_REQUEST).json({
         code: StatusCodes.BAD_REQUEST,
         message: 'Vui lòng chọn ảnh để upload',
         data: null
       })
+      return
     }
 
     // Upload ảnh lên Cloudinary thông qua service
-    const uploadResult = await productService.uploadImage(
-      req.file?.buffer,
-      'products'
-    )
+    const uploadResult = await productService.uploadImage(req.file?.buffer, 'products')
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
