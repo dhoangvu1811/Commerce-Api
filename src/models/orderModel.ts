@@ -4,11 +4,28 @@
  */
 
 import { ObjectId } from 'mongodb'
-import type { WithId, Document, Filter, Sort, DeleteResult, UpdateResult, ClientSession } from 'mongodb'
+import type {
+  WithId,
+  Document,
+  Filter,
+  Sort,
+  DeleteResult,
+  UpdateResult,
+  ClientSession
+} from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
 import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants.js'
-import type { Order, OrderStatus, PaymentStatus, OrderItem, LogEntry, ShippingAddress, OrderVoucher, OrderTotals } from '~/types/order.types.js'
+import type {
+  Order,
+  OrderStatus,
+  PaymentStatus,
+  OrderItem,
+  LogEntry,
+  ShippingAddress,
+  OrderVoucher,
+  OrderTotals
+} from '~/types/order.types.js'
 
 // ============================================================
 // === Collection Definition ===
@@ -158,7 +175,9 @@ interface OrderLogsResult {
 /**
  * Validate dữ liệu trước khi tạo order
  */
-const validateBeforeCreate = async (data: CreateOrderInput): Promise<CreateOrderInput> => {
+const validateBeforeCreate = async (
+  data: CreateOrderInput
+): Promise<CreateOrderInput> => {
   const validData = await ORDER_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -173,7 +192,10 @@ const validateBeforeCreate = async (data: CreateOrderInput): Promise<CreateOrder
 /**
  * Tạo order mới
  */
-const createNew = async (data: CreateOrderInput, options: SessionOptions = {}): Promise<OrderDocument | null> => {
+const createNew = async (
+  data: CreateOrderInput,
+  options: SessionOptions = {}
+): Promise<OrderDocument | null> => {
   try {
     const validData = await validateBeforeCreate(data)
     const dataToInsert = {
@@ -181,11 +203,16 @@ const createNew = async (data: CreateOrderInput, options: SessionOptions = {}): 
       userId: new ObjectId(validData.userId)
     }
     const insertOptions = options.session ? { session: options.session } : {}
-    const created = await GET_DB().collection(ORDER_COLLECTION_NAME).insertOne(dataToInsert, insertOptions)
+    const created = await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .insertOne(dataToInsert, insertOptions)
 
     return (await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
-      .findOne({ _id: created.insertedId }, insertOptions)) as OrderDocument | null
+      .findOne(
+        { _id: created.insertedId },
+        insertOptions
+      )) as OrderDocument | null
   } catch (error) {
     throw new Error(String(error))
   }
@@ -223,7 +250,9 @@ const getMany = async (
       .limit(itemsPerPage)
       .toArray()
 
-    const totalOrders = await GET_DB().collection(ORDER_COLLECTION_NAME).countDocuments(filter)
+    const totalOrders = await GET_DB()
+      .collection(ORDER_COLLECTION_NAME)
+      .countDocuments(filter)
 
     const totalPages = Math.ceil(totalOrders / itemsPerPage)
 
@@ -259,7 +288,11 @@ const update = async (
 
     const result = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
-      .findOneAndUpdate({ _id: new ObjectId(orderId) }, { $set: dataToUpdate }, updateOptions)
+      .findOneAndUpdate(
+        { _id: new ObjectId(orderId) },
+        { $set: dataToUpdate },
+        updateOptions
+      )
 
     return result as OrderDocument | null
   } catch (error) {
@@ -270,14 +303,21 @@ const update = async (
 /**
  * Thêm log entry vào order
  */
-const appendLog = async (orderId: string, logEntry: LogEntry, options: SessionOptions = {}): Promise<UpdateResult> => {
+const appendLog = async (
+  orderId: string,
+  logEntry: LogEntry,
+  options: SessionOptions = {}
+): Promise<UpdateResult> => {
   try {
     const updateOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
       .updateOne(
         { _id: new ObjectId(orderId) },
-        { $push: { logs: logEntry as unknown }, $set: { updatedAt: new Date() } } as Document,
+        {
+          $push: { logs: logEntry as unknown },
+          $set: { updatedAt: new Date() }
+        } as Document,
         updateOptions
       )
     return result
@@ -289,7 +329,10 @@ const appendLog = async (orderId: string, logEntry: LogEntry, options: SessionOp
 /**
  * Xóa order theo ID
  */
-const deleteOneById = async (orderId: string, options: SessionOptions = {}): Promise<DeleteResult> => {
+const deleteOneById = async (
+  orderId: string,
+  options: SessionOptions = {}
+): Promise<DeleteResult> => {
   try {
     const deleteOptions = options.session ? { session: options.session } : {}
     const result = await GET_DB()
@@ -304,11 +347,16 @@ const deleteOneById = async (orderId: string, options: SessionOptions = {}): Pro
 /**
  * Lấy logs của order theo ID
  */
-const getLogsByOrderId = async (orderId: string): Promise<OrderLogsResult | null> => {
+const getLogsByOrderId = async (
+  orderId: string
+): Promise<OrderLogsResult | null> => {
   try {
     const order = await GET_DB()
       .collection(ORDER_COLLECTION_NAME)
-      .findOne({ _id: new ObjectId(orderId) }, { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } })
+      .findOne(
+        { _id: new ObjectId(orderId) },
+        { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } }
+      )
     return order as OrderLogsResult | null
   } catch (error) {
     throw new Error(String(error))

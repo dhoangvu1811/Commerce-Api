@@ -64,7 +64,9 @@ export interface SessionsSummary {
 /**
  * Validate dữ liệu trước khi tạo session
  */
-const validateBeforeCreate = async (data: CreateSessionInput): Promise<CreateSessionInput> => {
+const validateBeforeCreate = async (
+  data: CreateSessionInput
+): Promise<CreateSessionInput> => {
   const validData = await SESSION_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -79,10 +81,14 @@ const validateBeforeCreate = async (data: CreateSessionInput): Promise<CreateSes
 /**
  * Tạo session mới
  */
-const createNew = async (data: CreateSessionInput): Promise<SessionDocument | null> => {
+const createNew = async (
+  data: CreateSessionInput
+): Promise<SessionDocument | null> => {
   try {
     const validData = await validateBeforeCreate(data)
-    const createdSession = await GET_DB().collection(SESSION_COLLECTION_NAME).insertOne(validData)
+    const createdSession = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .insertOne(validData)
 
     return (await GET_DB()
       .collection(SESSION_COLLECTION_NAME)
@@ -95,7 +101,9 @@ const createNew = async (data: CreateSessionInput): Promise<SessionDocument | nu
 /**
  * Tìm session theo sessionId (chỉ active và chưa hết hạn)
  */
-const findBySessionId = async (sessionId: string): Promise<SessionDocument | null> => {
+const findBySessionId = async (
+  sessionId: string
+): Promise<SessionDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(SESSION_COLLECTION_NAME)
@@ -113,9 +121,13 @@ const findBySessionId = async (sessionId: string): Promise<SessionDocument | nul
 /**
  * Tìm session theo sessionId (bất kể trạng thái)
  */
-const findBySessionIdAny = async (sessionId: string): Promise<SessionDocument | null> => {
+const findBySessionIdAny = async (
+  sessionId: string
+): Promise<SessionDocument | null> => {
   try {
-    const result = await GET_DB().collection(SESSION_COLLECTION_NAME).findOne({ sessionId: sessionId })
+    const result = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .findOne({ sessionId: sessionId })
     return result as SessionDocument | null
   } catch (error) {
     throw new Error(String(error))
@@ -145,7 +157,9 @@ const findByUserId = async (userId: string): Promise<SessionDocument[]> => {
 /**
  * Tìm tất cả session của user (bao gồm cả inactive và hết hạn) - Dành cho Admin
  */
-const findAllSessionsByUserId = async (userId: string): Promise<SessionDocument[]> => {
+const findAllSessionsByUserId = async (
+  userId: string
+): Promise<SessionDocument[]> => {
   try {
     const result = await GET_DB()
       .collection(SESSION_COLLECTION_NAME)
@@ -161,7 +175,9 @@ const findAllSessionsByUserId = async (userId: string): Promise<SessionDocument[
 /**
  * Đếm sessions theo userId cho overview table
  */
-const getSessionsSummaryByUserId = async (userId: string): Promise<SessionsSummary> => {
+const getSessionsSummaryByUserId = async (
+  userId: string
+): Promise<SessionsSummary> => {
   try {
     const now = new Date()
     const pipeline = [
@@ -174,7 +190,10 @@ const getSessionsSummaryByUserId = async (userId: string): Promise<SessionsSumma
             $sum: {
               $cond: [
                 {
-                  $and: [{ $eq: ['$isActive', true] }, { $gt: ['$expiresAt', now] }]
+                  $and: [
+                    { $eq: ['$isActive', true] },
+                    { $gt: ['$expiresAt', now] }
+                  ]
                 },
                 1,
                 0
@@ -185,9 +204,14 @@ const getSessionsSummaryByUserId = async (userId: string): Promise<SessionsSumma
       }
     ]
 
-    const result = await GET_DB().collection(SESSION_COLLECTION_NAME).aggregate(pipeline).toArray()
+    const result = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .aggregate(pipeline)
+      .toArray()
 
-    return (result[0] as SessionsSummary) || { totalSessions: 0, activeSessions: 0 }
+    return (
+      (result[0] as SessionsSummary) || { totalSessions: 0, activeSessions: 0 }
+    )
   } catch (error) {
     throw new Error(String(error))
   }
@@ -273,7 +297,9 @@ const logoutSession = async (sessionId: string): Promise<UpdateResult> => {
  */
 const deleteSession = async (sessionId: string): Promise<DeleteResult> => {
   try {
-    const result = await GET_DB().collection(SESSION_COLLECTION_NAME).deleteOne({ sessionId: sessionId })
+    const result = await GET_DB()
+      .collection(SESSION_COLLECTION_NAME)
+      .deleteOne({ sessionId: sessionId })
     return result
   } catch (error) {
     throw new Error(String(error))
@@ -283,7 +309,9 @@ const deleteSession = async (sessionId: string): Promise<DeleteResult> => {
 /**
  * Cleanup sessions cũ (cron job) - Xóa sessions hết hạn và đã logout > 90 ngày
  */
-const cleanupExpiredSessions = async (retentionDays: number = 90): Promise<DeleteResult> => {
+const cleanupExpiredSessions = async (
+  retentionDays: number = 90
+): Promise<DeleteResult> => {
   try {
     const retentionDate = new Date()
     retentionDate.setDate(retentionDate.getDate() - retentionDays)

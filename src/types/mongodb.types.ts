@@ -42,10 +42,20 @@ export interface DeleteResult {
  * Base model interface cho tất cả models
  */
 export interface IBaseModel<T extends Document> {
-  createNew: (data: Partial<T>, options?: TransactionOptions) => Promise<WithId<T>>
+  createNew: (
+    data: Partial<T>,
+    options?: TransactionOptions
+  ) => Promise<WithId<T>>
   findOneById: (id: string) => Promise<WithId<T> | null>
-  update: (id: string, data: Partial<T>, options?: TransactionOptions) => Promise<WithId<T> | null>
-  deleteOneById: (id: string, options?: TransactionOptions) => Promise<DeleteResult>
+  update: (
+    id: string,
+    data: Partial<T>,
+    options?: TransactionOptions
+  ) => Promise<WithId<T> | null>
+  deleteOneById: (
+    id: string,
+    options?: TransactionOptions
+  ) => Promise<DeleteResult>
 }
 
 /**
@@ -72,7 +82,16 @@ export type MongoSortOptions = Record<string, MongoSortDirection>
  * Generic filter type
  */
 export type MongoFilter<T> = {
-  [K in keyof T]?: T[K] | { $regex?: RegExp; $in?: T[K][]; $gte?: T[K]; $lte?: T[K]; $gt?: T[K]; $lt?: T[K] }
+  [K in keyof T]?:
+    | T[K]
+    | {
+        $regex?: RegExp
+        $in?: T[K][]
+        $gte?: T[K]
+        $lte?: T[K]
+        $gt?: T[K]
+        $lt?: T[K]
+      }
 }
 
 /**

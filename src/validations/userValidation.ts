@@ -19,7 +19,11 @@ import {
 /**
  * Validation đăng ký tài khoản
  */
-const register = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const register = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().required().trim().min(2).max(100).messages({
       'string.empty': 'Tên không được để trống',
@@ -27,20 +31,28 @@ const register = async (req: Request, _res: Response, next: NextFunction): Promi
       'string.max': 'Tên không được vượt quá 100 ký tự',
       'any.required': 'Tên là bắt buộc'
     }),
-    email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE,
-      'any.required': 'Email là bắt buộc'
-    }),
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
     password: Joi.string().required().pattern(PASSWORD_RULE).messages({
       'string.empty': 'Mật khẩu không được để trống',
       'string.pattern.base': PASSWORD_RULE_MESSAGE,
       'any.required': 'Mật khẩu là bắt buộc'
     }),
-    confirmPassword: Joi.string().required().valid(Joi.ref('password')).messages({
-      'any.only': 'Xác nhận mật khẩu không khớp',
-      'any.required': 'Xác nhận mật khẩu là bắt buộc'
-    }),
+    confirmPassword: Joi.string()
+      .required()
+      .valid(Joi.ref('password'))
+      .messages({
+        'any.only': 'Xác nhận mật khẩu không khớp',
+        'any.required': 'Xác nhận mật khẩu là bắt buộc'
+      }),
     phone: Joi.string()
       .optional()
       .trim()
@@ -64,9 +76,13 @@ const register = async (req: Request, _res: Response, next: NextFunction): Promi
         Joi.valid(null, '')
       )
       .optional(),
-    gender: Joi.string().optional().valid('male', 'female', 'other').allow('').messages({
-      'any.only': 'Giới tính phải là male, female hoặc other'
-    })
+    gender: Joi.string()
+      .optional()
+      .valid('male', 'female', 'other')
+      .allow('')
+      .messages({
+        'any.only': 'Giới tính phải là male, female hoặc other'
+      })
   })
 
   try {
@@ -74,7 +90,10 @@ const register = async (req: Request, _res: Response, next: NextFunction): Promi
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -82,13 +101,22 @@ const register = async (req: Request, _res: Response, next: NextFunction): Promi
 /**
  * Validation đăng nhập
  */
-const login = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const login = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
-    email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE,
-      'any.required': 'Email là bắt buộc'
-    }),
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
     password: Joi.string().required().messages({
       'string.empty': 'Mật khẩu không được để trống',
       'any.required': 'Mật khẩu là bắt buộc'
@@ -100,7 +128,10 @@ const login = async (req: Request, _res: Response, next: NextFunction): Promise<
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -108,17 +139,26 @@ const login = async (req: Request, _res: Response, next: NextFunction): Promise<
 /**
  * Validation cập nhật thông tin user
  */
-const updateUser = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const updateUser = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().optional().trim().min(2).max(100).messages({
       'string.empty': 'Tên không được để trống',
       'string.min': 'Tên phải có ít nhất 2 ký tự',
       'string.max': 'Tên không được vượt quá 100 ký tự'
     }),
-    email: Joi.string().optional().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE
-    }),
+    email: Joi.string()
+      .optional()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE
+      }),
     phone: Joi.string()
       .optional()
       .trim()
@@ -145,23 +185,36 @@ const updateUser = async (req: Request, _res: Response, next: NextFunction): Pro
         Joi.valid(null, '')
       )
       .optional(),
-    gender: Joi.string().optional().valid('male', 'female', 'other').allow('').messages({
-      'any.only': 'Giới tính phải là male, female hoặc other'
-    })
+    gender: Joi.string()
+      .optional()
+      .valid('male', 'female', 'other')
+      .allow('')
+      .messages({
+        'any.only': 'Giới tính phải là male, female hoặc other'
+      })
   })
 
   try {
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation đổi mật khẩu
  */
-const updatePassword = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const updatePassword = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     currentPassword: Joi.string().optional().messages({
       'string.empty': 'Mật khẩu hiện tại không được để trống',
@@ -172,24 +225,36 @@ const updatePassword = async (req: Request, _res: Response, next: NextFunction):
       'string.pattern.base': PASSWORD_RULE_MESSAGE,
       'any.required': 'Mật khẩu mới là bắt buộc'
     }),
-    confirmPassword: Joi.string().required().valid(Joi.ref('newPassword')).messages({
-      'any.only': 'Xác nhận mật khẩu không khớp',
-      'any.required': 'Xác nhận mật khẩu là bắt buộc'
-    })
+    confirmPassword: Joi.string()
+      .required()
+      .valid(Joi.ref('newPassword'))
+      .messages({
+        'any.only': 'Xác nhận mật khẩu không khớp',
+        'any.required': 'Xác nhận mật khẩu là bắt buộc'
+      })
   })
 
   try {
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa user
  */
-const deleteUser = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteUser = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'ID người dùng không được để trống',
@@ -202,14 +267,23 @@ const deleteUser = async (req: Request, _res: Response, next: NextFunction): Pro
     await correctCondition.validateAsync(req.params, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa nhiều users
  */
-const deleteMultipleUsers = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteMultipleUsers = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     userIds: Joi.array()
       .items(
@@ -229,24 +303,38 @@ const deleteMultipleUsers = async (req: Request, _res: Response, next: NextFunct
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation cập nhật user bởi admin
  */
-const updateUserByAdmin = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const updateUserByAdmin = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().optional().trim().min(2).max(100).messages({
       'string.empty': 'Tên không được để trống',
       'string.min': 'Tên phải có ít nhất 2 ký tự',
       'string.max': 'Tên không được vượt quá 100 ký tự'
     }),
-    email: Joi.string().optional().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE
-    }),
+    email: Joi.string()
+      .optional()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE
+      }),
     phone: Joi.string()
       .optional()
       .trim()
@@ -273,9 +361,13 @@ const updateUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
         Joi.valid(null, '')
       )
       .optional(),
-    gender: Joi.string().optional().valid('male', 'female', 'other').allow('').messages({
-      'any.only': 'Giới tính phải là male, female hoặc other'
-    }),
+    gender: Joi.string()
+      .optional()
+      .valid('male', 'female', 'other')
+      .allow('')
+      .messages({
+        'any.only': 'Giới tính phải là male, female hoặc other'
+      }),
     role: Joi.string().optional().valid('admin', 'user').messages({
       'any.only': 'Quyền phải là admin hoặc user'
     }),
@@ -291,14 +383,23 @@ const updateUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation tạo user bởi admin
  */
-const createUserByAdmin = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const createUserByAdmin = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().required().trim().min(2).max(100).messages({
       'string.empty': 'Tên không được để trống',
@@ -309,11 +410,16 @@ const createUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
     avatar: Joi.string().optional().uri().allow('').messages({
       'string.uri': 'Avatar phải là URL hợp lệ'
     }),
-    email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE,
-      'any.required': 'Email là bắt buộc'
-    }),
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
     password: Joi.string().required().pattern(PASSWORD_RULE).messages({
       'string.empty': 'Mật khẩu không được để trống',
       'string.pattern.base': PASSWORD_RULE_MESSAGE,
@@ -342,12 +448,20 @@ const createUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
         Joi.valid(null, '')
       )
       .optional(),
-    gender: Joi.string().optional().valid('male', 'female', 'other').allow('').messages({
-      'any.only': 'Giới tính phải là male, female hoặc other'
-    }),
-    role: Joi.string().optional().valid('admin', 'user').default('user').messages({
-      'any.only': 'Quyền phải là admin hoặc user'
-    }),
+    gender: Joi.string()
+      .optional()
+      .valid('male', 'female', 'other')
+      .allow('')
+      .messages({
+        'any.only': 'Giới tính phải là male, female hoặc other'
+      }),
+    role: Joi.string()
+      .optional()
+      .valid('admin', 'user')
+      .default('user')
+      .messages({
+        'any.only': 'Quyền phải là admin hoặc user'
+      }),
     isActive: Joi.boolean().optional().default(true).messages({
       'boolean.base': 'Trạng thái hoạt động phải là true hoặc false'
     }),
@@ -361,7 +475,10 @@ const createUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -369,7 +486,11 @@ const createUserByAdmin = async (req: Request, _res: Response, next: NextFunctio
 /**
  * Validation kích hoạt/vô hiệu hóa user
  */
-const userActivation = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const userActivation = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'User ID không được để trống',
@@ -383,7 +504,10 @@ const userActivation = async (req: Request, _res: Response, next: NextFunction):
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -391,13 +515,22 @@ const userActivation = async (req: Request, _res: Response, next: NextFunction):
 /**
  * Validation gửi email xác minh
  */
-const sendVerificationEmail = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const sendVerificationEmail = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
-    email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE,
-      'any.required': 'Email là bắt buộc'
-    })
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      })
   })
 
   try {
@@ -405,7 +538,10 @@ const sendVerificationEmail = async (req: Request, _res: Response, next: NextFun
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -413,13 +549,22 @@ const sendVerificationEmail = async (req: Request, _res: Response, next: NextFun
 /**
  * Validation xác minh tài khoản
  */
-const verifyUserAccount = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const verifyUserAccount = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
-    email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim().messages({
-      'string.empty': 'Email không được để trống',
-      'string.pattern.base': EMAIL_RULE_MESSAGE,
-      'any.required': 'Email là bắt buộc'
-    }),
+    email: Joi.string()
+      .required()
+      .pattern(EMAIL_RULE)
+      .lowercase()
+      .trim()
+      .messages({
+        'string.empty': 'Email không được để trống',
+        'string.pattern.base': EMAIL_RULE_MESSAGE,
+        'any.required': 'Email là bắt buộc'
+      }),
     token: Joi.string().required().messages({
       'string.empty': 'Token xác minh không được để trống',
       'any.required': 'Token xác minh là bắt buộc'
@@ -431,7 +576,10 @@ const verifyUserAccount = async (req: Request, _res: Response, next: NextFunctio
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -439,7 +587,11 @@ const verifyUserAccount = async (req: Request, _res: Response, next: NextFunctio
 /**
  * Validation thu hồi session
  */
-const revokeSession = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const revokeSession = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     sessionId: Joi.string().required().trim().messages({
       'string.empty': 'SessionId không được để trống',
@@ -452,7 +604,10 @@ const revokeSession = async (req: Request, _res: Response, next: NextFunction): 
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -460,7 +615,11 @@ const revokeSession = async (req: Request, _res: Response, next: NextFunction): 
 /**
  * Validation thu hồi tất cả sessions
  */
-const revokeAllSessions = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const revokeAllSessions = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'UserId không được để trống',
@@ -474,7 +633,10 @@ const revokeAllSessions = async (req: Request, _res: Response, next: NextFunctio
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -482,7 +644,11 @@ const revokeAllSessions = async (req: Request, _res: Response, next: NextFunctio
 /**
  * Validation lấy danh sách sessions của user
  */
-const getUserSessions = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const getUserSessions = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'UserId không được để trống',
@@ -496,7 +662,10 @@ const getUserSessions = async (req: Request, _res: Response, next: NextFunction)
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -504,7 +673,11 @@ const getUserSessions = async (req: Request, _res: Response, next: NextFunction)
 /**
  * Validation user thu hồi session của chính mình
  */
-const revokeMySession = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const revokeMySession = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     sessionId: Joi.string().required().trim().messages({
       'string.empty': 'SessionId không được để trống',
@@ -517,7 +690,10 @@ const revokeMySession = async (req: Request, _res: Response, next: NextFunction)
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }

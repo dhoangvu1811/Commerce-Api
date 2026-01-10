@@ -36,7 +36,9 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   role: Joi.string().valid('admin', 'user').default('user'),
   isActive: Joi.boolean().default(false),
   emailVerified: Joi.boolean().default(false),
-  typeAccount: Joi.string().valid('LOCAL', 'GOOGLE', 'FACEBOOK').default('LOCAL'),
+  typeAccount: Joi.string()
+    .valid('LOCAL', 'GOOGLE', 'FACEBOOK')
+    .default('LOCAL'),
   lastLogin: Joi.date().allow(null).default(null),
   createdAt: Joi.date().timestamp().default(Date.now),
   updatedAt: Joi.date().timestamp().default(Date.now)
@@ -101,7 +103,9 @@ export interface PaginatedUsersResult {
 /**
  * Validate dữ liệu trước khi tạo user
  */
-const validateBeforeCreate = async (data: CreateUserInput): Promise<CreateUserInput> => {
+const validateBeforeCreate = async (
+  data: CreateUserInput
+): Promise<CreateUserInput> => {
   const validData = await USER_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -116,10 +120,14 @@ const validateBeforeCreate = async (data: CreateUserInput): Promise<CreateUserIn
 /**
  * Tạo user mới
  */
-const createNew = async (data: CreateUserInput): Promise<UserDocument | null> => {
+const createNew = async (
+  data: CreateUserInput
+): Promise<UserDocument | null> => {
   try {
     const validData = await validateBeforeCreate(data)
-    const createdUser = await GET_DB().collection(USER_COLLECTION_NAME).insertOne(validData)
+    const createdUser = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .insertOne(validData)
 
     return (await GET_DB()
       .collection(USER_COLLECTION_NAME)
@@ -195,7 +203,9 @@ const getMany = async (
       .limit(itemsPerPage)
       .toArray()
 
-    const totalUsers = await GET_DB().collection(USER_COLLECTION_NAME).countDocuments(filter)
+    const totalUsers = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .countDocuments(filter)
 
     const totalPages = Math.ceil(totalUsers / itemsPerPage)
 
@@ -218,7 +228,10 @@ const getMany = async (
 /**
  * Cập nhật thông tin user
  */
-const update = async (userId: string, updateData: UpdateUserInput): Promise<UserDocument | null> => {
+const update = async (
+  userId: string,
+  updateData: UpdateUserInput
+): Promise<UserDocument | null> => {
   try {
     const dataToUpdate = {
       ...updateData,
@@ -227,7 +240,11 @@ const update = async (userId: string, updateData: UpdateUserInput): Promise<User
 
     const result = await GET_DB()
       .collection(USER_COLLECTION_NAME)
-      .findOneAndUpdate({ _id: new ObjectId(userId) }, { $set: dataToUpdate }, { returnDocument: 'after' })
+      .findOneAndUpdate(
+        { _id: new ObjectId(userId) },
+        { $set: dataToUpdate },
+        { returnDocument: 'after' }
+      )
 
     return result as UserDocument | null
   } catch (error) {
@@ -238,7 +255,9 @@ const update = async (userId: string, updateData: UpdateUserInput): Promise<User
 /**
  * Cập nhật thời gian đăng nhập cuối
  */
-const updateLastLogin = async (userId: string): Promise<UserDocument | null> => {
+const updateLastLogin = async (
+  userId: string
+): Promise<UserDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(USER_COLLECTION_NAME)
@@ -310,7 +329,9 @@ const deactivateUser = async (userId: string): Promise<UserDocument | null> => {
 /**
  * Tìm user active theo ID
  */
-const findActiveUserById = async (userId: string): Promise<UserDocument | null> => {
+const findActiveUserById = async (
+  userId: string
+): Promise<UserDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(USER_COLLECTION_NAME)
@@ -328,14 +349,14 @@ const findActiveUserById = async (userId: string): Promise<UserDocument | null> 
 /**
  * Tìm user active theo email
  */
-const findActiveUserByEmail = async (email: string): Promise<UserDocument | null> => {
+const findActiveUserByEmail = async (
+  email: string
+): Promise<UserDocument | null> => {
   try {
-    const result = await GET_DB()
-      .collection(USER_COLLECTION_NAME)
-      .findOne({
-        email: email.toLowerCase().trim(),
-        isActive: true
-      })
+    const result = await GET_DB().collection(USER_COLLECTION_NAME).findOne({
+      email: email.toLowerCase().trim(),
+      isActive: true
+    })
 
     return result as UserDocument | null
   } catch (error) {
@@ -361,9 +382,13 @@ const deleteOneById = async (userId: string): Promise<DeleteResult> => {
 /**
  * Xóa nhiều users theo filter
  */
-const deleteMany = async (filter: Filter<Document> = {}): Promise<DeleteResult> => {
+const deleteMany = async (
+  filter: Filter<Document> = {}
+): Promise<DeleteResult> => {
   try {
-    const result = await GET_DB().collection(USER_COLLECTION_NAME).deleteMany(filter)
+    const result = await GET_DB()
+      .collection(USER_COLLECTION_NAME)
+      .deleteMany(filter)
 
     return result
   } catch (error) {

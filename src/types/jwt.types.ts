@@ -52,7 +52,10 @@ export type UserDataForToken = TokenUserData
  * JWT Provider interface
  */
 export interface IJwtProvider {
-  generateAccessToken: (userData: TokenUserData, sessionId?: string | null) => string
+  generateAccessToken: (
+    userData: TokenUserData,
+    sessionId?: string | null
+  ) => string
   generateRefreshToken: (userData: TokenUserData, sessionId: string) => string
   verifyAccessToken: (token: string) => AccessTokenPayload
   verifyRefreshToken: (token: string) => RefreshTokenPayload

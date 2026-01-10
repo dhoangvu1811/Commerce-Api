@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable indent */
 /**
  * OAuth Service
  * Generic OAuth Service cho tất cả providers (Google, Facebook, v.v.)
@@ -93,10 +95,16 @@ const OAUTH_PROVIDERS: OAuthProvidersMap = {
 /**
  * Chuẩn hóa profile từ các OAuth providers khác nhau
  */
-const normalizeOAuthProfile = (profile: RawOAuthProfile, provider: OAuthProviderType): NormalizedOAuthProfile => {
+const normalizeOAuthProfile = (
+  profile: RawOAuthProfile,
+  provider: OAuthProviderType
+): NormalizedOAuthProfile => {
   const providerConfig = OAUTH_PROVIDERS[provider]
   if (!providerConfig) {
-    throw new ApiError(StatusCodes.BAD_REQUEST, `Unsupported OAuth provider: ${provider}`)
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      `Unsupported OAuth provider: ${provider}`
+    )
   }
 
   let email: string | undefined
@@ -114,13 +122,18 @@ const normalizeOAuthProfile = (profile: RawOAuthProfile, provider: OAuthProvider
       email = profile.emails?.[0]?.value || `${profile.id}@facebook.com`
       displayName =
         profile.displayName ||
-        `${profile.name?.givenName || ''} ${profile.name?.familyName || ''}`.trim() ||
+        `${profile.name?.givenName || ''} ${
+          profile.name?.familyName || ''
+        }`.trim() ||
         `${provider} User`
       avatar = profile.photos?.[0]?.value || ''
       break
 
     default:
-      throw new ApiError(StatusCodes.BAD_REQUEST, `Profile normalization not implemented for: ${provider}`)
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `Profile normalization not implemented for: ${provider}`
+      )
   }
 
   if (!email) {
@@ -142,7 +155,10 @@ const normalizeOAuthProfile = (profile: RawOAuthProfile, provider: OAuthProvider
 /**
  * Generic handler cho OAuth authentication
  */
-const handleOAuth = async (profile: RawOAuthProfile, provider: OAuthProviderType): Promise<User> => {
+const handleOAuth = async (
+  profile: RawOAuthProfile,
+  provider: OAuthProviderType
+): Promise<User> => {
   try {
     // Chuẩn hóa profile
     const normalizedProfile = normalizeOAuthProfile(profile, provider)
@@ -167,7 +183,10 @@ const handleOAuth = async (profile: RawOAuthProfile, provider: OAuthProviderType
         updateData.typeAccount = provider
       }
 
-      const updatedUser = await userModel.update(existingUser._id!.toString(), updateData)
+      const updatedUser = await userModel.update(
+        existingUser._id!.toString(),
+        updateData
+      )
       return updatedUser as User
     } else {
       // Tạo user mới từ OAuth profile - luôn active
@@ -220,7 +239,8 @@ const generateAuthTokens = async (
     )
 
     // Tính thời gian hết hạn của refresh token (7 ngày)
-    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN || '7d') as ms.StringValue
+    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN ||
+      '7d') as ms.StringValue
     const refreshTokenExpiresIn = ms(refreshExpiresInStr)
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
@@ -249,7 +269,10 @@ const generateAuthTokens = async (
       }
     }
   } catch (error) {
-    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Lỗi khi tạo token xác thực: ${(error as Error).message}`)
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Lỗi khi tạo token xác thực: ${(error as Error).message}`
+    )
   }
 }
 
@@ -263,7 +286,9 @@ const isSupportedProvider = (provider: string): boolean => {
 /**
  * Lấy thông tin provider config
  */
-const getProviderConfig = (provider: string): OAuthProviderConfig | undefined => {
+const getProviderConfig = (
+  provider: string
+): OAuthProviderConfig | undefined => {
   return OAUTH_PROVIDERS[provider.toUpperCase() as OAuthProviderType]
 }
 

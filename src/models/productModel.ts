@@ -4,7 +4,15 @@
  */
 
 import { ObjectId } from 'mongodb'
-import type { WithId, Document, Filter, Sort, DeleteResult, UpdateResult, ClientSession } from 'mongodb'
+import type {
+  WithId,
+  Document,
+  Filter,
+  Sort,
+  DeleteResult,
+  UpdateResult,
+  ClientSession
+} from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
 import type { Product } from '~/types/product.types.js'
@@ -89,7 +97,9 @@ interface SessionOptions {
 /**
  * Validate dữ liệu trước khi tạo product
  */
-const validateBeforeCreate = async (data: CreateProductInput): Promise<CreateProductInput> => {
+const validateBeforeCreate = async (
+  data: CreateProductInput
+): Promise<CreateProductInput> => {
   const validData = await PRODUCT_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -104,10 +114,14 @@ const validateBeforeCreate = async (data: CreateProductInput): Promise<CreatePro
 /**
  * Tạo product mới
  */
-const createNew = async (data: CreateProductInput): Promise<ProductDocument | null> => {
+const createNew = async (
+  data: CreateProductInput
+): Promise<ProductDocument | null> => {
   try {
     const validData = await validateBeforeCreate(data)
-    const createdProduct = await GET_DB().collection(PRODUCT_COLLECTION_NAME).insertOne(validData)
+    const createdProduct = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .insertOne(validData)
 
     return (await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
@@ -120,7 +134,9 @@ const createNew = async (data: CreateProductInput): Promise<ProductDocument | nu
 /**
  * Tìm product theo ID
  */
-const findOneById = async (productId: string): Promise<ProductDocument | null> => {
+const findOneById = async (
+  productId: string
+): Promise<ProductDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
@@ -135,7 +151,10 @@ const findOneById = async (productId: string): Promise<ProductDocument | null> =
 /**
  * Tìm product theo tên và type (case-insensitive)
  */
-const findByNameAndType = async (name: string, type: string): Promise<ProductDocument | null> => {
+const findByNameAndType = async (
+  name: string,
+  type: string
+): Promise<ProductDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
@@ -153,7 +172,9 @@ const findByNameAndType = async (name: string, type: string): Promise<ProductDoc
 /**
  * Tìm nhiều products theo danh sách IDs
  */
-const findByIds = async (productIds: ObjectId[]): Promise<ProductDocument[]> => {
+const findByIds = async (
+  productIds: ObjectId[]
+): Promise<ProductDocument[]> => {
   try {
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
@@ -186,7 +207,9 @@ const getMany = async (
       .limit(itemsPerPage)
       .toArray()
 
-    const totalProducts = await GET_DB().collection(PRODUCT_COLLECTION_NAME).countDocuments(filter)
+    const totalProducts = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .countDocuments(filter)
 
     const totalPages = Math.ceil(totalProducts / itemsPerPage)
 
@@ -209,7 +232,10 @@ const getMany = async (
 /**
  * Cập nhật thông tin product
  */
-const update = async (productId: string, updateData: UpdateProductInput): Promise<ProductDocument | null> => {
+const update = async (
+  productId: string,
+  updateData: UpdateProductInput
+): Promise<ProductDocument | null> => {
   try {
     const dataToUpdate = {
       ...updateData,
@@ -218,7 +244,11 @@ const update = async (productId: string, updateData: UpdateProductInput): Promis
 
     const result = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
-      .findOneAndUpdate({ _id: new ObjectId(productId) }, { $set: dataToUpdate }, { returnDocument: 'after' })
+      .findOneAndUpdate(
+        { _id: new ObjectId(productId) },
+        { $set: dataToUpdate },
+        { returnDocument: 'after' }
+      )
 
     return result as ProductDocument | null
   } catch (error) {
@@ -244,9 +274,13 @@ const deleteOneById = async (productId: string): Promise<DeleteResult> => {
 /**
  * Xóa nhiều products theo filter
  */
-const deleteMany = async (filter: Filter<Document> = {}): Promise<DeleteResult> => {
+const deleteMany = async (
+  filter: Filter<Document> = {}
+): Promise<DeleteResult> => {
   try {
-    const result = await GET_DB().collection(PRODUCT_COLLECTION_NAME).deleteMany(filter)
+    const result = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .deleteMany(filter)
 
     return result
   } catch (error) {
@@ -366,7 +400,9 @@ const decrementSelled = async (
  */
 const getAllTypes = async (): Promise<string[]> => {
   try {
-    const types = await GET_DB().collection(PRODUCT_COLLECTION_NAME).distinct('type')
+    const types = await GET_DB()
+      .collection(PRODUCT_COLLECTION_NAME)
+      .distinct('type')
 
     // Filter out null/undefined/empty values and sort
     return (types as string[]).filter((type) => type && type.trim()).sort()

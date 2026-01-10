@@ -1,3 +1,5 @@
+/* eslint-disable indent */
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * User Service
  * Xử lý logic business cho user - bao gồm auth, profile, admin management
@@ -62,7 +64,10 @@ interface UserQueryFilter {
 
 /** MongoDB filter for users */
 interface UserMongoFilter {
-  $or?: Array<{ name: { $regex: string; $options: string } } | { email: { $regex: string; $options: string } }>
+  $or?: Array<
+    | { name: { $regex: string; $options: string } }
+    | { email: { $regex: string; $options: string } }
+  >
   role?: UserRole
   isActive?: boolean
 }
@@ -140,7 +145,10 @@ const hashPassword = async (password: string): Promise<string> => {
 /**
  * So sánh mật khẩu
  */
-const comparePassword = async (password: string, hashedPassword: string): Promise<boolean> => {
+const comparePassword = async (
+  password: string,
+  hashedPassword: string
+): Promise<boolean> => {
   return await bcrypt.compare(password, hashedPassword)
 }
 
@@ -157,7 +165,10 @@ const register = async (userData: RegisterUserData): Promise<UserResponse> => {
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
-      throw new ApiError(StatusCodes.CONFLICT, `Email "${userData.email}" đã được sử dụng`)
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        `Email "${userData.email}" đã được sử dụng`
+      )
     }
 
     // Hash mật khẩu
@@ -201,7 +212,10 @@ const login = async (
     const user = await userModel.findOneByEmail(email)
 
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Email hoặc mật khẩu không đúng')
+      throw new ApiError(
+        StatusCodes.NOT_ACCEPTABLE,
+        'Email hoặc mật khẩu không đúng'
+      )
     }
 
     // Lưu ý: User inactive vẫn có thể đăng nhập để xem sản phẩm
@@ -211,7 +225,10 @@ const login = async (
     const isPasswordValid = await comparePassword(password, user.password)
 
     if (!isPasswordValid) {
-      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Email hoặc mật khẩu không đúng')
+      throw new ApiError(
+        StatusCodes.NOT_ACCEPTABLE,
+        'Email hoặc mật khẩu không đúng'
+      )
     }
 
     // Cập nhật thời gian đăng nhập cuối
@@ -226,11 +243,18 @@ const login = async (
       email: user.email,
       role: user.role
     }
-    const accessToken = JwtProvider.generateAccessToken(tokenUserData, sessionId)
-    const refreshToken = JwtProvider.generateRefreshToken(tokenUserData, sessionId)
+    const accessToken = JwtProvider.generateAccessToken(
+      tokenUserData,
+      sessionId
+    )
+    const refreshToken = JwtProvider.generateRefreshToken(
+      tokenUserData,
+      sessionId
+    )
 
     // Tính thời gian hết hạn của refresh token (7 ngày)
-    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN || '7d') as ms.StringValue
+    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN ||
+      '7d') as ms.StringValue
     const refreshTokenExpiresIn = ms(refreshExpiresInStr)
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
@@ -261,7 +285,9 @@ const login = async (
 /**
  * Refresh access token
  */
-const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResult> => {
+const refreshToken = async (
+  refreshTokenValue: string
+): Promise<RefreshTokenResult> => {
   try {
     // Verify refresh token
     const decoded = JwtProvider.verifyRefreshToken(refreshTokenValue)
@@ -282,7 +308,10 @@ const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResu
 
       // Kiểm tra session có khớp với user không
       if (activeSession.userId !== decoded._id) {
-        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ')
+        throw new ApiError(
+          StatusCodes.UNAUTHORIZED,
+          'Phiên đăng nhập không hợp lệ'
+        )
       }
     }
 
@@ -290,7 +319,10 @@ const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResu
     const user = await userModel.findOneById(decoded._id)
 
     if (!user) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.UNAUTHORIZED,
+        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Tạo access token mới với sessionId (nếu có)
@@ -299,7 +331,10 @@ const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResu
       email: user.email,
       role: user.role
     }
-    const newAccessToken = JwtProvider.generateAccessToken(tokenUserData, sessionId)
+    const newAccessToken = JwtProvider.generateAccessToken(
+      tokenUserData,
+      sessionId
+    )
 
     return {
       accessToken: newAccessToken
@@ -309,7 +344,10 @@ const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResu
       (error as Error).name === 'JsonWebTokenError' ||
       (error as Error).name === 'TokenExpiredError'
     ) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.UNAUTHORIZED,
+        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
+      )
     }
     throw error
   }
@@ -326,13 +364,19 @@ const getDetails = async (userId: string): Promise<UserResponse> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
+      )
     }
 
     const user = await userModel.findOneById(userId)
 
     if (!user) {
-      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.UNAUTHORIZED,
+        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Loại bỏ password khỏi response
@@ -347,17 +391,26 @@ const getDetails = async (userId: string): Promise<UserResponse> => {
 /**
  * Cập nhật user (bởi chính user)
  */
-const updateUser = async (userId: string, updateData: Partial<User>): Promise<UserResponse> => {
+const updateUser = async (
+  userId: string,
+  updateData: Partial<User>
+): Promise<UserResponse> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userId)
     if (!existingUser) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Cập nhật user
@@ -380,28 +433,45 @@ const updateUser = async (userId: string, updateData: Partial<User>): Promise<Us
 /**
  * Cập nhật password
  */
-const updatePassword = async (userId: string, passwordData: PasswordUpdateData): Promise<UserResponse> => {
+const updatePassword = async (
+  userId: string,
+  passwordData: PasswordUpdateData
+): Promise<UserResponse> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Tìm user
     const user = await userModel.findOneById(userId)
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
+      )
     }
 
     // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải OAuth user (Google/Facebook) chưa set password
-    const isOAuthUser = user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
-    const hasOAuthPassword = user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
+    const isOAuthUser =
+      user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
+    const hasOAuthPassword =
+      user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
 
     if (!isOAuthUser || (isOAuthUser && !hasOAuthPassword)) {
-      const isCurrentPasswordValid = await comparePassword(passwordData.currentPassword, user.password)
+      const isCurrentPasswordValid = await comparePassword(
+        passwordData.currentPassword,
+        user.password
+      )
 
       if (!isCurrentPasswordValid) {
-        throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Mật khẩu hiện tại không đúng')
+        throw new ApiError(
+          StatusCodes.NOT_ACCEPTABLE,
+          'Mật khẩu hiện tại không đúng'
+        )
       }
     }
 
@@ -436,10 +506,16 @@ const updatePassword = async (userId: string, passwordData: PasswordUpdateData):
 /**
  * Upload avatar
  */
-const uploadAvatar = async (fileBuffer: Buffer, folderName: string = 'users-commerceweb'): Promise<UploadResult> => {
+const uploadAvatar = async (
+  fileBuffer: Buffer,
+  folderName: string = 'users-commerceweb'
+): Promise<UploadResult> => {
   try {
     // Upload ảnh lên Cloudinary với folder 'users-commerceweb'
-    const uploadResult = await CloudinaryProvider.streamUpload(fileBuffer, folderName)
+    const uploadResult = await CloudinaryProvider.streamUpload(
+      fileBuffer,
+      folderName
+    )
 
     return uploadResult as UploadResult
   } catch (error) {
@@ -470,7 +546,10 @@ const getUsers = async (
 
     // Tìm kiếm theo tên hoặc email
     if (search) {
-      filter.$or = [{ name: { $regex: search, $options: 'i' } }, { email: { $regex: search, $options: 'i' } }]
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ]
     }
 
     // Lọc theo role
@@ -511,7 +590,12 @@ const getUsers = async (
       }
     }
 
-    const result = await userModel.getMany(filter, page, itemsPerPage, sortOptions)
+    const result = await userModel.getMany(
+      filter,
+      page,
+      itemsPerPage,
+      sortOptions
+    )
 
     // Loại bỏ password khỏi tất cả user trong response
     const usersWithoutPassword =
@@ -532,11 +616,17 @@ const getUsers = async (
 /**
  * Cập nhật user bởi admin
  */
-const updateUserByAdmin = async (userId: string, updateData: Partial<User>): Promise<UserResponse> => {
+const updateUserByAdmin = async (
+  userId: string,
+  updateData: Partial<User>
+): Promise<UserResponse> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin người dùng không hợp lệ')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Thông tin người dùng không hợp lệ'
+      )
     }
 
     // Kiểm tra user có tồn tại không
@@ -549,7 +639,10 @@ const updateUserByAdmin = async (userId: string, updateData: Partial<User>): Pro
     if (updateData.email && updateData.email !== existingUser.email) {
       const duplicateUser = await userModel.findOneByEmail(updateData.email)
       if (duplicateUser) {
-        throw new ApiError(StatusCodes.CONFLICT, `Email "${updateData.email}" đã được sử dụng`)
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          `Email "${updateData.email}" đã được sử dụng`
+        )
       }
     }
 
@@ -573,13 +666,18 @@ const updateUserByAdmin = async (userId: string, updateData: Partial<User>): Pro
 /**
  * Tạo user bởi admin
  */
-const createUserByAdmin = async (userData: AdminCreateUserData): Promise<UserResponse> => {
+const createUserByAdmin = async (
+  userData: AdminCreateUserData
+): Promise<UserResponse> => {
   try {
     // Kiểm tra email đã tồn tại chưa
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
-      throw new ApiError(StatusCodes.CONFLICT, `Email "${userData.email}" đã được sử dụng`)
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        `Email "${userData.email}" đã được sử dụng`
+      )
     }
 
     // Hash mật khẩu
@@ -591,7 +689,8 @@ const createUserByAdmin = async (userData: AdminCreateUserData): Promise<UserRes
       password: hashedPassword,
       role: userData.role || 'user',
       isActive: userData.isActive !== undefined ? userData.isActive : true,
-      emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : false,
+      emailVerified:
+        userData.emailVerified !== undefined ? userData.emailVerified : false,
       typeAccount: userData.typeAccount || 'LOCAL', // Admin có thể chỉ định loại account
       createdAt: new Date(),
       updatedAt: new Date()
@@ -615,7 +714,10 @@ const deleteUser = async (userId: string): Promise<DeleteResult> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Thông tin người dùng không hợp lệ')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Thông tin người dùng không hợp lệ'
+      )
     }
 
     // Kiểm tra user có tồn tại không
@@ -636,11 +738,16 @@ const deleteUser = async (userId: string): Promise<DeleteResult> => {
 /**
  * Xóa nhiều users
  */
-const deleteMultipleUsers = async (userIds: string[]): Promise<DeleteResult> => {
+const deleteMultipleUsers = async (
+  userIds: string[]
+): Promise<DeleteResult> => {
   try {
     // Validate input
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Vui lòng chọn ít nhất một người dùng để xóa')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Vui lòng chọn ít nhất một người dùng để xóa'
+      )
     }
 
     // Validate tất cả ObjectIds
@@ -693,13 +800,19 @@ const activateUser = async (userId: string): Promise<UserResponse> => {
 
     // Kiểm tra user đã được kích hoạt chưa
     if (existingUser.isActive) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được kích hoạt trước đó')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã được kích hoạt trước đó'
+      )
     }
 
     // Kích hoạt user
     const activatedUser = await userModel.activateUser(userId)
     if (!activatedUser) {
-      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể kích hoạt tài khoản')
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể kích hoạt tài khoản'
+      )
     }
 
     // Loại bỏ password khỏi response
@@ -724,18 +837,27 @@ const deactivateUser = async (userId: string): Promise<UserResponse> => {
 
     // Kiểm tra user có phải admin không (admin không thể bị vô hiệu hóa)
     if (existingUser.role === 'admin') {
-      throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể vô hiệu hóa tài khoản quản trị viên')
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Không thể vô hiệu hóa tài khoản quản trị viên'
+      )
     }
 
     // Kiểm tra user đã bị vô hiệu hóa chưa
     if (!existingUser.isActive) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã bị vô hiệu hóa trước đó')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã bị vô hiệu hóa trước đó'
+      )
     }
 
     // Vô hiệu hóa user
     const deactivatedUser = await userModel.deactivateUser(userId)
     if (!deactivatedUser) {
-      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể vô hiệu hóa tài khoản')
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể vô hiệu hóa tài khoản'
+      )
     }
 
     // Loại bỏ password khỏi response
@@ -754,12 +876,17 @@ const deactivateUser = async (userId: string): Promise<UserResponse> => {
 /**
  * Gửi email xác minh tài khoản
  */
-const sendVerificationEmail = async (email: string): Promise<EmailVerificationResult> => {
+const sendVerificationEmail = async (
+  email: string
+): Promise<EmailVerificationResult> => {
   try {
     // Kiểm tra user có tồn tại không
     const user = await userModel.findOneByEmail(email)
     if (!user) {
-      throw new ApiError(StatusCodes.NOT_FOUND, 'Email không tồn tại trong hệ thống')
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        'Email không tồn tại trong hệ thống'
+      )
     }
 
     // Kiểm tra user đã verify chưa
@@ -771,7 +898,9 @@ const sendVerificationEmail = async (email: string): Promise<EmailVerificationRe
     const verifyToken = JwtProvider.generateVerificationToken(email)
 
     // Tạo verification link
-    const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(email)}&token=${verifyToken}`
+    const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(
+      email
+    )}&token=${verifyToken}`
 
     // HTML email template
     const emailSubject = 'Xác minh tài khoản - Commerce Web'
@@ -896,14 +1025,20 @@ const sendVerificationEmail = async (email: string): Promise<EmailVerificationRe
 /**
  * Xác minh tài khoản người dùng
  */
-const verifyUserAccount = async (email: string, token: string): Promise<VerifyAccountResult> => {
+const verifyUserAccount = async (
+  email: string,
+  token: string
+): Promise<VerifyAccountResult> => {
   try {
     // Xác minh token sử dụng JwtProvider
     const decoded = JwtProvider.verifyVerificationToken(token)
 
     // Kiểm tra email khớp với token
     if (decoded.email !== email) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email không khớp với token xác minh')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Email không khớp với token xác minh'
+      )
     }
 
     // Tìm user
@@ -914,7 +1049,10 @@ const verifyUserAccount = async (email: string, token: string): Promise<VerifyAc
 
     // Kiểm tra đã verify chưa
     if (user.emailVerified) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được xác minh trước đó')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Tài khoản đã được xác minh trước đó'
+      )
     }
 
     // Cập nhật trạng thái emailVerified và isActive

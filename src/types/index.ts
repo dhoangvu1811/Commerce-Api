@@ -77,10 +77,7 @@ export type {
 } from './session.types.js'
 
 // Environment types
-export type {
-  BuildMode,
-  EnvironmentConfig
-} from './environment.types.js'
+export type { BuildMode, EnvironmentConfig } from './environment.types.js'
 
 // JWT Provider types
 export type {
@@ -176,5 +173,3 @@ export type {
   GoogleVerifyCallback,
   FacebookVerifyCallback
 } from './oauth.types.js'
-
-

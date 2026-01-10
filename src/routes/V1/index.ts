@@ -3,7 +3,8 @@
  * Aggregates all V1 routes
  */
 
-import express, { Request, Response, Router } from 'express'
+import type { Request, Response, Router } from 'express'
+import express from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { productRoute } from './productRouter.js'
 import { userRoute } from './userRouter.js'

@@ -3,7 +3,8 @@
  * Định nghĩa các routes cho products
  */
 
-import express, { Router } from 'express'
+import type { Router } from 'express'
+import express from 'express'
 import { productController } from '~/controllers/productController.js'
 import { productValidation } from '~/validations/productValidation.js'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
@@ -20,15 +21,35 @@ RouterInstance.get('/getAllType', productController.getAllTypes)
 RouterInstance.use(authMiddleware.verifyToken, authMiddleware.verifyAdmin)
 
 // Admin-only routes - quản lý sản phẩm
-RouterInstance.post('/create', productValidation.createNew, productController.createNew)
+RouterInstance.post(
+  '/create',
+  productValidation.createNew,
+  productController.createNew
+)
 
-RouterInstance.put('/update/:id', productValidation.update, productController.update)
+RouterInstance.put(
+  '/update/:id',
+  productValidation.update,
+  productController.update
+)
 
-RouterInstance.delete('/delete/:id', productValidation.deleteProduct, productController.deleteProduct)
+RouterInstance.delete(
+  '/delete/:id',
+  productValidation.deleteProduct,
+  productController.deleteProduct
+)
 
-RouterInstance.post('/deleteSelected', productValidation.deleteSelected, productController.deleteSelectedProducts)
+RouterInstance.post(
+  '/deleteSelected',
+  productValidation.deleteSelected,
+  productController.deleteSelectedProducts
+)
 
 // Upload ảnh sản phẩm lên Cloudinary
-RouterInstance.post('/upload-image', multerUploadMiddleware.upload.single('image'), productController.uploadImage)
+RouterInstance.post(
+  '/upload-image',
+  multerUploadMiddleware.upload.single('image'),
+  productController.uploadImage
+)
 
 export const productRoute = RouterInstance

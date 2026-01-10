@@ -12,7 +12,11 @@ import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
 /**
  * Validation tạo product mới
  */
-const createNew = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const createNew = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().required().trim().min(2).max(255).messages({
       'string.empty': 'Tên sản phẩm không được để trống',
@@ -42,11 +46,17 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
       'number.positive': 'Giá sản phẩm phải lớn hơn 0',
       'any.required': 'Giá sản phẩm là bắt buộc'
     }),
-    rating: Joi.number().optional().min(0).max(5).precision(1).default(0).messages({
-      'number.base': 'Đánh giá phải là số',
-      'number.min': 'Đánh giá phải từ 0 đến 5',
-      'number.max': 'Đánh giá phải từ 0 đến 5'
-    }),
+    rating: Joi.number()
+      .optional()
+      .min(0)
+      .max(5)
+      .precision(1)
+      .default(0)
+      .messages({
+        'number.base': 'Đánh giá phải là số',
+        'number.min': 'Đánh giá phải từ 0 đến 5',
+        'number.max': 'Đánh giá phải từ 0 đến 5'
+      }),
     description: Joi.string().optional().trim().max(1000).allow('').messages({
       'string.max': 'Mô tả không được vượt quá 1000 ký tự'
     }),
@@ -55,11 +65,17 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
       'number.integer': 'Số lượng đã bán phải là số nguyên',
       'number.min': 'Số lượng đã bán không được âm'
     }),
-    discount: Joi.number().optional().min(0).max(100).precision(2).default(0).messages({
-      'number.base': 'Giảm giá phải là số',
-      'number.min': 'Giảm giá không được âm',
-      'number.max': 'Giảm giá không được vượt quá 100%'
-    })
+    discount: Joi.number()
+      .optional()
+      .min(0)
+      .max(100)
+      .precision(2)
+      .default(0)
+      .messages({
+        'number.base': 'Giảm giá phải là số',
+        'number.min': 'Giảm giá không được âm',
+        'number.max': 'Giảm giá không được vượt quá 100%'
+      })
   })
 
   try {
@@ -67,7 +83,10 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
     next()
   } catch (error) {
     const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, errorMessage)
+    const customError = new ApiError(
+      StatusCodes.UNPROCESSABLE_ENTITY,
+      errorMessage
+    )
     next(customError)
   }
 }
@@ -75,7 +94,11 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
 /**
  * Validation cập nhật product
  */
-const update = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const update = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     name: Joi.string().optional().trim().min(2).max(255).messages({
       'string.empty': 'Tên sản phẩm không được để trống',
@@ -124,14 +147,23 @@ const update = async (req: Request, _res: Response, next: NextFunction): Promise
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa product
  */
-const deleteProduct = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteProduct = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'ID sản phẩm không được để trống',
@@ -144,14 +176,23 @@ const deleteProduct = async (req: Request, _res: Response, next: NextFunction): 
     await correctCondition.validateAsync(req.params, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa nhiều products
  */
-const deleteSelected = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteSelected = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     productIds: Joi.array()
       .required()
@@ -172,7 +213,12 @@ const deleteSelected = async (req: Request, _res: Response, next: NextFunction):
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 

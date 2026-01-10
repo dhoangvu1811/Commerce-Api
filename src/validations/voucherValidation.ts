@@ -12,7 +12,11 @@ import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
 /**
  * Validation tạo voucher mới
  */
-const createNew = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const createNew = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     code: Joi.string()
       .required()
@@ -24,7 +28,8 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
         'string.empty': 'Mã voucher không được để trống',
         'string.min': 'Mã voucher phải có ít nhất 3 ký tự',
         'string.max': 'Mã voucher không được vượt quá 50 ký tự',
-        'string.pattern.base': 'Mã voucher chỉ gồm A-Z, 0-9, gạch ngang hoặc gạch dưới',
+        'string.pattern.base':
+          'Mã voucher chỉ gồm A-Z, 0-9, gạch ngang hoặc gạch dưới',
         'any.required': 'Mã voucher là bắt buộc'
       }),
     type: Joi.string().required().valid('percent', 'fixed').messages({
@@ -61,14 +66,23 @@ const createNew = async (req: Request, _res: Response, next: NextFunction): Prom
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation cập nhật voucher
  */
-const update = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const update = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     code: Joi.string()
       .optional()
@@ -77,7 +91,8 @@ const update = async (req: Request, _res: Response, next: NextFunction): Promise
       .max(50)
       .pattern(/^[A-Z0-9-_]+$/)
       .messages({
-        'string.pattern.base': 'Mã voucher chỉ gồm A-Z, 0-9, gạch ngang hoặc gạch dưới'
+        'string.pattern.base':
+          'Mã voucher chỉ gồm A-Z, 0-9, gạch ngang hoặc gạch dưới'
       }),
     type: Joi.string().optional().valid('percent', 'fixed').messages({
       'any.only': 'Loại voucher phải là percent hoặc fixed'
@@ -99,14 +114,23 @@ const update = async (req: Request, _res: Response, next: NextFunction): Promise
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa voucher
  */
-const deleteVoucher = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteVoucher = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.empty': 'ID voucher không được để trống',
@@ -119,14 +143,23 @@ const deleteVoucher = async (req: Request, _res: Response, next: NextFunction): 
     await correctCondition.validateAsync(req.params, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xác minh voucher
  */
-const verify = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const verify = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     code: Joi.string().required().trim().messages({
       'string.empty': 'Mã voucher không được để trống',
@@ -143,14 +176,23 @@ const verify = async (req: Request, _res: Response, next: NextFunction): Promise
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation xóa nhiều vouchers
  */
-const deleteMultiple = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const deleteMultiple = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     voucherIds: Joi.array()
       .items(
@@ -170,7 +212,12 @@ const deleteMultiple = async (req: Request, _res: Response, next: NextFunction):
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 

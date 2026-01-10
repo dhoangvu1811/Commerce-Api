@@ -66,7 +66,11 @@ export const isValidPaymentStatusTransition = (
   fromPaymentStatus: PaymentStatus,
   toPaymentStatus: PaymentStatus
 ): boolean => {
-  return validPaymentStatusTransitions[fromPaymentStatus]?.includes(toPaymentStatus) || false
+  return (
+    validPaymentStatusTransitions[fromPaymentStatus]?.includes(
+      toPaymentStatus
+    ) || false
+  )
 }
 
 // ============================================================
@@ -91,8 +95,8 @@ export const isCODPayment = (paymentMethod: string = ''): boolean => {
 export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
   const method = paymentMethod.toLowerCase()
   return (
-    ['card', 'ewallet', 'bank', 'credit', 'debit', 'momo', 'zalopay'].some((keyword) =>
-      method.includes(keyword)
+    ['card', 'ewallet', 'bank', 'credit', 'debit', 'momo', 'zalopay'].some(
+      (keyword) => method.includes(keyword)
     ) ||
     (!isCODPayment(paymentMethod) && paymentMethod.trim() !== '')
   )
@@ -115,13 +119,20 @@ interface StatusUpdateResult {
  * @param {OrderStatus} newStatus - Trạng thái mới
  * @returns {StatusUpdateResult} Kết quả kiểm tra
  */
-export const canUpdateStatus = (order: Order | null, newStatus: OrderStatus): StatusUpdateResult => {
+export const canUpdateStatus = (
+  order: Order | null,
+  newStatus: OrderStatus
+): StatusUpdateResult => {
   if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
 
   const { paymentStatus, paymentMethod } = order
 
   // Các status không cần kiểm tra payment
-  const freeStatusUpdates: readonly OrderStatus[] = ['PENDING', 'CONFIRMED', 'CANCELLED']
+  const freeStatusUpdates: readonly OrderStatus[] = [
+    'PENDING',
+    'CONFIRMED',
+    'CANCELLED'
+  ]
   if (freeStatusUpdates.includes(newStatus)) {
     return { allowed: true, reason: null }
   }
@@ -145,7 +156,10 @@ export const canUpdateStatus = (order: Order | null, newStatus: OrderStatus): St
       'COMPLETED'
     ]
 
-    if (requiresPaymentStatuses.includes(newStatus) && paymentStatus !== 'PAID') {
+    if (
+      requiresPaymentStatuses.includes(newStatus) &&
+      paymentStatus !== 'PAID'
+    ) {
       const statusNames: Record<string, string> = {
         PROCESSING: 'Đang xử lý',
         PACKED: 'Đã đóng gói',
@@ -185,7 +199,10 @@ export const isConsistentStatusPayment = (
     () => (paymentStatus === 'PAID' ? !['PENDING'].includes(status) : true),
 
     // Rule 3: REFUNDED logic
-    () => (paymentStatus === 'REFUNDED' ? ['CANCELLED', 'REFUNDED'].includes(status) : true),
+    () =>
+      paymentStatus === 'REFUNDED'
+        ? ['CANCELLED', 'REFUNDED'].includes(status)
+        : true,
     () => (status === 'REFUNDED' ? paymentStatus === 'REFUNDED' : true),
 
     // Rule 4: Online Payment logic - Phải PAID trước khi PROCESSING/PACKED/SHIPPED/DELIVERED
@@ -198,7 +215,10 @@ export const isConsistentStatusPayment = (
           'DELIVERED',
           'COMPLETED'
         ]
-        if (requiresPaymentStatuses.includes(status) && paymentStatus === 'PENDING') {
+        if (
+          requiresPaymentStatuses.includes(status) &&
+          paymentStatus === 'PENDING'
+        ) {
           return false
         }
       }
@@ -294,7 +314,10 @@ export const generateOrderCode = (): string => {
  * @param {boolean} isAdmin - Có phải admin không
  * @returns {StatusUpdateResult} Kết quả kiểm tra
  */
-export const canMarkPaid = (order: Order | null, isAdmin: boolean = false): StatusUpdateResult => {
+export const canMarkPaid = (
+  order: Order | null,
+  isAdmin: boolean = false
+): StatusUpdateResult => {
   if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
 
   const { status, paymentStatus, paymentMethod = '' } = order
@@ -351,7 +374,11 @@ export const canMarkPaid = (order: Order | null, isAdmin: boolean = false): Stat
   }
 
   // Logic đặc biệt cho COD: Có thể mark paid khi COMPLETED (trường hợp đã giao nhưng admin chưa kịp mark paid)
-  if (isCODPayment(paymentMethod) && status === 'COMPLETED' && paymentStatus === 'PENDING') {
+  if (
+    isCODPayment(paymentMethod) &&
+    status === 'COMPLETED' &&
+    paymentStatus === 'PENDING'
+  ) {
     return {
       allowed: true,
       reason: null,
@@ -360,10 +387,14 @@ export const canMarkPaid = (order: Order | null, isAdmin: boolean = false): Stat
   }
 
   // Với Online Payment: Không được mark paid nếu đã DELIVERED/COMPLETED (phải thanh toán trước)
-  if (isOnlinePayment(paymentMethod) && ['DELIVERED', 'COMPLETED'].includes(status)) {
+  if (
+    isOnlinePayment(paymentMethod) &&
+    ['DELIVERED', 'COMPLETED'].includes(status)
+  ) {
     return {
       allowed: false,
-      reason: 'Đơn hàng thanh toán online phải được thanh toán trước khi giao hàng'
+      reason:
+        'Đơn hàng thanh toán online phải được thanh toán trước khi giao hàng'
     }
   }
 

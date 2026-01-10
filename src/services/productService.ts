@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+/* eslint-disable indent */
 /**
  * Product Service
  * Xử lý logic business cho product
@@ -58,7 +60,10 @@ interface UploadResult {
 const createNew = async (productData: Partial<Product>): Promise<Product> => {
   try {
     // Kiểm tra sản phẩm đã tồn tại chưa (theo tên và loại)
-    const existingProduct = await productModel.findByNameAndType(productData.name!, productData.type!)
+    const existingProduct = await productModel.findByNameAndType(
+      productData.name!,
+      productData.type!
+    )
 
     if (existingProduct) {
       throw new ApiError(
@@ -107,7 +112,10 @@ const getDetails = async (productId: string): Promise<Product> => {
 /**
  * Cập nhật product
  */
-const update = async (productId: string, updateData: Partial<Product>): Promise<Product> => {
+const update = async (
+  productId: string,
+  updateData: Partial<Product>
+): Promise<Product> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(productId)) {
@@ -125,7 +133,10 @@ const update = async (productId: string, updateData: Partial<Product>): Promise<
       const nameToCheck = updateData.name || existingProduct.name
       const typeToCheck = updateData.type || existingProduct.type
 
-      const duplicateProduct = await productModel.findByNameAndType(nameToCheck, typeToCheck)
+      const duplicateProduct = await productModel.findByNameAndType(
+        nameToCheck,
+        typeToCheck
+      )
 
       // Nếu tìm thấy sản phẩm trùng và không phải là chính sản phẩm đang update
       if (duplicateProduct && duplicateProduct._id?.toString() !== productId) {
@@ -181,17 +192,25 @@ const deleteProduct = async (productId: string): Promise<DeleteResult> => {
 /**
  * Xóa nhiều products
  */
-const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResult> => {
+const deleteSelectedProducts = async (
+  productIds: string[]
+): Promise<DeleteResult> => {
   try {
     // Validate input
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'Danh sách ID sản phẩm không hợp lệ')
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Danh sách ID sản phẩm không hợp lệ'
+      )
     }
 
     // Validate tất cả ObjectIds
     const invalidIds = productIds.filter((id) => !ObjectId.isValid(id))
     if (invalidIds.length > 0) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, `ID sản phẩm không hợp lệ: ${invalidIds.join(', ')}`)
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        `ID sản phẩm không hợp lệ: ${invalidIds.join(', ')}`
+      )
     }
 
     // Chuyển đổi string IDs thành ObjectIds
@@ -199,11 +218,16 @@ const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResul
 
     // Kiểm tra các sản phẩm có tồn tại không
     const existingProducts = await productModel.findByIds(objectIds)
-    const existingIds = existingProducts.map((product) => product._id?.toString())
+    const existingIds = existingProducts.map((product) =>
+      product._id?.toString()
+    )
     const notFoundIds = productIds.filter((id) => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
-      throw new ApiError(StatusCodes.NOT_FOUND, `Không tìm thấy sản phẩm với ID: ${notFoundIds.join(', ')}`)
+      throw new ApiError(
+        StatusCodes.NOT_FOUND,
+        `Không tìm thấy sản phẩm với ID: ${notFoundIds.join(', ')}`
+      )
     }
 
     // Xóa các sản phẩm đã chọn
@@ -273,7 +297,12 @@ const getProducts = async (
       }
     }
 
-    const result = await productModel.getMany(filter, page, itemsPerPage, sortOptions)
+    const result = await productModel.getMany(
+      filter,
+      page,
+      itemsPerPage,
+      sortOptions
+    )
 
     return result as PaginatedProductsResult
   } catch (error) {
@@ -321,7 +350,12 @@ const getProductsByType = async (
       }
     }
 
-    const result = await productModel.getMany(filter, page, itemsPerPage, sortOptions)
+    const result = await productModel.getMany(
+      filter,
+      page,
+      itemsPerPage,
+      sortOptions
+    )
 
     return result as PaginatedProductsResult
   } catch (error) {
@@ -345,14 +379,23 @@ const getAllTypes = async (): Promise<string[]> => {
 /**
  * Upload ảnh lên Cloudinary
  */
-const uploadImage = async (fileBuffer: Buffer, folderName: string = 'products'): Promise<UploadResult> => {
+const uploadImage = async (
+  fileBuffer: Buffer,
+  folderName: string = 'products'
+): Promise<UploadResult> => {
   try {
     // Upload ảnh lên Cloudinary
-    const uploadResult = await CloudinaryProvider.streamUpload(fileBuffer, folderName)
+    const uploadResult = await CloudinaryProvider.streamUpload(
+      fileBuffer,
+      folderName
+    )
 
     return uploadResult as UploadResult
   } catch (error) {
-    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`)
+    throw new ApiError(
+      StatusCodes.INTERNAL_SERVER_ERROR,
+      `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`
+    )
   }
 }
 

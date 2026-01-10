@@ -3,7 +3,8 @@
  * Định nghĩa các routes cho orders
  */
 
-import express, { Router } from 'express'
+import type { Router } from 'express'
+import express from 'express'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 import { orderValidation } from '~/validations/orderValidation.js'
 import { orderController } from '~/controllers/orderController.js'
@@ -20,7 +21,11 @@ RouterInstance.post(
   orderValidation.create,
   orderController.create
 )
-RouterInstance.get('/my-orders', authMiddleware.verifyActiveUser, orderController.getMyOrders)
+RouterInstance.get(
+  '/my-orders',
+  authMiddleware.verifyActiveUser,
+  orderController.getMyOrders
+)
 RouterInstance.get(
   '/details/:id',
   authMiddleware.verifyActiveUser,
@@ -35,7 +40,11 @@ RouterInstance.post(
 )
 
 // Admin routes - admin luôn active, chỉ cần verify admin
-RouterInstance.get('/all', authMiddleware.verifyAdmin, orderController.adminGetOrders)
+RouterInstance.get(
+  '/all',
+  authMiddleware.verifyAdmin,
+  orderController.adminGetOrders
+)
 RouterInstance.get(
   '/admin/details/:id',
   authMiddleware.verifyAdmin,

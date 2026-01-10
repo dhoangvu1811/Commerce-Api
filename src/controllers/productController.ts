@@ -1,9 +1,10 @@
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
  * Product Controller
  * Điều phối API requests cho products
  */
 
-import { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { productService } from '~/services/productService.js'
 
@@ -12,7 +13,11 @@ interface MulterRequest extends Request {
   file?: Express.Multer.File
 }
 
-const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const createNew = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const createProduct = await productService.createNew(req.body)
 
@@ -26,7 +31,11 @@ const createNew = async (req: Request, res: Response, next: NextFunction): Promi
   }
 }
 
-const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const getDetails = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const productId = req.params.id!
 
@@ -42,7 +51,11 @@ const getDetails = async (req: Request, res: Response, next: NextFunction): Prom
   }
 }
 
-const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const update = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const productId = req.params.id!
 
@@ -58,7 +71,11 @@ const update = async (req: Request, res: Response, next: NextFunction): Promise<
   }
 }
 
-const deleteProduct = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const deleteProduct = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const productId = req.params.id!
 
@@ -74,7 +91,11 @@ const deleteProduct = async (req: Request, res: Response, next: NextFunction): P
   }
 }
 
-const deleteSelectedProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const deleteSelectedProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const { productIds } = req.body || {}
 
@@ -90,7 +111,11 @@ const deleteSelectedProducts = async (req: Request, res: Response, next: NextFun
   }
 }
 
-const getProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+const getProducts = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const { page, itemsPerPage, search, type, sort } = req.query || {}
     const queryFilter = {
@@ -115,7 +140,11 @@ const getProducts = async (req: Request, res: Response, next: NextFunction): Pro
   }
 }
 
-const getAllTypes = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+const getAllTypes = async (
+  _req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     const result = await productService.getAllTypes()
 
@@ -129,7 +158,11 @@ const getAllTypes = async (_req: Request, res: Response, next: NextFunction): Pr
   }
 }
 
-const uploadImage = async (req: MulterRequest, res: Response, next: NextFunction): Promise<void> => {
+const uploadImage = async (
+  req: MulterRequest,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
     // Kiểm tra xem có file được upload không
     if (!req.file) {
@@ -142,7 +175,10 @@ const uploadImage = async (req: MulterRequest, res: Response, next: NextFunction
     }
 
     // Upload ảnh lên Cloudinary thông qua service
-    const uploadResult = await productService.uploadImage(req.file?.buffer, 'products')
+    const uploadResult = await productService.uploadImage(
+      req.file?.buffer,
+      'products'
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,

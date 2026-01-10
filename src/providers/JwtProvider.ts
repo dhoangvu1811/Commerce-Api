@@ -23,7 +23,10 @@ import type {
  * @param {string | null} sessionId - Session ID để tracking
  * @returns {string} Access Token
  */
-const generateAccessToken = (userData: TokenUserData, sessionId: string | null = null): string => {
+const generateAccessToken = (
+  userData: TokenUserData,
+  sessionId: string | null = null
+): string => {
   const payload: Partial<AccessTokenPayload> = {
     _id: userData._id,
     email: userData.email,
@@ -35,9 +38,13 @@ const generateAccessToken = (userData: TokenUserData, sessionId: string | null =
     payload.sessionId = sessionId
   }
 
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET as Secret, {
-    expiresIn: (env.JWT_ACCESS_EXPIRES_IN || '5m') as string
-  } as SignOptions)
+  return jwt.sign(
+    payload,
+    env.JWT_ACCESS_SECRET as Secret,
+    {
+      expiresIn: (env.JWT_ACCESS_EXPIRES_IN || '5m') as string
+    } as SignOptions
+  )
 }
 
 /**
@@ -46,7 +53,10 @@ const generateAccessToken = (userData: TokenUserData, sessionId: string | null =
  * @param {string} sessionId - Session ID để tracking
  * @returns {string} Refresh Token
  */
-const generateRefreshToken = (userData: TokenUserData, sessionId: string): string => {
+const generateRefreshToken = (
+  userData: TokenUserData,
+  sessionId: string
+): string => {
   return jwt.sign(
     {
       _id: userData._id,
@@ -74,7 +84,9 @@ const verifyAccessToken = (token: string): AccessTokenPayload => {
  * @param {string} token - Access token cần verify
  * @returns {AccessTokenPayload} Payload đã decode
  */
-const verifyAccessTokenIgnoreExpiration = (token: string): AccessTokenPayload => {
+const verifyAccessTokenIgnoreExpiration = (
+  token: string
+): AccessTokenPayload => {
   return jwt.verify(token, env.JWT_ACCESS_SECRET, {
     ignoreExpiration: true
   }) as AccessTokenPayload
@@ -95,7 +107,9 @@ const verifyRefreshToken = (token: string): RefreshTokenPayload => {
  * @param {string} token - Refresh token cần verify
  * @returns {RefreshTokenPayload} Payload đã decode
  */
-const verifyRefreshTokenIgnoreExpiration = (token: string): RefreshTokenPayload => {
+const verifyRefreshTokenIgnoreExpiration = (
+  token: string
+): RefreshTokenPayload => {
   return jwt.verify(token, env.JWT_REFRESH_SECRET, {
     ignoreExpiration: true
   }) as RefreshTokenPayload
@@ -134,7 +148,10 @@ const generateVerificationToken = (email: string): string => {
  */
 const verifyVerificationToken = (token: string): VerificationTokenPayload => {
   try {
-    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET) as VerificationTokenPayload
+    const decoded = jwt.verify(
+      token,
+      env.JWT_ACCESS_SECRET
+    ) as VerificationTokenPayload
 
     // Kiểm tra type token
     if (decoded.type !== 'email_verification') {
@@ -143,7 +160,10 @@ const verifyVerificationToken = (token: string): VerificationTokenPayload => {
 
     return decoded
   } catch {
-    throw new ApiError(StatusCodes.BAD_REQUEST, 'Token xác minh không hợp lệ hoặc đã hết hạn')
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Token xác minh không hợp lệ hoặc đã hết hạn'
+    )
   }
 }
 

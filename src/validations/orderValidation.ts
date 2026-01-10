@@ -14,7 +14,11 @@ import { ALLOWED_PAYMENT_METHODS } from '~/utils/constants.js'
 /**
  * Validation tạo order mới
  */
-const create = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const create = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     items: Joi.array()
       .items(
@@ -23,12 +27,17 @@ const create = async (req: Request, _res: Response, next: NextFunction): Promise
             'string.pattern.base': 'Sản phẩm không hợp lệ. Vui lòng thử lại.',
             'any.required': 'Vui lòng chọn sản phẩm'
           }),
-          quantity: Joi.number().integer().min(1).max(1000).required().messages({
-            'number.base': 'Số lượng phải là số',
-            'number.min': 'Số lượng phải ít nhất là 1',
-            'number.max': 'Số lượng tối đa là 1000 sản phẩm',
-            'any.required': 'Vui lòng nhập số lượng'
-          })
+          quantity: Joi.number()
+            .integer()
+            .min(1)
+            .max(1000)
+            .required()
+            .messages({
+              'number.base': 'Số lượng phải là số',
+              'number.min': 'Số lượng phải ít nhất là 1',
+              'number.max': 'Số lượng tối đa là 1000 sản phẩm',
+              'any.required': 'Vui lòng nhập số lượng'
+            })
         })
       )
       .min(1)
@@ -50,14 +59,21 @@ const create = async (req: Request, _res: Response, next: NextFunction): Promise
       isDefault: Joi.boolean().optional(),
       fullAddress: Joi.string().optional().allow('')
     }).required(),
-    shippingFee: Joi.number().optional().min(0).max(10000000).precision(2).default(0).messages({
-      'number.max': 'Phí vận chuyển không được vượt quá 10,000,000'
-    }),
+    shippingFee: Joi.number()
+      .optional()
+      .min(0)
+      .max(10000000)
+      .precision(2)
+      .default(0)
+      .messages({
+        'number.max': 'Phí vận chuyển không được vượt quá 10,000,000'
+      }),
     paymentMethod: Joi.string()
       .optional()
       .valid(...ALLOWED_PAYMENT_METHODS)
       .messages({
-        'any.only': 'Phương thức thanh toán không hợp lệ. Vui lòng chọn: COD, Thẻ, Ví điện tử hoặc Chuyển khoản.'
+        'any.only':
+          'Phương thức thanh toán không hợp lệ. Vui lòng chọn: COD, Thẻ, Ví điện tử hoặc Chuyển khoản.'
       })
   })
 
@@ -65,14 +81,23 @@ const create = async (req: Request, _res: Response, next: NextFunction): Promise
     await correctCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation cập nhật trạng thái order
  */
-const updateStatus = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const updateStatus = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
@@ -94,14 +119,23 @@ const updateStatus = async (req: Request, _res: Response, next: NextFunction): P
     await bodyCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation cập nhật trạng thái thanh toán
  */
-const updatePaymentStatus = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const updatePaymentStatus = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
@@ -123,14 +157,23 @@ const updatePaymentStatus = async (req: Request, _res: Response, next: NextFunct
     await bodyCondition.validateAsync(req.body, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 
 /**
  * Validation order ID trong params
  */
-const validateOrderId = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+const validateOrderId = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
   const correctCondition = Joi.object({
     id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
       'string.pattern.base': 'Đơn hàng không hợp lệ. Vui lòng thử lại.',
@@ -142,7 +185,12 @@ const validateOrderId = async (req: Request, _res: Response, next: NextFunction)
     await correctCondition.validateAsync(req.params, { abortEarly: false })
     next()
   } catch (error) {
-    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, new Error(String(error)).message))
+    next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        new Error(String(error)).message
+      )
+    )
   }
 }
 

@@ -4,8 +4,10 @@
  */
 
 /* eslint-disable no-console */
+import 'dotenv/config'
 import cookieParser from 'cookie-parser'
-import express, { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction } from 'express'
+import express from 'express'
 import errorHandlingMiddleware from './middlewares/errorHandlingMiddleware.js'
 import { env } from './config/environment.js'
 import { APIs_V1 } from './routes/V1/index.js'

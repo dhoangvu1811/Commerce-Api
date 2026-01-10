@@ -37,7 +37,8 @@ export const env: EnvironmentVariables = {
   ADMIN_EMAIL_NAME: process.env.ADMIN_EMAIL_NAME || '',
 
   // Website Domains
-  WEBSITE_DOMAIN_DEVELOPMENT: process.env.WEBSITE_DOMAIN_DEVELOPMENT || 'http://localhost:5173',
+  WEBSITE_DOMAIN_DEVELOPMENT:
+    process.env.WEBSITE_DOMAIN_DEVELOPMENT || 'http://localhost:5173',
   WEBSITE_DOMAIN_PRODUCTION: process.env.WEBSITE_DOMAIN_PRODUCTION || '',
 
   // Google OAuth

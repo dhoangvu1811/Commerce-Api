@@ -4,15 +4,17 @@
  */
 
 import { env } from '~/config/environment.js'
-import type { OrderStatus, PaymentStatus, PaymentMethod } from '~/types/order.types.js'
+import type {
+  OrderStatus,
+  PaymentStatus,
+  PaymentMethod
+} from '~/types/order.types.js'
 
 /**
  * Danh sách domains được phép CORS
  * Thêm domain vào đây khi deploy frontend
  */
-export const WHITELIST_DOMAINS: string[] = [
-  // 'http://localhost:5173'
-]
+export const WHITELIST_DOMAINS: string[] = ['http://localhost:5173']
 
 /**
  * Domain website hiện tại dựa trên BUILD_MODE

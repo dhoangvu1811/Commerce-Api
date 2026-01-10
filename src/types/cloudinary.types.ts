@@ -52,5 +52,8 @@ export interface CloudinaryTransformation {
  * Cloudinary Provider interface
  */
 export interface ICloudinaryProvider {
-  streamUpload: (fileBuffer: Buffer, folderName: string) => Promise<CloudinaryUploadResult>
+  streamUpload: (
+    fileBuffer: Buffer,
+    folderName: string
+  ) => Promise<CloudinaryUploadResult>
 }

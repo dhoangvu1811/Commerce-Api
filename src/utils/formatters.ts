@@ -29,7 +29,9 @@ export const slugify = (val: string | undefined | null): string => {
  * @param {User | null | undefined} user - User object
  * @returns {PublicUser | Record<string, never>} User object đã lọc hoặc object rỗng
  */
-export const pickUser = (user: User | null | undefined): PublicUser | Record<string, never> => {
+export const pickUser = (
+  user: User | null | undefined
+): PublicUser | Record<string, never> => {
   if (!user) return {}
   return pick(user, [
     '_id',

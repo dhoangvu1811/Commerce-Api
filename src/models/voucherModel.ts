@@ -4,7 +4,15 @@
  */
 
 import { ObjectId } from 'mongodb'
-import type { WithId, Document, Filter, Sort, DeleteResult, UpdateResult, ClientSession } from 'mongodb'
+import type {
+  WithId,
+  Document,
+  Filter,
+  Sort,
+  DeleteResult,
+  UpdateResult,
+  ClientSession
+} from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
 import type { Voucher, VoucherType } from '~/types/voucher.types.js'
@@ -97,7 +105,9 @@ interface SessionOptions {
 /**
  * Validate dữ liệu trước khi tạo voucher
  */
-const validateBeforeCreate = async (data: CreateVoucherInput): Promise<CreateVoucherInput> => {
+const validateBeforeCreate = async (
+  data: CreateVoucherInput
+): Promise<CreateVoucherInput> => {
   const validData = await VOUCHER_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -112,10 +122,14 @@ const validateBeforeCreate = async (data: CreateVoucherInput): Promise<CreateVou
 /**
  * Tạo voucher mới
  */
-const createNew = async (data: CreateVoucherInput): Promise<VoucherDocument | null> => {
+const createNew = async (
+  data: CreateVoucherInput
+): Promise<VoucherDocument | null> => {
   try {
     const validData = await validateBeforeCreate(data)
-    const created = await GET_DB().collection(VOUCHER_COLLECTION_NAME).insertOne(validData)
+    const created = await GET_DB()
+      .collection(VOUCHER_COLLECTION_NAME)
+      .insertOne(validData)
 
     return (await GET_DB()
       .collection(VOUCHER_COLLECTION_NAME)
@@ -128,7 +142,9 @@ const createNew = async (data: CreateVoucherInput): Promise<VoucherDocument | nu
 /**
  * Tìm voucher theo ID
  */
-const findOneById = async (voucherId: string): Promise<VoucherDocument | null> => {
+const findOneById = async (
+  voucherId: string
+): Promise<VoucherDocument | null> => {
   try {
     const result = await GET_DB()
       .collection(VOUCHER_COLLECTION_NAME)
@@ -173,7 +189,9 @@ const getMany = async (
       .limit(itemsPerPage)
       .toArray()
 
-    const totalVouchers = await GET_DB().collection(VOUCHER_COLLECTION_NAME).countDocuments(filter)
+    const totalVouchers = await GET_DB()
+      .collection(VOUCHER_COLLECTION_NAME)
+      .countDocuments(filter)
 
     const totalPages = Math.ceil(totalVouchers / itemsPerPage)
 
@@ -196,7 +214,10 @@ const getMany = async (
 /**
  * Cập nhật thông tin voucher
  */
-const update = async (voucherId: string, updateData: UpdateVoucherInput): Promise<VoucherDocument | null> => {
+const update = async (
+  voucherId: string,
+  updateData: UpdateVoucherInput
+): Promise<VoucherDocument | null> => {
   try {
     const dataToUpdate = {
       ...updateData,
@@ -205,7 +226,11 @@ const update = async (voucherId: string, updateData: UpdateVoucherInput): Promis
 
     const result = await GET_DB()
       .collection(VOUCHER_COLLECTION_NAME)
-      .findOneAndUpdate({ _id: new ObjectId(voucherId) }, { $set: dataToUpdate }, { returnDocument: 'after' })
+      .findOneAndUpdate(
+        { _id: new ObjectId(voucherId) },
+        { $set: dataToUpdate },
+        { returnDocument: 'after' }
+      )
 
     return result as VoucherDocument | null
   } catch (error) {
@@ -273,7 +298,10 @@ const incrementUsedCountWithLimit = async (
       .updateOne(
         {
           _id: new ObjectId(voucherId),
-          $or: [{ usageLimit: 0 }, { $expr: { $lte: [{ $add: ['$usedCount', step] }, '$usageLimit'] } }]
+          $or: [
+            { usageLimit: 0 },
+            { $expr: { $lte: [{ $add: ['$usedCount', step] }, '$usageLimit'] } }
+          ]
         },
         { $inc: { usedCount: step }, $set: { updatedAt: new Date() } },
         updateOptions
