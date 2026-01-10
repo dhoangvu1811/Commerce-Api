@@ -82,3 +82,99 @@ export type {
   EnvironmentConfig
 } from './environment.types.js'
 
+// JWT Provider types
+export type {
+  AccessTokenPayload,
+  RefreshTokenPayload,
+  VerificationTokenPayload,
+  TokenUserData,
+  IJwtProvider
+} from './jwt.types.js'
+
+// Cloudinary Provider types
+export type {
+  CloudinaryUploadResult,
+  CloudinaryUploadOptions,
+  CloudinaryTransformation,
+  ICloudinaryProvider
+} from './cloudinary.types.js'
+
+// Brevo (Email) Provider types
+export type {
+  EmailSender,
+  EmailRecipient,
+  EmailAttachment,
+  BrevoEmailResult,
+  SendEmailOptions,
+  IBrevoProvider,
+  EmailTemplateType
+} from './brevo.types.js'
+
+// MongoDB types
+export type {
+  TransactionOptions,
+  InsertResult,
+  UpdateResult,
+  DeleteResult,
+  IBaseModel,
+  PaginationParams,
+  MongoSortDirection,
+  MongoSortOptions,
+  MongoFilter,
+  AggregatePipelineStage,
+  LookupStage,
+  UnwindStage
+} from './mongodb.types.js'
+
+// Validation types
+export type {
+  ValidationErrorDetail,
+  ValidationResult,
+  ValidationMiddleware,
+  ValidationOptions,
+  RegisterValidationInput,
+  LoginValidationInput,
+  UpdateUserValidationInput,
+  UpdatePasswordValidationInput,
+  ProductValidationInput,
+  OrderItemValidationInput,
+  CreateOrderValidationInput,
+  VoucherValidationInput
+} from './validation.types.js'
+
+// Middleware types
+export type {
+  AsyncRequestHandler,
+  ErrorRequestHandler,
+  IAuthMiddleware,
+  AuthenticatedRequest,
+  FileUploadRequest,
+  MultiFileUploadRequest,
+  MulterFileFilter,
+  ControllerMethod,
+  TypedRequestHandler
+} from './middleware.types.js'
+
+// Error types
+export type {
+  IApiError,
+  ErrorResponse,
+  HttpStatusCode,
+  ErrorMessages
+} from './error.types.js'
+
+// OAuth types
+export type {
+  OAuthProvider,
+  GoogleProfile,
+  GoogleProfileJson,
+  FacebookProfile,
+  FacebookProfileJson,
+  OAuthUserData,
+  OAuthCallbackResult,
+  PassportDoneCallback,
+  GoogleVerifyCallback,
+  FacebookVerifyCallback
+} from './oauth.types.js'
+
+
