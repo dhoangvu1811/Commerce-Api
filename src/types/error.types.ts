@@ -11,6 +11,11 @@ export interface IApiError extends Error {
 }
 
 /**
+ * Alias cho IApiError
+ */
+export type ApiErrorType = IApiError
+
+/**
  * Error response structure
  */
 export interface ErrorResponse {

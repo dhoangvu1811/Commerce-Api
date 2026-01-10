@@ -1955,6 +1955,11 @@
     "@types/ms" "*"
     "@types/node" "*"
 
+"@types/lodash@^4.17.22":
+  version "4.17.22"
+  resolved "https://registry.yarnpkg.com/@types/lodash/-/lodash-4.17.22.tgz#5fc090fbd92c59312cecff582ac0492217c6bcc0"
+  integrity sha512-46Wh9Pr5XQloXkIDyfIJ3garzam+jG4m2Vb2bG84chuLsPbX1BG9W25JEkplrz5hN7I3F5NU/keGlL+MrkTkDA==
+
 "@types/ms@*", "@types/ms@^2.1.0":
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/@types/ms/-/ms-2.1.0.tgz#052aa67a48eccc4309d7f0191b7e41434b90bb78"
@@ -2051,6 +2056,13 @@
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/@types/stack-utils/-/stack-utils-2.0.3.tgz#6209321eb2c1712a7e7466422b8cb1fc0d9dd5d8"
   integrity sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==
+
+"@types/streamifier@^0.1.2":
+  version "0.1.2"
+  resolved "https://registry.yarnpkg.com/@types/streamifier/-/streamifier-0.1.2.tgz#c60aa16e211de2191bba43658ee078654e9b1b18"
+  integrity sha512-W53GwxY5Tunz3JUoP1YWDidrAadenSZKOBKMRl6RO3yThOFd03w7yx3HypI8ABGuUCGDHCHUml/5e45FWRt1TQ==
+  dependencies:
+    "@types/node" "*"
 
 "@types/uuid@^11.0.0":
   version "11.0.0"

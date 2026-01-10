@@ -2,12 +2,15 @@
  * JWT Provider type definitions
  */
 
-import type { JwtPayload } from 'jsonwebtoken'
+import type { JwtPayload as JwtPayloadBase } from 'jsonwebtoken'
+
+// Re-export JwtPayload cho sử dụng bên ngoài
+export type JwtPayload = JwtPayloadBase
 
 /**
  * Payload cho Access Token
  */
-export interface AccessTokenPayload extends JwtPayload {
+export interface AccessTokenPayload extends JwtPayloadBase {
   _id: string
   email: string
   role: string
@@ -17,7 +20,7 @@ export interface AccessTokenPayload extends JwtPayload {
 /**
  * Payload cho Refresh Token
  */
-export interface RefreshTokenPayload extends JwtPayload {
+export interface RefreshTokenPayload extends JwtPayloadBase {
   _id: string
   sessionId: string
 }
@@ -25,7 +28,7 @@ export interface RefreshTokenPayload extends JwtPayload {
 /**
  * Payload cho Verification Token (xác minh email)
  */
-export interface VerificationTokenPayload extends JwtPayload {
+export interface VerificationTokenPayload extends JwtPayloadBase {
   email: string
   type: 'email_verification'
   uuid: string
@@ -39,6 +42,11 @@ export interface TokenUserData {
   email: string
   role: string
 }
+
+/**
+ * Alias cho TokenUserData (sử dụng trong JwtProvider)
+ */
+export type UserDataForToken = TokenUserData
 
 /**
  * JWT Provider interface

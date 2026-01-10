@@ -9,6 +9,7 @@ export type BuildMode = 'dev' | 'production'
 
 /**
  * Environment variables configuration
+ * @alias EnvironmentVariables
  */
 export interface EnvironmentConfig {
   // MongoDB
@@ -16,9 +17,8 @@ export interface EnvironmentConfig {
   DATABASE_NAME: string
 
   // App
-  AUTHOR: string
   LOCAL_DEV_APP_HOST: string
-  LOCAL_DEV_APP_PORT: string
+  LOCAL_DEV_APP_PORT: string | number
   BUILD_MODE: BuildMode
 
   // Cloudinary
@@ -51,3 +51,8 @@ export interface EnvironmentConfig {
   WEBSITE_DOMAIN_DEVELOPMENT: string
   WEBSITE_DOMAIN_PRODUCTION: string
 }
+
+/**
+ * Alias cho EnvironmentConfig
+ */
+export type EnvironmentVariables = EnvironmentConfig

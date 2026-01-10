@@ -6,7 +6,7 @@
 /**
  * OAuth Provider types
  */
-export type OAuthProvider = 'google' | 'facebook'
+export type OAuthProvider = 'google' | 'facebook' | 'GOOGLE' | 'FACEBOOK'
 
 /**
  * Google profile từ Passport

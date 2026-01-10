@@ -38,12 +38,29 @@ export interface User extends Timestamps {
   emailVerified: boolean
   typeAccount: AccountType
   lastLogin: Date | null
+  userName?: string
+  displayName?: string
 }
 
 /**
  * User response - không bao gồm password
  */
 export type UserResponse = Omit<User, 'password'>
+
+/**
+ * Public user info - chỉ các trường công khai
+ */
+export interface PublicUser {
+  _id?: ObjectId
+  email: string
+  userName?: string
+  displayName?: string
+  avatar: string
+  role: UserRole
+  isActive: boolean
+  createdAt?: Date
+  updatedAt?: Date | null
+}
 
 /**
  * Input cho đăng ký user
