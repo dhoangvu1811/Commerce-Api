@@ -3,7 +3,7 @@
  */
 
 import type { ObjectId } from 'mongodb'
-import type { Timestamps } from './common.types.js'
+import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
  * Trạng thái đơn hàng
@@ -159,12 +159,106 @@ export interface UpdateOrderStatusInput {
  */
 export interface GetOrdersResult {
   orders: Order[]
-  pagination: {
-    page: number
-    itemsPerPage: number
+  pagination: PaginationInfo & {
     totalOrders: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
   }
+}
+
+/**
+ * Order item from payload (request body)
+ */
+export interface PayloadOrderItem {
+  productId: string
+  quantity: number
+}
+
+/**
+ * Create order payload (từ request body)
+ */
+export interface CreateOrderPayload {
+  items: PayloadOrderItem[]
+  voucherCode?: string
+  shippingAddress: ShippingAddress
+  shippingFee?: number
+  paymentMethod?: string
+}
+
+/**
+ * Query filter for admin orders
+ */
+export interface AdminOrderQueryFilter {
+  status?: OrderStatus
+  paymentStatus?: PaymentStatus
+  search?: string
+}
+
+/**
+ * MongoDB filter for orders
+ */
+export interface OrderMongoFilter {
+  userId?: ObjectId
+  status?: OrderStatus
+  paymentStatus?: PaymentStatus
+  $or?: Array<{ [key: string]: { $regex: string; $options: string } }>
+}
+
+/**
+ * Paginated orders result for model
+ */
+export interface PaginatedOrdersModelResult<T = Order> {
+  orders: T[]
+  pagination: PaginationInfo & {
+    totalOrders: number
+  }
+}
+
+/**
+ * Update status data for order
+ */
+export interface UpdateStatusData {
+  status: OrderStatus
+}
+
+/**
+ * Update payment status data for order
+ */
+export interface UpdatePaymentStatusData {
+  paymentStatus: PaymentStatus
+}
+
+/**
+ * User info for logs
+ */
+export interface LogUserInfo {
+  _id: ObjectId
+  email: string
+  displayName: string
+  role: string
+}
+
+/**
+ * Log with user info
+ */
+export interface LogWithUserInfo extends LogEntry {
+  performedBy: LogUserInfo | null
+}
+
+/**
+ * Order logs response
+ */
+export interface OrderLogsResponse {
+  orderCode: string
+  status: OrderStatus
+  paymentStatus: PaymentStatus
+  logs: LogWithUserInfo[]
+}
+
+/**
+ * Update order input for model
+ */
+export interface UpdateOrderInput {
+  status?: OrderStatus
+  paymentStatus?: PaymentStatus
+  deliveredAt?: Date | null
+  updatedAt?: Date
 }

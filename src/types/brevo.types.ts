@@ -35,11 +35,6 @@ export interface BrevoEmailResult {
 }
 
 /**
- * Alias cho BrevoEmailResult
- */
-export type BrevoSendEmailResult = BrevoEmailResult
-
-/**
  * Options cho gửi email
  */
 export interface SendEmailOptions {

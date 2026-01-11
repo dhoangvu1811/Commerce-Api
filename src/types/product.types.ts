@@ -3,7 +3,7 @@
  */
 
 import type { ObjectId } from 'mongodb'
-import type { Timestamps } from './common.types.js'
+import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
  * Product document trong MongoDB
@@ -54,13 +54,8 @@ export interface UpdateProductInput {
  */
 export interface GetProductsResult {
   products: Product[]
-  pagination: {
-    page: number
-    itemsPerPage: number
+  pagination: PaginationInfo & {
     totalProducts: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
   }
 }
 
@@ -69,8 +64,35 @@ export interface GetProductsResult {
  */
 export interface ProductFilter {
   type?: string
-  name?: { $regex: RegExp }
+  name?: { $regex: string | RegExp; $options?: string }
   price?: { $gte?: number; $lte?: number }
   rating?: { $gte?: number }
   countInStock?: { $gt?: number }
+}
+
+/**
+ * Product query filter cho service
+ */
+export interface ProductQueryFilter {
+  search?: string
+  type?: string
+  sort?: string
+}
+
+/**
+ * MongoDB filter for products
+ */
+export interface ProductMongoFilter {
+  name?: { $regex: string; $options: string }
+  type?: string
+}
+
+/**
+ * Paginated products model result (generic)
+ */
+export interface PaginatedProductsModelResult<T = Product> {
+  products: T[]
+  pagination: PaginationInfo & {
+    totalProducts: number
+  }
 }

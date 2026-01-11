@@ -15,7 +15,12 @@ import type {
 } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
-import type { Voucher, VoucherType } from '~/types/voucher.types.js'
+import type {
+  Voucher,
+  CreateVoucherInput,
+  UpdateVoucherInput,
+  PaginatedVouchersModelResult
+} from '~/types/voucher.types.js'
 
 // ============================================================
 // === Collection Definition ===
@@ -52,46 +57,9 @@ const VOUCHER_COLLECTION_SCHEMA = Joi.object({
 /** Voucher document từ MongoDB */
 export type VoucherDocument = WithId<Document> & Voucher
 
-/** Input data để tạo voucher mới */
-interface CreateVoucherInput {
-  code: string
-  type: VoucherType
-  amount: number
-  maxDiscount?: number
-  minOrderValue?: number
-  usageLimit?: number
-  usedCount?: number
-  startDate?: Date | null
-  endDate?: Date | null
-  isActive?: boolean
-}
-
-/** Input data để update voucher */
-interface UpdateVoucherInput {
-  code?: string
-  type?: VoucherType
-  amount?: number
-  maxDiscount?: number
-  minOrderValue?: number
-  usageLimit?: number
-  startDate?: Date | null
-  endDate?: Date | null
-  isActive?: boolean
-  updatedAt?: Date
-}
-
-/** Kết quả phân trang */
-export interface PaginatedVouchersResult {
-  vouchers: VoucherDocument[]
-  pagination: {
-    page: number
-    itemsPerPage: number
-    totalVouchers: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
-  }
-}
+/** Kết quả phân trang (alias từ types) */
+export type PaginatedVouchersResult =
+  PaginatedVouchersModelResult<VoucherDocument>
 
 /** MongoDB session options */
 interface SessionOptions {

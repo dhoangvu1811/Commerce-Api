@@ -44,11 +44,6 @@ export interface TokenUserData {
 }
 
 /**
- * Alias cho TokenUserData (sử dụng trong JwtProvider)
- */
-export type UserDataForToken = TokenUserData
-
-/**
  * JWT Provider interface
  */
 export interface IJwtProvider {

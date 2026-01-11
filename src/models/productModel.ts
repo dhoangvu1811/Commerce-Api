@@ -15,7 +15,12 @@ import type {
 } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
-import type { Product } from '~/types/product.types.js'
+import type {
+  Product,
+  CreateProductInput,
+  UpdateProductInput,
+  PaginatedProductsModelResult
+} from '~/types/product.types.js'
 
 // ============================================================
 // === Collection Definition ===
@@ -46,44 +51,9 @@ const PRODUCT_COLLECTION_SCHEMA = Joi.object({
 /** Product document từ MongoDB */
 export type ProductDocument = WithId<Document> & Product
 
-/** Input data để tạo product mới */
-interface CreateProductInput {
-  name: string
-  image: string
-  type: string
-  countInStock: number
-  price: number
-  rating?: number
-  description?: string
-  selled?: number
-  discount?: number
-}
-
-/** Input data để update product */
-interface UpdateProductInput {
-  name?: string
-  image?: string
-  type?: string
-  countInStock?: number
-  price?: number
-  rating?: number
-  description?: string
-  selled?: number
-  discount?: number
-}
-
-/** Kết quả phân trang */
-export interface PaginatedProductsResult {
-  products: ProductDocument[]
-  pagination: {
-    page: number
-    itemsPerPage: number
-    totalProducts: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
-  }
-}
+/** Kết quả phân trang (alias từ types) */
+export type PaginatedProductsResult =
+  PaginatedProductsModelResult<ProductDocument>
 
 /** MongoDB session options */
 interface SessionOptions {

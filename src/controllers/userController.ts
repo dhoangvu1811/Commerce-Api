@@ -53,10 +53,12 @@ const login = async (
 ): Promise<void> => {
   try {
     // Lấy thông tin device và IP cho session tracking
-    const deviceInfo = req.get('User-Agent') || ''
-    const ipAddress = req.ip || req.socket?.remoteAddress || ''
+    const deviceInfo = {
+      userAgent: req.get('User-Agent') || '',
+      ip: req.ip || req.socket?.remoteAddress || ''
+    }
 
-    const loginResult = await userService.login(req.body, deviceInfo, ipAddress)
+    const loginResult = await userService.login(req.body, deviceInfo)
 
     // Set cookie cho refresh token, access token
     res.cookie('accessToken', loginResult.accessToken, {

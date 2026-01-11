@@ -18,117 +18,30 @@ import { WEBSITE_DOMAIN } from '~/utils/constants.js'
 import { v4 as uuidv4 } from 'uuid'
 import ms from 'ms'
 import { env } from '~/config/environment.js'
-import type { User, UserRole, TypeAccount } from '~/types/user.types.js'
-import type { SortOptions, PaginationInfo } from '~/types/common.types.js'
-
-// ============================================================
-// === Types ===
-// ============================================================
-
-/** User data for registration */
-interface RegisterUserData {
-  name: string
-  email: string
-  password: string
-  confirmPassword?: string
-  phone?: string
-  address?: string
-}
-
-/** User data for login */
-interface LoginData {
-  email: string
-  password: string
-}
-
-/** Login response */
-interface LoginResponse {
-  user: Omit<User, 'password'>
-  accessToken: string
-  refreshToken: string
-  sessionId: string
-}
-
-/** User response (without password) */
-interface UserResponse {
-  user: Omit<User, 'password'>
-}
-
-/** Query filter for users */
-interface UserQueryFilter {
-  search?: string
-  role?: UserRole
-  isActive?: string
-  sort?: string
-}
-
-/** MongoDB filter for users */
-interface UserMongoFilter {
-  $or?: Array<
-    | { name: { $regex: string; $options: string } }
-    | { email: { $regex: string; $options: string } }
-  >
-  role?: UserRole
-  isActive?: boolean
-}
-
-/** Password update data */
-interface PasswordUpdateData {
-  currentPassword: string
-  newPassword: string
-}
-
-/** Delete result */
-interface DeleteResult {
-  deletedCount: number
-  message?: string
-  deletedIds?: string[]
-}
-
-/** Paginated users result */
-interface PaginatedUsersResult {
-  users: Omit<User, 'password'>[]
-  pagination: PaginationInfo
-}
-
-/** Refresh token result */
-interface RefreshTokenResult {
-  accessToken: string
-}
-
-/** Admin create user data */
-interface AdminCreateUserData extends RegisterUserData {
-  role?: UserRole
-  isActive?: boolean
-  emailVerified?: boolean
-  typeAccount?: TypeAccount
-}
-
-/** Upload result */
-interface UploadResult {
-  secure_url: string
-  public_id: string
-  [key: string]: unknown
-}
-
-/** Email verification result */
-interface EmailVerificationResult {
-  email: string
-  message: string
-  expiresIn: string
-}
-
-/** Verify account result */
-interface VerifyAccountResult {
-  message: string
-  user: {
-    _id: ObjectId
-    email: string
-    name: string
-    emailVerified: boolean
-    isActive: boolean
-  }
-}
+import type {
+  User,
+  UserRole,
+  TypeAccount,
+  RegisterInput,
+  LoginInput,
+  LoginResult,
+  UpdateUserInput as UpdateUserInputType,
+  UpdateUserByAdminInput,
+  UpdatePasswordInput,
+  UserResponse as UserResponseType,
+  CreateUserInput,
+  UserQueryFilter,
+  UserMongoFilter,
+  PaginatedUsersResult,
+  RefreshTokenResult,
+  EmailVerificationResult,
+  VerifyAccountResult
+} from '~/types/user.types.js'
+import type {
+  SortOptions,
+  UploadResult,
+  DeleteResultInfo
+} from '~/types/common.types.js'
 
 // ============================================================
 // === Password Utilities ===
@@ -159,7 +72,7 @@ const comparePassword = async (
 /**
  * Đăng ký user mới
  */
-const register = async (userData: RegisterUserData): Promise<UserResponse> => {
+const register = async (userData: RegisterInput): Promise<UserResponseType> => {
   try {
     // Kiểm tra email đã tồn tại chưa
     const existingUser = await userModel.findOneByEmail(userData.email)
@@ -175,23 +88,20 @@ const register = async (userData: RegisterUserData): Promise<UserResponse> => {
     const hashedPassword = await hashPassword(userData.password)
 
     // Tạo user mới
-    const newUser: Partial<User> = {
-      ...userData,
+    const { confirmPassword: _confirmPassword, ...userDataWithoutConfirm } =
+      userData
+    const createUserData: CreateUserInput = {
+      ...userDataWithoutConfirm,
       password: hashedPassword,
-      typeAccount: 'LOCAL', // Set mặc định cho user đăng ký thông thường
-      createdAt: new Date(),
-      updatedAt: new Date()
+      typeAccount: 'LOCAL'
     }
 
-    // Loại bỏ confirmPassword trước khi lưu
-    delete (newUser as RegisterUserData).confirmPassword
-
-    const createdUser = await userModel.createNew(newUser as User)
+    const createdUser = await userModel.createNew(createUserData)
 
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = createdUser as User
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -201,10 +111,13 @@ const register = async (userData: RegisterUserData): Promise<UserResponse> => {
  * Đăng nhập
  */
 const login = async (
-  loginData: LoginData,
-  deviceInfo: string = '',
-  ipAddress: string = ''
-): Promise<LoginResponse> => {
+  loginData: LoginInput,
+  deviceInfo?: {
+    userAgent: string
+    ip: string
+    deviceId?: string
+  }
+): Promise<LoginResult> => {
   try {
     const { email, password } = loginData
 
@@ -263,8 +176,8 @@ const login = async (
       sessionId,
       userId: user._id!.toString(),
       refreshToken,
-      deviceInfo,
-      ipAddress,
+      deviceInfo: deviceInfo?.userAgent || '',
+      ipAddress: deviceInfo?.ip || '',
       expiresAt
     })
 
@@ -360,7 +273,7 @@ const refreshToken = async (
 /**
  * Lấy chi tiết user
  */
-const getDetails = async (userId: string): Promise<UserResponse> => {
+const getDetails = async (userId: string): Promise<UserResponseType> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
@@ -382,7 +295,7 @@ const getDetails = async (userId: string): Promise<UserResponse> => {
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = user || {}
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -393,8 +306,8 @@ const getDetails = async (userId: string): Promise<UserResponse> => {
  */
 const updateUser = async (
   userId: string,
-  updateData: Partial<User>
-): Promise<UserResponse> => {
+  updateData: UpdateUserInputType
+): Promise<UserResponseType> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
@@ -424,7 +337,7 @@ const updateUser = async (
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = updatedUser || {}
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -435,8 +348,8 @@ const updateUser = async (
  */
 const updatePassword = async (
   userId: string,
-  passwordData: PasswordUpdateData
-): Promise<UserResponse> => {
+  passwordData: UpdatePasswordInput
+): Promise<{ message: string }> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
@@ -492,12 +405,9 @@ const updatePassword = async (
       updateData.typeAccount = 'LOCAL'
     }
 
-    const updatedUser = await userModel.update(userId, updateData)
+    await userModel.update(userId, updateData)
 
-    // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = updatedUser || {}
-
-    return { user: userResponse as Omit<User, 'password'> }
+    return { message: 'Cập nhật mật khẩu thành công' }
   } catch (error) {
     throw error
   }
@@ -599,14 +509,14 @@ const getUsers = async (
 
     // Loại bỏ password khỏi tất cả user trong response
     const usersWithoutPassword =
-      result.users?.map((user: User) => {
+      result.users?.map((user) => {
         const { password: _password, ...userWithoutPassword } = user || {}
-        return userWithoutPassword
+        return userWithoutPassword as UserResponseType
       }) || []
 
     return {
       ...result,
-      users: usersWithoutPassword as Omit<User, 'password'>[]
+      users: usersWithoutPassword
     }
   } catch (error) {
     throw error
@@ -618,8 +528,8 @@ const getUsers = async (
  */
 const updateUserByAdmin = async (
   userId: string,
-  updateData: Partial<User>
-): Promise<UserResponse> => {
+  updateData: UpdateUserByAdminInput
+): Promise<UserResponseType> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
@@ -657,7 +567,7 @@ const updateUserByAdmin = async (
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = updatedUser || {}
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -667,8 +577,13 @@ const updateUserByAdmin = async (
  * Tạo user bởi admin
  */
 const createUserByAdmin = async (
-  userData: AdminCreateUserData
-): Promise<UserResponse> => {
+  userData: RegisterInput & {
+    role?: UserRole
+    isActive?: boolean
+    emailVerified?: boolean
+    typeAccount?: TypeAccount
+  }
+): Promise<UserResponseType> => {
   try {
     // Kiểm tra email đã tồn tại chưa
     const existingUser = await userModel.findOneByEmail(userData.email)
@@ -684,24 +599,24 @@ const createUserByAdmin = async (
     const hashedPassword = await hashPassword(userData.password)
 
     // Tạo user mới với dữ liệu từ admin
-    const newUser: Partial<User> = {
-      ...userData,
+    const { confirmPassword: _confirmPassword, ...userDataWithoutConfirm } =
+      userData
+    const newUser: CreateUserInput = {
+      ...userDataWithoutConfirm,
       password: hashedPassword,
       role: userData.role || 'user',
       isActive: userData.isActive !== undefined ? userData.isActive : true,
       emailVerified:
         userData.emailVerified !== undefined ? userData.emailVerified : false,
-      typeAccount: userData.typeAccount || 'LOCAL', // Admin có thể chỉ định loại account
-      createdAt: new Date(),
-      updatedAt: new Date()
+      typeAccount: userData.typeAccount || 'LOCAL'
     }
 
-    const createdUser = await userModel.createNew(newUser as User)
+    const createdUser = await userModel.createNew(newUser)
 
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = createdUser as User
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -710,7 +625,7 @@ const createUserByAdmin = async (
 /**
  * Xóa user
  */
-const deleteUser = async (userId: string): Promise<DeleteResult> => {
+const deleteUser = async (userId: string): Promise<DeleteResultInfo> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(userId)) {
@@ -729,7 +644,7 @@ const deleteUser = async (userId: string): Promise<DeleteResult> => {
     // Xóa user
     const result = await userModel.deleteOneById(userId)
 
-    return result as DeleteResult
+    return result as DeleteResultInfo
   } catch (error) {
     throw error
   }
@@ -740,7 +655,7 @@ const deleteUser = async (userId: string): Promise<DeleteResult> => {
  */
 const deleteMultipleUsers = async (
   userIds: string[]
-): Promise<DeleteResult> => {
+): Promise<DeleteResultInfo> => {
   try {
     // Validate input
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -790,7 +705,7 @@ const deleteMultipleUsers = async (
 /**
  * Kích hoạt user
  */
-const activateUser = async (userId: string): Promise<UserResponse> => {
+const activateUser = async (userId: string): Promise<UserResponseType> => {
   try {
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userId)
@@ -818,7 +733,7 @@ const activateUser = async (userId: string): Promise<UserResponse> => {
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = activatedUser as User
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }
@@ -827,7 +742,7 @@ const activateUser = async (userId: string): Promise<UserResponse> => {
 /**
  * Vô hiệu hóa user
  */
-const deactivateUser = async (userId: string): Promise<UserResponse> => {
+const deactivateUser = async (userId: string): Promise<UserResponseType> => {
   try {
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userId)
@@ -863,7 +778,7 @@ const deactivateUser = async (userId: string): Promise<UserResponse> => {
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = deactivatedUser as User
 
-    return { user: userResponse as Omit<User, 'password'> }
+    return userResponse as UserResponseType
   } catch (error) {
     throw error
   }

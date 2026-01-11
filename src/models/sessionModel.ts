@@ -7,7 +7,7 @@ import type { WithId, Document, UpdateResult, DeleteResult } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
 import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
-import type { Session } from '~/types/session.types.js'
+import type { Session, CreateSessionInput } from '~/types/session.types.js'
 
 // ============================================================
 // === Collection Definition ===
@@ -39,17 +39,6 @@ const SESSION_COLLECTION_SCHEMA = Joi.object({
 
 /** Session document từ MongoDB */
 export type SessionDocument = WithId<Document> & Session
-
-/** Input data để tạo session mới */
-interface CreateSessionInput {
-  sessionId: string
-  userId: string
-  refreshToken: string
-  deviceInfo?: string
-  ipAddress?: string
-  isActive?: boolean
-  expiresAt: Date
-}
 
 /** Kết quả aggregation cho session summary */
 export interface SessionsSummary {

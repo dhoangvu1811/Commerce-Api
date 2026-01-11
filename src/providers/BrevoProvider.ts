@@ -5,7 +5,7 @@
 
 import { TransactionalEmailsApi, SendSmtpEmail } from '@getbrevo/brevo'
 import { env } from '~/config/environment.js'
-import type { BrevoSendEmailResult } from '~/types/brevo.types.js'
+import type { BrevoEmailResult } from '~/types/brevo.types.js'
 
 // Khởi tạo API instance
 const apiInstance = new TransactionalEmailsApi()
@@ -18,13 +18,13 @@ apiInstance.setApiKey(0, env.BREVO_API_KEY)
  * @param {string} recipientEmail - Email người nhận
  * @param {string} customSubject - Tiêu đề email
  * @param {string} customHtmlContent - Nội dung HTML của email
- * @returns {Promise<BrevoSendEmailResult>} Kết quả gửi email
+ * @returns {Promise<BrevoEmailResult>} Kết quả gửi email
  */
 const sendEmail = async (
   recipientEmail: string,
   customSubject: string,
   customHtmlContent: string
-): Promise<BrevoSendEmailResult> => {
+): Promise<BrevoEmailResult> => {
   // Khởi tạo SendSmtpEmail với thông tin cần thiết
   const sendSmtpEmail = new SendSmtpEmail()
 

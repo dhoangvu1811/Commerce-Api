@@ -10,87 +10,16 @@ import { sessionModel } from '~/models/sessionModel.js'
 import { userModel } from '~/models/userModel.js'
 import { userService } from './userService.js'
 import type { PaginationInfo } from '~/types/common.types.js'
-
-// ============================================================
-// === Types ===
-// ============================================================
-
-/** Session status */
-type SessionStatus = 'active' | 'logout' | 'revoked' | 'expired'
-
-/** Safe session info (without refreshToken) */
-interface SafeSessionInfo {
-  sessionId: string
-  deviceInfo: string
-  ipAddress: string
-  createdAt: Date
-  expiresAt: Date
-  logoutAt?: Date | null
-  isActive: boolean
-  isExpired: boolean
-  status: SessionStatus
-}
-
-/** Safe session for current user */
-interface CurrentUserSession {
-  sessionId: string
-  deviceInfo: string
-  ipAddress: string
-  createdAt: Date
-  expiresAt: Date
-  isActive: boolean
-  isCurrent: boolean
-}
-
-/** Sessions summary */
-interface SessionsSummary {
-  active: number
-  revoked: number
-  expired: number
-  logout: number
-}
-
-/** Get user sessions response */
-interface GetUserSessionsResponse {
-  userId: string
-  sessions: SafeSessionInfo[]
-  total: number
-  summary: SessionsSummary
-}
-
-/** Get current user sessions response */
-interface GetCurrentUserSessionsResponse {
-  sessions: CurrentUserSession[]
-  total: number
-}
-
-/** User with session summary for overview */
-interface UserWithSessionSummary {
-  _id: unknown
-  name: string
-  phone: string
-  email: string
-  isActive: boolean
-  emailVerified: boolean
-  avatar: string
-  status: string
-  totalSessions: number
-  activeSessions: number
-  lastLogin: Date | null
-}
-
-/** Revoke session response */
-interface RevokeSessionResponse {
-  sessionId: string
-  message: string
-}
-
-/** Revoke all sessions response */
-interface RevokeAllSessionsResponse {
-  userId: string
-  revokedSessions: number
-  message: string
-}
+import type {
+  SessionStatus,
+  SafeSessionInfo,
+  CurrentUserSession,
+  GetUserSessionsResponse,
+  GetCurrentUserSessionsResponse,
+  UserWithSessionSummary,
+  RevokeSessionResponse,
+  RevokeAllSessionsResponse
+} from '~/types/session.types.js'
 
 // ============================================================
 // === Functions ===

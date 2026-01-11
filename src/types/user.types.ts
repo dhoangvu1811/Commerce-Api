@@ -3,7 +3,7 @@
  */
 
 import type { ObjectId } from 'mongodb'
-import type { Timestamps } from './common.types.js'
+import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
  * User roles
@@ -131,16 +131,96 @@ export interface UpdatePasswordInput {
 }
 
 /**
- * Kết quả lấy danh sách users
+ * Input data để tạo user mới - extends từ RegisterInput với các field bổ sung
  */
-export interface GetUsersResult {
-  users: UserResponse[]
-  pagination: {
-    page: number
-    itemsPerPage: number
+export interface CreateUserInput
+  extends Omit<RegisterInput, 'confirmPassword'> {
+  password: string // password đã được hash
+  avatar?: string
+  role?: UserRole
+  isActive?: boolean
+  emailVerified?: boolean
+  typeAccount?: AccountType
+}
+
+/**
+ * Input data để update user - extends từ UpdateUserByAdminInput với các field bổ sung
+ */
+export interface UpdateUserInputExtended extends UpdateUserByAdminInput {
+  password?: string
+  typeAccount?: AccountType
+  updatedAt?: Date
+}
+
+/**
+ * Generic paginated result cho users
+ */
+export interface PaginatedUsersResult<T = UserResponse> {
+  users: T[]
+  pagination: PaginationInfo & {
     totalUsers: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
+  }
+}
+
+/**
+ * Kết quả lấy danh sách users (alias cho backward compatibility)
+ */
+export type GetUsersResult = PaginatedUsersResult<UserResponse>
+
+/**
+ * Kết quả phân trang users từ model (bao gồm password)
+ */
+export type PaginatedUsersModelResult<T = UserResponse> =
+  PaginatedUsersResult<T>
+
+/**
+ * Query filter for users
+ */
+export interface UserQueryFilter {
+  search?: string
+  role?: UserRole
+  isActive?: string
+  sort?: string
+}
+
+/**
+ * MongoDB filter for users
+ */
+export interface UserMongoFilter {
+  $or?: Array<
+    | { name: { $regex: string; $options: string } }
+    | { email: { $regex: string; $options: string } }
+  >
+  role?: UserRole
+  isActive?: boolean
+}
+
+/**
+ * Refresh token result
+ */
+export interface RefreshTokenResult {
+  accessToken: string
+}
+
+/**
+ * Email verification result
+ */
+export interface EmailVerificationResult {
+  email: string
+  message: string
+  expiresIn: string
+}
+
+/**
+ * Verify account result
+ */
+export interface VerifyAccountResult {
+  message: string
+  user: {
+    _id: ObjectId
+    email: string
+    name: string
+    emailVerified: boolean
+    isActive: boolean
   }
 }

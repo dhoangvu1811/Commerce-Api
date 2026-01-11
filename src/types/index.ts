@@ -15,7 +15,9 @@ export type {
   MongoDocument,
   Timestamps,
   JwtDecodedPayload,
-  DeviceInfo
+  DeviceInfo,
+  UploadResult,
+  DeleteResultInfo
 } from './common.types.js'
 
 // User types
@@ -73,7 +75,16 @@ export type {
 export type {
   Session,
   CreateSessionInput,
-  SessionSummary
+  SessionSummary,
+  SessionStatus,
+  SafeSessionInfo,
+  CurrentUserSession,
+  SessionsSummaryInfo,
+  GetUserSessionsResponse,
+  GetCurrentUserSessionsResponse,
+  UserWithSessionSummary,
+  RevokeSessionResponse,
+  RevokeAllSessionsResponse
 } from './session.types.js'
 
 // Environment types
@@ -88,14 +99,6 @@ export type {
   IJwtProvider
 } from './jwt.types.js'
 
-// Cloudinary Provider types
-export type {
-  CloudinaryUploadResult,
-  CloudinaryUploadOptions,
-  CloudinaryTransformation,
-  ICloudinaryProvider
-} from './cloudinary.types.js'
-
 // Brevo (Email) Provider types
 export type {
   EmailSender,
@@ -106,51 +109,6 @@ export type {
   IBrevoProvider,
   EmailTemplateType
 } from './brevo.types.js'
-
-// MongoDB types
-export type {
-  TransactionOptions,
-  InsertResult,
-  UpdateResult,
-  DeleteResult,
-  IBaseModel,
-  PaginationParams,
-  MongoSortDirection,
-  MongoSortOptions,
-  MongoFilter,
-  AggregatePipelineStage,
-  LookupStage,
-  UnwindStage
-} from './mongodb.types.js'
-
-// Validation types
-export type {
-  ValidationErrorDetail,
-  ValidationResult,
-  ValidationMiddleware,
-  ValidationOptions,
-  RegisterValidationInput,
-  LoginValidationInput,
-  UpdateUserValidationInput,
-  UpdatePasswordValidationInput,
-  ProductValidationInput,
-  OrderItemValidationInput,
-  CreateOrderValidationInput,
-  VoucherValidationInput
-} from './validation.types.js'
-
-// Middleware types
-export type {
-  AsyncRequestHandler,
-  ErrorRequestHandler,
-  IAuthMiddleware,
-  AuthenticatedRequest,
-  FileUploadRequest,
-  MultiFileUploadRequest,
-  MulterFileFilter,
-  ControllerMethod,
-  TypedRequestHandler
-} from './middleware.types.js'
 
 // Error types
 export type {

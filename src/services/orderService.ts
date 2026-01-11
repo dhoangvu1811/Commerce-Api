@@ -29,10 +29,17 @@ import type {
   Order,
   OrderItem,
   OrderStatus,
-  PaymentStatus,
-  ShippingAddress,
   VoucherSnapshot,
-  LogEntry
+  LogEntry,
+  PayloadOrderItem,
+  CreateOrderPayload,
+  AdminOrderQueryFilter,
+  OrderMongoFilter,
+  UpdateStatusData,
+  UpdatePaymentStatusData,
+  LogUserInfo,
+  LogWithUserInfo,
+  OrderLogsResponse
 } from '~/types/order.types.js'
 import type { Product } from '~/types/product.types.js'
 import type { PaginationInfo } from '~/types/common.types.js'
@@ -41,71 +48,10 @@ import type { PaginationInfo } from '~/types/common.types.js'
 // === Types ===
 // ============================================================
 
-/** Order item from payload */
-interface PayloadOrderItem {
-  productId: string
-  quantity: number
-}
-
-/** Create order payload */
-interface CreateOrderPayload {
-  items: PayloadOrderItem[]
-  voucherCode?: string
-  shippingAddress: ShippingAddress
-  shippingFee?: number
-  paymentMethod?: string
-}
-
-/** Query filter for admin orders */
-interface AdminOrderQueryFilter {
-  status?: OrderStatus
-  paymentStatus?: PaymentStatus
-  search?: string
-}
-
-/** MongoDB filter for orders */
-interface OrderMongoFilter {
-  userId?: ObjectId
-  status?: OrderStatus
-  paymentStatus?: PaymentStatus
-  $or?: Array<{ [key: string]: { $regex: string; $options: string } }>
-}
-
 /** Paginated orders result */
 interface PaginatedOrdersResult {
   orders: Order[]
   pagination: PaginationInfo
-}
-
-/** Update status data */
-interface UpdateStatusData {
-  status: OrderStatus
-}
-
-/** Update payment status data */
-interface UpdatePaymentStatusData {
-  paymentStatus: PaymentStatus
-}
-
-/** User info for logs */
-interface LogUserInfo {
-  _id: ObjectId
-  email: string
-  displayName: string
-  role: string
-}
-
-/** Log with user info */
-interface LogWithUserInfo extends LogEntry {
-  performedBy: LogUserInfo | null
-}
-
-/** Order logs response */
-interface OrderLogsResponse {
-  orderCode: string
-  status: OrderStatus
-  paymentStatus: PaymentStatus
-  logs: LogWithUserInfo[]
 }
 
 /** Status names for error messages */

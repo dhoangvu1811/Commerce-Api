@@ -4,7 +4,7 @@
  */
 
 import type { Request, Response, NextFunction } from 'express'
-import type { ErrorResponse } from '~/types/common.types.js'
+import type { ErrorResponse } from '~/types/error.types.js'
 import { env } from '~/config/environment.js'
 
 /**

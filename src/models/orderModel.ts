@@ -24,7 +24,9 @@ import type {
   LogEntry,
   ShippingAddress,
   OrderVoucher,
-  OrderTotals
+  OrderTotals,
+  PaginatedOrdersModelResult,
+  UpdateOrderInput
 } from '~/types/order.types.js'
 
 // ============================================================
@@ -115,8 +117,8 @@ const ORDER_COLLECTION_SCHEMA = Joi.object({
 /** Order document từ MongoDB */
 export type OrderDocument = WithId<Document> & Order
 
-/** Input data để tạo order mới */
-interface CreateOrderInput {
+/** Input data để tạo order mới (internal - đầy đủ) */
+interface CreateOrderModelInput {
   userId: string
   orderCode: string
   items: OrderItem[]
@@ -131,28 +133,8 @@ interface CreateOrderInput {
   updatedAt?: Date
 }
 
-/** Input data để update order */
-interface UpdateOrderInput {
-  status?: OrderStatus
-  paymentStatus?: PaymentStatus
-  paymentMethod?: string
-  deliveredAt?: Date | null
-  voucher?: OrderVoucher | null
-  updatedAt?: Date
-}
-
-/** Kết quả phân trang */
-export interface PaginatedOrdersResult {
-  orders: OrderDocument[]
-  pagination: {
-    page: number
-    itemsPerPage: number
-    totalOrders: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
-  }
-}
+/** Kết quả phân trang (alias từ types) */
+export type PaginatedOrdersResult = PaginatedOrdersModelResult<OrderDocument>
 
 /** MongoDB session options */
 interface SessionOptions {
@@ -176,8 +158,8 @@ interface OrderLogsResult {
  * Validate dữ liệu trước khi tạo order
  */
 const validateBeforeCreate = async (
-  data: CreateOrderInput
-): Promise<CreateOrderInput> => {
+  data: CreateOrderModelInput
+): Promise<CreateOrderModelInput> => {
   const validData = await ORDER_COLLECTION_SCHEMA.validateAsync(data, {
     abortEarly: false,
     allowUnknown: false
@@ -193,7 +175,7 @@ const validateBeforeCreate = async (
  * Tạo order mới
  */
 const createNew = async (
-  data: CreateOrderInput,
+  data: CreateOrderModelInput,
   options: SessionOptions = {}
 ): Promise<OrderDocument | null> => {
   try {

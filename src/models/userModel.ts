@@ -8,7 +8,12 @@ import type { WithId, Document, Filter, Sort, DeleteResult } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
 import Joi from 'joi'
 import { EMAIL_RULE, PASSWORD_RULE } from '~/utils/validators.js'
-import type { User, UserRole, Gender, AccountType } from '~/types/user.types.js'
+import type {
+  User,
+  CreateUserInput,
+  UpdateUserInputExtended as UpdateUserInput,
+  PaginatedUsersModelResult
+} from '~/types/user.types.js'
 
 // ============================================================
 // === Collection Definition ===
@@ -50,51 +55,6 @@ const USER_COLLECTION_SCHEMA = Joi.object({
 
 /** User document từ MongoDB */
 export type UserDocument = WithId<Document> & User
-
-/** Input data để tạo user mới */
-interface CreateUserInput {
-  name: string
-  email: string
-  password: string
-  phone?: string
-  address?: string
-  avatar?: string
-  dateOfBirth?: Date | null
-  gender?: Gender
-  role?: UserRole
-  isActive?: boolean
-  emailVerified?: boolean
-  typeAccount?: AccountType
-}
-
-/** Input data để update user */
-interface UpdateUserInput {
-  name?: string
-  phone?: string
-  address?: string
-  avatar?: string
-  dateOfBirth?: Date | null
-  gender?: Gender
-  role?: UserRole
-  isActive?: boolean
-  emailVerified?: boolean
-  password?: string
-  typeAccount?: AccountType
-  updatedAt?: Date
-}
-
-/** Kết quả phân trang */
-export interface PaginatedUsersResult {
-  users: UserDocument[]
-  pagination: {
-    page: number
-    itemsPerPage: number
-    totalUsers: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
-  }
-}
 
 // ============================================================
 // === Private Functions ===
@@ -191,7 +151,7 @@ const getMany = async (
   page: number = 1,
   itemsPerPage: number = 10,
   sortOptions: Sort = { createdAt: -1 }
-): Promise<PaginatedUsersResult> => {
+): Promise<PaginatedUsersModelResult<UserDocument>> => {
   try {
     const skip = (page - 1) * itemsPerPage
 

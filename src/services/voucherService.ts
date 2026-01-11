@@ -9,60 +9,27 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { voucherModel } from '~/models/voucherModel.js'
 import { ObjectId } from 'mongodb'
-import type { Voucher, VoucherType } from '~/types/voucher.types.js'
-import type { SortOptions, PaginationInfo } from '~/types/common.types.js'
+import type {
+  Voucher,
+  VoucherQueryFilter,
+  VoucherMongoFilter,
+  ActivePublicVoucherFilter,
+  VerifyVoucherResult
+} from '~/types/voucher.types.js'
+import type {
+  PaginationInfo,
+  SortOptions,
+  DeleteResultInfo
+} from '~/types/common.types.js'
 
 // ============================================================
 // === Types ===
 // ============================================================
 
-/** Query filter for vouchers */
-interface VoucherQueryFilter {
-  search?: string
-  type?: VoucherType
-  isActive?: string
-  sort?: string
-}
-
-/** MongoDB filter for vouchers */
-interface VoucherMongoFilter {
-  $or?: Array<{ code: { $regex: string; $options: string } }>
-  type?: VoucherType
-  isActive?: boolean
-}
-
-/** MongoDB filter for active public vouchers */
-interface ActivePublicVoucherFilter {
-  isActive: boolean
-  $and: Array<
-    | { $or: Array<{ startDate: null } | { startDate: { $lte: Date } }> }
-    | { $or: Array<{ endDate: null } | { endDate: { $gte: Date } }> }
-    | {
-        $or: Array<
-          { usageLimit: number } | { $expr: { $lt: [string, string] } }
-        >
-      }
-  >
-}
-
-/** Delete result */
-interface DeleteResult {
-  deletedCount: number
-  message?: string
-  deletedIds?: string[]
-}
-
 /** Paginated vouchers result */
 interface PaginatedVouchersResult {
   vouchers: Voucher[]
   pagination: PaginationInfo
-}
-
-/** Verify voucher result */
-interface VerifyVoucherResult {
-  voucher: Voucher
-  discount: number
-  payable: number
 }
 
 // ============================================================
@@ -260,7 +227,7 @@ const update = async (id: string, data: Partial<Voucher>): Promise<Voucher> => {
 /**
  * Xóa voucher
  */
-const deleteVoucher = async (id: string): Promise<DeleteResult> => {
+const deleteVoucher = async (id: string): Promise<DeleteResultInfo> => {
   try {
     if (!ObjectId.isValid(id)) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'ID voucher không hợp lệ')
@@ -273,7 +240,7 @@ const deleteVoucher = async (id: string): Promise<DeleteResult> => {
 
     const result = await voucherModel.deleteOneById(id)
 
-    return result as DeleteResult
+    return result as DeleteResultInfo
   } catch (error) {
     throw error
   }
@@ -282,7 +249,9 @@ const deleteVoucher = async (id: string): Promise<DeleteResult> => {
 /**
  * Xóa nhiều vouchers
  */
-const deleteMultiple = async (voucherIds: string[]): Promise<DeleteResult> => {
+const deleteMultiple = async (
+  voucherIds: string[]
+): Promise<DeleteResultInfo> => {
   try {
     if (!voucherIds || !Array.isArray(voucherIds) || voucherIds.length === 0) {
       throw new ApiError(

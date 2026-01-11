@@ -3,7 +3,7 @@
  */
 
 import type { ObjectId } from 'mongodb'
-import type { Timestamps } from './common.types.js'
+import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
  * Loại voucher
@@ -53,10 +53,11 @@ export interface UpdateVoucherInput {
   maxDiscount?: number
   minOrderValue?: number
   usageLimit?: number
-  startDate?: Date | string
-  endDate?: Date | string
+  startDate?: Date | string | null
+  endDate?: Date | string | null
   isActive?: boolean
   description?: string
+  updatedAt?: Date
 }
 
 /**
@@ -64,13 +65,8 @@ export interface UpdateVoucherInput {
  */
 export interface GetVouchersResult {
   vouchers: Voucher[]
-  pagination: {
-    page: number
-    itemsPerPage: number
+  pagination: PaginationInfo & {
     totalVouchers: number
-    totalPages: number
-    hasNextPage: boolean
-    hasPrevPage: boolean
   }
 }
 
@@ -82,4 +78,65 @@ export interface ValidateVoucherResult {
   voucher?: Voucher
   discountAmount?: number
   message?: string
+}
+
+/**
+ * Voucher query filter cho service
+ */
+export interface VoucherQueryFilter {
+  search?: string
+  type?: VoucherType
+  isActive?: string
+  sort?: string
+}
+
+/**
+ * MongoDB filter for vouchers
+ */
+export interface VoucherMongoFilter {
+  $or?: Array<{ code: { $regex: string; $options: string } }>
+  type?: VoucherType
+  isActive?: boolean
+}
+
+/**
+ * MongoDB filter for active public vouchers
+ */
+export interface ActivePublicVoucherFilter {
+  isActive: boolean
+  $and: Array<
+    | { $or: Array<{ startDate: null } | { startDate: { $lte: Date } }> }
+    | { $or: Array<{ endDate: null } | { endDate: { $gte: Date } }> }
+    | {
+        $or: Array<
+          { usageLimit: number } | { $expr: { $lt: [string, string] } }
+        >
+      }
+  >
+}
+
+/**
+ * Paginated vouchers model result (generic)
+ */
+export interface PaginatedVouchersModelResult<T = Voucher> {
+  vouchers: T[]
+  pagination: PaginationInfo & {
+    totalVouchers: number
+  }
+}
+
+/**
+ * Verify voucher result
+ */
+export interface VerifyVoucherResult {
+  voucher: Voucher
+  discount: number
+  payable: number
+}
+
+/**
+ * Extended input để tạo voucher với các field bổ sung
+ */
+export interface CreateVoucherInputExtended extends CreateVoucherInput {
+  usedCount?: number
 }

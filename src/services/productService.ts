@@ -10,44 +10,26 @@ import ApiError from '~/utils/ApiError.js'
 import { productModel } from '~/models/productModel.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
 import { ObjectId } from 'mongodb'
-import type { Product } from '~/types/product.types.js'
-import type { SortOptions, PaginationInfo } from '~/types/common.types.js'
+import type {
+  Product,
+  ProductQueryFilter,
+  ProductFilter
+} from '~/types/product.types.js'
+import type {
+  PaginationInfo,
+  SortOptions,
+  UploadResult,
+  DeleteResultInfo
+} from '~/types/common.types.js'
 
 // ============================================================
 // === Types ===
 // ============================================================
 
-/** Query filter for products */
-interface ProductQueryFilter {
-  search?: string
-  type?: string
-  sort?: string
-}
-
-/** MongoDB filter for products */
-interface ProductFilter {
-  name?: { $regex: string; $options: string }
-  type?: string
-}
-
-/** Delete result */
-interface DeleteResult {
-  deletedCount: number
-  message: string
-  deletedIds?: string[]
-}
-
 /** Paginated products result */
 interface PaginatedProductsResult {
   products: Product[]
   pagination: PaginationInfo
-}
-
-/** Upload result */
-interface UploadResult {
-  secure_url: string
-  public_id: string
-  [key: string]: unknown
 }
 
 // ============================================================
@@ -164,7 +146,7 @@ const update = async (
 /**
  * Xóa product
  */
-const deleteProduct = async (productId: string): Promise<DeleteResult> => {
+const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
   try {
     // Validate ObjectId
     if (!ObjectId.isValid(productId)) {
@@ -194,7 +176,7 @@ const deleteProduct = async (productId: string): Promise<DeleteResult> => {
  */
 const deleteSelectedProducts = async (
   productIds: string[]
-): Promise<DeleteResult> => {
+): Promise<DeleteResultInfo> => {
   try {
     // Validate input
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
