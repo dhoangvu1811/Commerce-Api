@@ -145,6 +145,7 @@ instructions/
 .github/instructions/
 .cursor/rules/
 .windsurf/
+.agent/
 
 # OS generated files
 .DS_Store

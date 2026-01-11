@@ -9,23 +9,31 @@ import { userController } from '~/controllers/userController.js'
 import { userValidation } from '~/validations/userValidation.js'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
+import { authLimiter, emailLimiter } from '~/middlewares/rateLimitMiddleware.js'
 import { WEBSITE_DOMAIN } from '~/utils/constants.js'
 import passport from 'passport'
 
 const RouterInstance: Router = express.Router()
 
-// Public routes - không cần xác thực
+// Public routes - không cần xác thực (với rate limiting để bảo vệ khỏi brute force)
 RouterInstance.post(
   '/register',
+  authLimiter,
   userValidation.register,
   userController.register
 )
-RouterInstance.post('/login', userValidation.login, userController.login)
+RouterInstance.post(
+  '/login',
+  authLimiter,
+  userValidation.login,
+  userController.login
+)
 RouterInstance.post('/refresh-token', userController.refreshToken)
 
-// Email verification routes
+// Email verification routes (với rate limiting chặt hơn)
 RouterInstance.post(
   '/send-verification-email',
+  emailLimiter,
   userValidation.sendVerificationEmail,
   userController.sendVerificationEmail
 )
