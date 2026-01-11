@@ -44,10 +44,6 @@ import type {
 import type { Product } from '~/types/product.types.js'
 import type { PaginationInfo } from '~/types/common.types.js'
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Paginated orders result */
 interface PaginatedOrdersResult {
   orders: Order[]
@@ -78,10 +74,6 @@ const PAYMENT_STATUS_NAMES: Record<string, string> = {
   CANCELLED: 'đã hủy thanh toán',
   REFUNDED: 'đã hoàn tiền'
 }
-
-// ============================================================
-// === Order Functions ===
-// ============================================================
 
 /**
  * Tạo đơn hàng mới (với MongoDB transaction)
@@ -234,8 +226,14 @@ const create = async (
       }
     }
 
-    // 6) Tổng thanh toán
+    // 6) Validate và tính tổng thanh toán
     const shipping = Number(shippingFee || 0)
+    if (shipping < 0 || shipping > 10000000) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Phí vận chuyển không hợp lệ. Phải từ 0 đến 10,000,000 VND.'
+      )
+    }
     const payable = Math.max(
       0,
       Number((subtotal - discountValue + shipping).toFixed(2))
@@ -873,17 +871,11 @@ const cancel = async (
       }
 
       // 3) Rollback voucher usedCount
+      // Chỉ rollback nếu có voucherId - tránh double rollback
       if (order.voucher?.voucherId) {
         await voucherModel.decrementUsedCount(order.voucher.voucherId, 1, {
           session
         })
-      } else if (order.voucher?.code) {
-        const voucher = await voucherModel.findOneByCode(order.voucher.code)
-        if (voucher?._id) {
-          await voucherModel.decrementUsedCount(voucher._id.toString(), 1, {
-            session
-          })
-        }
       }
 
       // 4) Cập nhật order

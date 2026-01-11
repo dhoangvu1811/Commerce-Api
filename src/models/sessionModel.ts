@@ -9,10 +9,6 @@ import Joi from 'joi'
 import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
 import type { Session, CreateSessionInput } from '~/types/session.types.js'
 
-// ============================================================
-// === Collection Definition ===
-// ============================================================
-
 /** Tên collection trong MongoDB */
 const SESSION_COLLECTION_NAME = 'sessions'
 
@@ -33,10 +29,6 @@ const SESSION_COLLECTION_SCHEMA = Joi.object({
   expiresAt: Joi.date().timestamp().required() // Thời gian hết hạn của refresh token
 })
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Session document từ MongoDB */
 export type SessionDocument = WithId<Document> & Session
 
@@ -45,10 +37,6 @@ export interface SessionsSummary {
   totalSessions: number
   activeSessions: number
 }
-
-// ============================================================
-// === Private Functions ===
-// ============================================================
 
 /**
  * Validate dữ liệu trước khi tạo session
@@ -62,10 +50,6 @@ const validateBeforeCreate = async (
   })
   return validData
 }
-
-// ============================================================
-// === Create & Find Operations ===
-// ============================================================
 
 /**
  * Tạo session mới
@@ -206,10 +190,6 @@ const getSessionsSummaryByUserId = async (
   }
 }
 
-// ============================================================
-// === Session Management Operations ===
-// ============================================================
-
 /**
  * Vô hiệu hóa session (revoke)
  */
@@ -277,10 +257,6 @@ const logoutSession = async (sessionId: string): Promise<UpdateResult> => {
   }
 }
 
-// ============================================================
-// === Cleanup Operations ===
-// ============================================================
-
 /**
  * Xóa session (hard delete) - Chỉ dùng cho cleanup cron job
  */
@@ -325,10 +301,6 @@ const cleanupExpiredSessions = async (
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Export ===
-// ============================================================
 
 export const sessionModel = {
   SESSION_COLLECTION_NAME,

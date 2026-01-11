@@ -17,16 +17,7 @@ import { sessionModel } from '~/models/sessionModel.js'
 import ms from 'ms'
 import type { User, UserRole } from '~/types/user.types.js'
 
-// Extend Request type to include jwtDecoded and file
-interface AuthRequest extends Request {
-  jwtDecoded?: {
-    _id: string
-    email: string
-    role: string
-    sessionId?: string
-  }
-  file?: Express.Multer.File
-}
+// Request type đã được mở rộng trong ~/types/express.d.ts với jwtDecoded và file
 
 const register = async (
   req: Request,
@@ -47,7 +38,7 @@ const register = async (
 }
 
 const login = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -89,7 +80,7 @@ const login = async (
 }
 
 const logout = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -143,7 +134,7 @@ const getDetails = async (
 }
 
 const getCurrentUser = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -181,7 +172,7 @@ const updateUser = async (
 }
 
 const updateCurrentUser = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -232,7 +223,7 @@ const updateUserByAdmin = async (
 }
 
 const updatePassword = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -407,7 +398,7 @@ const createUserByAdmin = async (
 }
 
 const uploadAvatar = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -743,7 +734,7 @@ const getUserSessions = async (
 
 // Lấy sessions của user hiện tại
 const getCurrentUserSessions = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -767,7 +758,7 @@ const getCurrentUserSessions = async (
 
 // User tự revoke session của chính mình
 const revokeMySession = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {

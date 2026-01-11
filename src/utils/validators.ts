@@ -3,8 +3,6 @@
  * Các quy tắc xác thực dữ liệu đầu vào
  */
 
-// === Object ID Validation ===
-
 /**
  * RegExp kiểm tra MongoDB ObjectId hợp lệ (24 ký tự hex)
  */
@@ -21,8 +19,6 @@ export const OBJECT_ID_RULE_MESSAGE: string =
  */
 export const FIELD_REQUIRED_MESSAGE: string = 'Trường này là bắt buộc.'
 
-// === Email Validation ===
-
 /**
  * RegExp kiểm tra email hợp lệ
  */
@@ -33,8 +29,6 @@ export const EMAIL_RULE: RegExp = /^\S+@\S+\.\S+$/
  */
 export const EMAIL_RULE_MESSAGE: string =
   'Email không hợp lệ. Ví dụ: ten@email.com'
-
-// === Password Validation ===
 
 /**
  * RegExp kiểm tra password (8-256 ký tự, phải có cả chữ và số)
@@ -47,8 +41,6 @@ export const PASSWORD_RULE: RegExp =
  */
 export const PASSWORD_RULE_MESSAGE: string =
   'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và số.'
-
-// === File Validation ===
 
 /**
  * Giới hạn kích thước file upload (10MB)

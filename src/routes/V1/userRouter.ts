@@ -3,7 +3,7 @@
  * Định nghĩa các routes cho users, auth, sessions
  */
 
-import type { Router, RequestHandler } from 'express'
+import type { Router } from 'express'
 import express from 'express'
 import { userController } from '~/controllers/userController.js'
 import { userValidation } from '~/validations/userValidation.js'
@@ -20,11 +20,7 @@ RouterInstance.post(
   userValidation.register,
   userController.register
 )
-RouterInstance.post(
-  '/login',
-  userValidation.login,
-  userController.login as RequestHandler
-)
+RouterInstance.post('/login', userValidation.login, userController.login)
 RouterInstance.post('/refresh-token', userController.refreshToken)
 
 // Email verification routes
@@ -84,131 +80,124 @@ RouterInstance.get(
 RouterInstance.post(
   '/logout',
   authMiddleware.verifyTokenForLogout,
-  userController.logout as RequestHandler
+  userController.logout
 )
 
 // Protected routes - cần xác thực
-RouterInstance.use(authMiddleware.verifyToken as RequestHandler)
-RouterInstance.use(authMiddleware.verifySession as RequestHandler) // Kiểm tra session có còn active không
+RouterInstance.use(authMiddleware.verifyToken)
+RouterInstance.use(authMiddleware.verifySession) // Kiểm tra session có còn active không
 
 // Routes không yêu cầu active user
-RouterInstance.get('/me', userController.getCurrentUser as RequestHandler)
+RouterInstance.get('/me', userController.getCurrentUser)
 
 // Admin routes - chỉ admin mới có quyền (admin luôn active)
-RouterInstance.get(
-  '/all',
-  authMiddleware.verifyAdmin as RequestHandler,
-  userController.getUsers as RequestHandler
-)
+RouterInstance.get('/all', authMiddleware.verifyAdmin, userController.getUsers)
 
 // Lấy users với session summary cho table overview
 RouterInstance.get(
   '/overview',
-  authMiddleware.verifyAdmin as RequestHandler,
-  userController.getUsersWithSessionSummary as RequestHandler
+  authMiddleware.verifyAdmin,
+  userController.getUsersWithSessionSummary
 )
 
 RouterInstance.post(
   '/create',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.createUserByAdmin,
-  userController.createUserByAdmin as RequestHandler
+  userController.createUserByAdmin
 )
 
 RouterInstance.get(
   '/details/:id',
-  authMiddleware.verifyUserOwnership as RequestHandler,
-  userController.getDetails as RequestHandler
+  authMiddleware.verifyUserOwnership,
+  userController.getDetails
 )
 
 RouterInstance.put(
   '/update/:id',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.updateUserByAdmin,
-  userController.updateUserByAdmin as RequestHandler
+  userController.updateUserByAdmin
 )
 
 RouterInstance.delete(
   '/delete/:id',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.deleteUser,
-  userController.deleteUser as RequestHandler
+  userController.deleteUser
 )
 
 RouterInstance.post(
   '/delete-multiple',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.deleteMultipleUsers,
-  userController.deleteMultipleUsers as RequestHandler
+  userController.deleteMultipleUsers
 )
 
 // User activation/deactivation routes - chỉ admin mới có quyền
 RouterInstance.patch(
   '/activate/:userId',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.userActivation,
-  userController.activateUser as RequestHandler
+  userController.activateUser
 )
 
 RouterInstance.patch(
   '/deactivate/:userId',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.userActivation,
-  userController.deactivateUser as RequestHandler
+  userController.deactivateUser
 )
 
 // Session management routes - Admin
 RouterInstance.post(
   '/revoke-session',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.revokeSession,
-  userController.revokeUserSession as RequestHandler
+  userController.revokeUserSession
 )
 
 RouterInstance.delete(
   '/revoke-all-sessions/:userId',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.revokeAllSessions,
-  userController.revokeAllUserSessions as RequestHandler
+  userController.revokeAllUserSessions
 )
 
 RouterInstance.get(
   '/sessions/:userId',
-  authMiddleware.verifyAdmin as RequestHandler,
+  authMiddleware.verifyAdmin,
   userValidation.getUserSessions,
-  userController.getUserSessions as RequestHandler
+  userController.getUserSessions
 )
 
 // User routes - yêu cầu user phải active
-RouterInstance.use(authMiddleware.verifyActiveUser as RequestHandler) // Bắt buộc user phải active
+RouterInstance.use(authMiddleware.verifyActiveUser) // Bắt buộc user phải active
 
 RouterInstance.put(
   '/me',
   multerUploadMiddleware.upload.single('avatar'),
   userValidation.updateUser,
-  userController.updateCurrentUser as RequestHandler
+  userController.updateCurrentUser
 )
 RouterInstance.put(
   '/me/password',
   userValidation.updatePassword,
-  userController.updatePassword as RequestHandler
+  userController.updatePassword
 )
 RouterInstance.post(
   '/upload-avatar',
   multerUploadMiddleware.upload.single('avatar'),
-  userController.uploadAvatar as RequestHandler
+  userController.uploadAvatar
 )
 
 // Session management routes - User quản lý sessions của chính mình
-RouterInstance.get(
-  '/my-sessions',
-  userController.getCurrentUserSessions as RequestHandler
-)
+RouterInstance.get('/my-sessions', userController.getCurrentUserSessions)
 
 RouterInstance.post(
   '/revoke-my-session',
   userValidation.revokeMySession,
-  userController.revokeMySession as RequestHandler
+  userController.revokeMySession
 )
 
 export const userRoute = RouterInstance

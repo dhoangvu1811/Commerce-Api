@@ -29,10 +29,6 @@ import type {
   UpdateOrderInput
 } from '~/types/order.types.js'
 
-// ============================================================
-// === Collection Definition ===
-// ============================================================
-
 /** Tên collection trong MongoDB */
 const ORDER_COLLECTION_NAME = 'orders'
 
@@ -110,10 +106,6 @@ const ORDER_COLLECTION_SCHEMA = Joi.object({
   updatedAt: Joi.date().timestamp().default(Date.now)
 })
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Order document từ MongoDB */
 export type OrderDocument = WithId<Document> & Order
 
@@ -150,10 +142,6 @@ interface OrderLogsResult {
   logs: LogEntry[]
 }
 
-// ============================================================
-// === Private Functions ===
-// ============================================================
-
 /**
  * Validate dữ liệu trước khi tạo order
  */
@@ -166,10 +154,6 @@ const validateBeforeCreate = async (
   })
   return validData
 }
-
-// ============================================================
-// === CRUD Operations ===
-// ============================================================
 
 /**
  * Tạo order mới
@@ -344,10 +328,6 @@ const getLogsByOrderId = async (
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Export ===
-// ============================================================
 
 export const orderModel = {
   ORDER_COLLECTION_NAME,

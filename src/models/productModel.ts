@@ -22,10 +22,6 @@ import type {
   PaginatedProductsModelResult
 } from '~/types/product.types.js'
 
-// ============================================================
-// === Collection Definition ===
-// ============================================================
-
 /** Tên collection trong MongoDB */
 const PRODUCT_COLLECTION_NAME = 'products'
 
@@ -44,10 +40,6 @@ const PRODUCT_COLLECTION_SCHEMA = Joi.object({
   updatedAt: Joi.date().timestamp().default(Date.now)
 })
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Product document từ MongoDB */
 export type ProductDocument = WithId<Document> & Product
 
@@ -59,10 +51,6 @@ export type PaginatedProductsResult =
 interface SessionOptions {
   session?: ClientSession
 }
-
-// ============================================================
-// === Private Functions ===
-// ============================================================
 
 /**
  * Validate dữ liệu trước khi tạo product
@@ -76,10 +64,6 @@ const validateBeforeCreate = async (
   })
   return validData
 }
-
-// ============================================================
-// === CRUD Operations ===
-// ============================================================
 
 /**
  * Tạo product mới
@@ -258,10 +242,6 @@ const deleteMany = async (
   }
 }
 
-// ============================================================
-// === Stock Management (Atomic Operations) ===
-// ============================================================
-
 /**
  * Giảm tồn kho atomically nếu đủ hàng
  */
@@ -380,10 +360,6 @@ const getAllTypes = async (): Promise<string[]> => {
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Export ===
-// ============================================================
 
 export const productModel = {
   PRODUCT_COLLECTION_NAME,

@@ -22,19 +22,11 @@ import type {
   DeleteResultInfo
 } from '~/types/common.types.js'
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Paginated products result */
 interface PaginatedProductsResult {
   products: Product[]
   pagination: PaginationInfo
 }
-
-// ============================================================
-// === Functions ===
-// ============================================================
 
 /**
  * Tạo product mới

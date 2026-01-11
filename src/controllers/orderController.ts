@@ -9,18 +9,8 @@ import { StatusCodes } from 'http-status-codes'
 import { orderService } from '~/services/orderService.js'
 import type { OrderStatus, PaymentStatus } from '~/types/order.types.js'
 
-// Extend Request type to include jwtDecoded
-interface AuthRequest extends Request {
-  jwtDecoded?: {
-    _id: string
-    email: string
-    role: string
-    sessionId?: string
-  }
-}
-
 const create = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -48,7 +38,7 @@ const create = async (
 }
 
 const getMyOrders = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -71,7 +61,7 @@ const getMyOrders = async (
 }
 
 const getDetails = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -136,7 +126,7 @@ const adminGetDetails = async (
 }
 
 const adminUpdateStatus = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -159,7 +149,7 @@ const adminUpdateStatus = async (
 }
 
 const adminUpdatePaymentStatus = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -186,7 +176,7 @@ const adminUpdatePaymentStatus = async (
 }
 
 const adminMarkPaid = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -205,7 +195,7 @@ const adminMarkPaid = async (
 }
 
 const userCancel = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
@@ -224,7 +214,7 @@ const userCancel = async (
 }
 
 const adminCancel = async (
-  req: AuthRequest,
+  req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {

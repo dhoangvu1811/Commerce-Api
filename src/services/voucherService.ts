@@ -22,19 +22,11 @@ import type {
   DeleteResultInfo
 } from '~/types/common.types.js'
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Paginated vouchers result */
 interface PaginatedVouchersResult {
   vouchers: Voucher[]
   pagination: PaginationInfo
 }
-
-// ============================================================
-// === Functions ===
-// ============================================================
 
 /**
  * Lấy danh sách voucher đang hoạt động cho người dùng (public)

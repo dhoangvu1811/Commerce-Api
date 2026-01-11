@@ -21,10 +21,6 @@ import type {
   RevokeAllSessionsResponse
 } from '~/types/session.types.js'
 
-// ============================================================
-// === Functions ===
-// ============================================================
-
 /**
  * Revoke một session cụ thể
  */

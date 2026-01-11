@@ -43,10 +43,6 @@ import type {
   DeleteResultInfo
 } from '~/types/common.types.js'
 
-// ============================================================
-// === Password Utilities ===
-// ============================================================
-
 /**
  * Hash mật khẩu
  */
@@ -64,10 +60,6 @@ const comparePassword = async (
 ): Promise<boolean> => {
   return await bcrypt.compare(password, hashedPassword)
 }
-
-// ============================================================
-// === Auth Functions ===
-// ============================================================
 
 /**
  * Đăng ký user mới
@@ -266,10 +258,6 @@ const refreshToken = async (
   }
 }
 
-// ============================================================
-// === User Profile Functions ===
-// ============================================================
-
 /**
  * Lấy chi tiết user
  */
@@ -435,10 +423,6 @@ const uploadAvatar = async (
     )
   }
 }
-
-// ============================================================
-// === Admin Functions ===
-// ============================================================
 
 /**
  * Lấy danh sách users (admin)
@@ -783,10 +767,6 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
     throw error
   }
 }
-
-// ============================================================
-// === Email Verification Functions ===
-// ============================================================
 
 /**
  * Gửi email xác minh tài khoản

@@ -22,10 +22,6 @@ import type {
   PaginatedVouchersModelResult
 } from '~/types/voucher.types.js'
 
-// ============================================================
-// === Collection Definition ===
-// ============================================================
-
 /** Tên collection trong MongoDB */
 const VOUCHER_COLLECTION_NAME = 'vouchers'
 
@@ -50,10 +46,6 @@ const VOUCHER_COLLECTION_SCHEMA = Joi.object({
   updatedAt: Joi.date().timestamp().default(Date.now)
 })
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** Voucher document từ MongoDB */
 export type VoucherDocument = WithId<Document> & Voucher
 
@@ -65,10 +57,6 @@ export type PaginatedVouchersResult =
 interface SessionOptions {
   session?: ClientSession
 }
-
-// ============================================================
-// === Private Functions ===
-// ============================================================
 
 /**
  * Validate dữ liệu trước khi tạo voucher
@@ -82,10 +70,6 @@ const validateBeforeCreate = async (
   })
   return validData
 }
-
-// ============================================================
-// === CRUD Operations ===
-// ============================================================
 
 /**
  * Tạo voucher mới
@@ -220,10 +204,6 @@ const deleteOneById = async (voucherId: string): Promise<DeleteResult> => {
   }
 }
 
-// ============================================================
-// === Usage Count Management (Atomic Operations) ===
-// ============================================================
-
 /**
  * Tăng số lần sử dụng voucher
  */
@@ -282,6 +262,7 @@ const incrementUsedCountWithLimit = async (
 
 /**
  * Giảm số lần đã sử dụng voucher (dùng khi hủy đơn đã thanh toán)
+ * Sử dụng atomic operation với condition usedCount >= step để tránh negative value
  */
 const decrementUsedCount = async (
   voucherId: string,
@@ -290,22 +271,32 @@ const decrementUsedCount = async (
 ): Promise<VoucherDocument | null> => {
   try {
     const updateOptions = options.session ? { session: options.session } : {}
+    // Atomic operation: Chỉ decrement nếu usedCount >= step
     const result = await GET_DB()
       .collection(VOUCHER_COLLECTION_NAME)
       .findOneAndUpdate(
-        { _id: new ObjectId(voucherId) },
+        { _id: new ObjectId(voucherId), usedCount: { $gte: step } },
         { $inc: { usedCount: -step }, $set: { updatedAt: new Date() } },
         { returnDocument: 'after', ...updateOptions }
       )
+
+    // Nếu không match (usedCount < step), set usedCount = 0 thay vì để negative
+    if (!result) {
+      const fallbackResult = await GET_DB()
+        .collection(VOUCHER_COLLECTION_NAME)
+        .findOneAndUpdate(
+          { _id: new ObjectId(voucherId) },
+          { $set: { usedCount: 0, updatedAt: new Date() } },
+          { returnDocument: 'after', ...updateOptions }
+        )
+      return fallbackResult as VoucherDocument | null
+    }
+
     return result as VoucherDocument | null
   } catch (error) {
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Bulk Operations ===
-// ============================================================
 
 /**
  * Tìm nhiều vouchers theo danh sách IDs
@@ -336,10 +327,6 @@ const deleteManyByIds = async (idStrings: string[]): Promise<DeleteResult> => {
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Export ===
-// ============================================================
 
 export const voucherModel = {
   VOUCHER_COLLECTION_NAME,

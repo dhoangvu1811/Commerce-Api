@@ -15,10 +15,6 @@ import type {
   PaginatedUsersModelResult
 } from '~/types/user.types.js'
 
-// ============================================================
-// === Collection Definition ===
-// ============================================================
-
 /** Tên collection trong MongoDB */
 const USER_COLLECTION_NAME = 'users'
 
@@ -49,16 +45,8 @@ const USER_COLLECTION_SCHEMA = Joi.object({
   updatedAt: Joi.date().timestamp().default(Date.now)
 })
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** User document từ MongoDB */
 export type UserDocument = WithId<Document> & User
-
-// ============================================================
-// === Private Functions ===
-// ============================================================
 
 /**
  * Validate dữ liệu trước khi tạo user
@@ -72,10 +60,6 @@ const validateBeforeCreate = async (
   })
   return validData
 }
-
-// ============================================================
-// === CRUD Operations ===
-// ============================================================
 
 /**
  * Tạo user mới
@@ -371,10 +355,6 @@ const deleteManyByIds = async (userIds: string[]): Promise<DeleteResult> => {
     throw new Error(String(error))
   }
 }
-
-// ============================================================
-// === Export ===
-// ============================================================
 
 export const userModel = {
   USER_COLLECTION_NAME,

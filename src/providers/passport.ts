@@ -17,10 +17,6 @@ import type { OAuthProvider } from '~/types/oauth.types.js'
 
 // Không cần serialize/deserialize vì sử dụng JWT thay vì session
 
-// ============================================================
-// === Google OAuth Strategy ===
-// ============================================================
-
 passport.use(
   new GoogleStrategy(
     {
@@ -56,10 +52,6 @@ passport.use(
     }
   )
 )
-
-// ============================================================
-// === Facebook OAuth Strategy ===
-// ============================================================
 
 passport.use(
   new FacebookStrategy(

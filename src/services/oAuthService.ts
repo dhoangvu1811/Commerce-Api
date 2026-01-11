@@ -19,10 +19,6 @@ import ms from 'ms'
 import { env } from '~/config/environment.js'
 import type { User, UserResponse } from '~/types/user.types.js'
 
-// ============================================================
-// === Types ===
-// ============================================================
-
 /** OAuth provider types */
 type OAuthProviderType = 'GOOGLE' | 'FACEBOOK'
 
@@ -68,10 +64,6 @@ interface AuthTokensResponse {
   user: Partial<UserResponse>
 }
 
-// ============================================================
-// === Constants ===
-// ============================================================
-
 /**
  * Mapping các OAuth providers
  */
@@ -87,10 +79,6 @@ const OAUTH_PROVIDERS: OAuthProvidersMap = {
     displayName: 'Facebook Account'
   }
 }
-
-// ============================================================
-// === Functions ===
-// ============================================================
 
 /**
  * Chuẩn hóa profile từ các OAuth providers khác nhau

@@ -6,10 +6,6 @@
 import type { OrderStatus, PaymentStatus, Order } from '~/types/order.types.js'
 import type { Voucher } from '~/types/voucher.types.js'
 
-// ============================================================
-// === Order Status Helpers ===
-// ============================================================
-
 /** Định nghĩa valid transitions cho order status */
 type OrderStatusTransitions = Record<OrderStatus, readonly OrderStatus[]>
 
@@ -38,10 +34,6 @@ export const isValidStatusTransition = (
 ): boolean => {
   return validOrderStatusTransitions[fromStatus]?.includes(toStatus) || false
 }
-
-// ============================================================
-// === Payment Status Helpers ===
-// ============================================================
 
 /** Định nghĩa valid transitions cho payment status */
 type PaymentStatusTransitions = Record<PaymentStatus, readonly PaymentStatus[]>
@@ -73,10 +65,6 @@ export const isValidPaymentStatusTransition = (
   )
 }
 
-// ============================================================
-// === Payment Method Helpers ===
-// ============================================================
-
 /**
  * Kiểm tra có phải phương thức COD không
  * @param {string} paymentMethod - Phương thức thanh toán
@@ -101,10 +89,6 @@ export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
     (!isCODPayment(paymentMethod) && paymentMethod.trim() !== '')
   )
 }
-
-// ============================================================
-// === Status Update Validation ===
-// ============================================================
 
 /** Kết quả kiểm tra cập nhật status */
 interface StatusUpdateResult {
@@ -238,10 +222,6 @@ export const isConsistentStatusPayment = (
   return rules.every((rule) => rule())
 }
 
-// ============================================================
-// === Calculation Helpers ===
-// ============================================================
-
 /**
  * Tính tổng tiền theo line item
  * @param {number | string} price - Đơn giá
@@ -303,10 +283,6 @@ export const generateOrderCode = (): string => {
   const random = Math.random().toString(36).substring(2, 8).toUpperCase() // 6 ký tự random
   return `ORD${timestamp}${random}`
 }
-
-// ============================================================
-// === Mark Paid Validation ===
-// ============================================================
 
 /**
  * Kiểm tra có thể đánh dấu đã thanh toán hay không
