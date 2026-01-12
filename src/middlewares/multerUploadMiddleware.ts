@@ -6,7 +6,7 @@
 import multer from 'multer'
 import type { Request } from 'express'
 import type { FileFilterCallback } from 'multer'
-import { ALLOW_COMMON_FILE_TYPES } from '~/utils/validators.js'
+import { ALLOW_COMMON_FILE_TYPES } from '~/utils/zodValidators.js'
 
 /**
  * Hàm kiểm tra loại file được phép upload

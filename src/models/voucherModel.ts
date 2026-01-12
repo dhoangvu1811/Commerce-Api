@@ -3,6 +3,8 @@
  * Quản lý dữ liệu voucher/mã giảm giá trong MongoDB
  */
 
+import { z } from 'zod'
+import { coerceDateNullable } from '~/utils/zodValidators.js'
 import { ObjectId } from 'mongodb'
 import type {
   WithId,
@@ -14,7 +16,6 @@ import type {
   ClientSession
 } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
-import Joi from 'joi'
 import type {
   Voucher,
   CreateVoucherInput,
@@ -25,25 +26,24 @@ import type {
 /** Tên collection trong MongoDB */
 const VOUCHER_COLLECTION_NAME = 'vouchers'
 
-/** Schema validation với Joi */
-const VOUCHER_COLLECTION_SCHEMA = Joi.object({
-  code: Joi.string()
-    .required()
-    .trim()
+/** Schema validation với Zod */
+const VOUCHER_COLLECTION_SCHEMA = z.object({
+  code: z
+    .string()
     .min(3)
     .max(50)
-    .pattern(/^[A-Z0-9-_]+$/),
-  type: Joi.string().valid('percent', 'fixed').required(),
-  amount: Joi.number().required().positive().precision(2),
-  maxDiscount: Joi.number().optional().min(0).precision(2).default(0),
-  minOrderValue: Joi.number().optional().min(0).precision(2).default(0),
-  usageLimit: Joi.number().integer().min(0).default(0), // 0 = không giới hạn
-  usedCount: Joi.number().integer().min(0).default(0),
-  startDate: Joi.date().allow(null).default(null),
-  endDate: Joi.date().allow(null).default(null),
-  isActive: Joi.boolean().default(true),
-  createdAt: Joi.date().timestamp().default(Date.now),
-  updatedAt: Joi.date().timestamp().default(Date.now)
+    .regex(/^[A-Z0-9-_]+$/),
+  type: z.enum(['percent', 'fixed']),
+  amount: z.number().positive(),
+  maxDiscount: z.number().min(0).default(0),
+  minOrderValue: z.number().min(0).default(0),
+  usageLimit: z.number().int().min(0).default(0), // 0 = không giới hạn
+  usedCount: z.number().int().min(0).default(0),
+  startDate: coerceDateNullable.default(null),
+  endDate: coerceDateNullable.default(null),
+  isActive: z.boolean().default(true),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 })
 
 /** Voucher document từ MongoDB */
@@ -61,14 +61,9 @@ interface SessionOptions {
 /**
  * Validate dữ liệu trước khi tạo voucher
  */
-const validateBeforeCreate = async (
-  data: CreateVoucherInput
-): Promise<CreateVoucherInput> => {
-  const validData = await VOUCHER_COLLECTION_SCHEMA.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-  return validData
+const validateBeforeCreate = (data: CreateVoucherInput): CreateVoucherInput => {
+  const validData = VOUCHER_COLLECTION_SCHEMA.parse(data)
+  return validData as CreateVoucherInput
 }
 
 /**
@@ -78,7 +73,7 @@ const createNew = async (
   data: CreateVoucherInput
 ): Promise<VoucherDocument | null> => {
   try {
-    const validData = await validateBeforeCreate(data)
+    const validData = validateBeforeCreate(data)
     const created = await GET_DB()
       .collection(VOUCHER_COLLECTION_NAME)
       .insertOne(validData)

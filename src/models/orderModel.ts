@@ -3,6 +3,7 @@
  * Quản lý dữ liệu đơn hàng trong MongoDB
  */
 
+import { z } from 'zod'
 import { ObjectId } from 'mongodb'
 import type {
   WithId,
@@ -14,7 +15,6 @@ import type {
   ClientSession
 } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
-import Joi from 'joi'
 import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants.js'
 import type {
   Order,
@@ -33,77 +33,87 @@ import type {
 const ORDER_COLLECTION_NAME = 'orders'
 
 /** Schema cho order item */
-const ORDER_ITEM_SCHEMA = Joi.object({
-  productId: Joi.string().required(),
-  name: Joi.string().required(),
-  image: Joi.string().uri().required(),
-  unitPrice: Joi.number().required().positive().precision(2),
-  discount: Joi.number().min(0).max(100).precision(2).default(0),
-  quantity: Joi.number().integer().min(1).required(),
-  lineTotal: Joi.number().required().min(0).precision(2)
+const ORDER_ITEM_SCHEMA = z.object({
+  productId: z.string(),
+  name: z.string(),
+  image: z.string().url(),
+  unitPrice: z.number().positive(),
+  discount: z.number().min(0).max(100).default(0),
+  quantity: z.number().int().min(1),
+  lineTotal: z.number().min(0)
 })
 
 /** Schema cho log entry */
-const LOG_ENTRY_SCHEMA = Joi.object({
-  action: Joi.string().required(),
-  by: Joi.string().allow(null).default(null),
-  byRole: Joi.string().valid('user', 'admin', 'system').default('system'),
-  at: Joi.date().timestamp().default(Date.now),
-  note: Joi.string().allow('').default(''),
-  fromStatus: Joi.string()
-    .valid(...ORDER_STATUS)
-    .allow(null)
+const LOG_ENTRY_SCHEMA = z.object({
+  action: z.string(),
+  by: z.string().nullable().default(null),
+  byRole: z.enum(['user', 'admin', 'system']).default('system'),
+  at: z.date().default(() => new Date()),
+  note: z.string().default(''),
+  fromStatus: z
+    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
+    .nullable()
     .default(null),
-  toStatus: Joi.string()
-    .valid(...ORDER_STATUS)
-    .allow(null)
+  toStatus: z
+    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
+    .nullable()
     .default(null),
-  meta: Joi.object().unknown(true).default({})
+  meta: z.record(z.string(), z.unknown()).default({})
 })
 
-/** Schema validation với Joi */
-const ORDER_COLLECTION_SCHEMA = Joi.object({
-  userId: Joi.string().required(),
-  orderCode: Joi.string().required(),
-  items: Joi.array().items(ORDER_ITEM_SCHEMA).min(1).required(),
-  shippingAddress: Joi.object({
-    id: Joi.string().allow('').optional(),
-    name: Joi.string().required(),
-    phone: Joi.string().required(),
-    address: Joi.string().required(),
-    city: Joi.string().required(),
-    province: Joi.string().required(),
-    postalCode: Joi.string().allow('').optional(),
-    isDefault: Joi.boolean().optional(),
-    fullAddress: Joi.string().allow('').optional()
-  }).required(),
-  voucher: Joi.object({
-    voucherId: Joi.string().optional(),
-    code: Joi.string().required(),
-    type: Joi.string().valid('percent', 'fixed').required(),
-    amount: Joi.number().required(),
-    maxDiscount: Joi.number().min(0).optional().default(0),
-    discountApplied: Joi.number().min(0).required()
+/** Shipping address schema */
+const SHIPPING_ADDRESS_SCHEMA = z.object({
+  id: z.string().optional().default(''),
+  name: z.string(),
+  phone: z.string(),
+  address: z.string(),
+  city: z.string(),
+  province: z.string(),
+  postalCode: z.string().optional().default(''),
+  isDefault: z.boolean().optional(),
+  fullAddress: z.string().optional().default('')
+})
+
+/** Voucher schema */
+const ORDER_VOUCHER_SCHEMA = z
+  .object({
+    voucherId: z.string().optional(),
+    code: z.string(),
+    type: z.enum(['percent', 'fixed']),
+    amount: z.number(),
+    maxDiscount: z.number().min(0).default(0),
+    discountApplied: z.number().min(0)
   })
-    .allow(null)
-    .default(null),
-  totals: Joi.object({
-    subtotal: Joi.number().required().min(0),
-    discount: Joi.number().required().min(0),
-    shippingFee: Joi.number().required().min(0),
-    payable: Joi.number().required().min(0)
-  }).required(),
-  status: Joi.string()
-    .valid(...ORDER_STATUS)
+  .nullable()
+  .default(null)
+
+/** Totals schema */
+const ORDER_TOTALS_SCHEMA = z.object({
+  subtotal: z.number().min(0),
+  discount: z.number().min(0),
+  shippingFee: z.number().min(0),
+  payable: z.number().min(0)
+})
+
+/** Schema validation với Zod */
+const ORDER_COLLECTION_SCHEMA = z.object({
+  userId: z.string(),
+  orderCode: z.string(),
+  items: z.array(ORDER_ITEM_SCHEMA).min(1),
+  shippingAddress: SHIPPING_ADDRESS_SCHEMA,
+  voucher: ORDER_VOUCHER_SCHEMA,
+  totals: ORDER_TOTALS_SCHEMA,
+  status: z
+    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
     .default('PENDING'),
-  paymentStatus: Joi.string()
-    .valid(...PAYMENT_STATUS)
+  paymentStatus: z
+    .enum(PAYMENT_STATUS as unknown as readonly [string, ...string[]])
     .default('PENDING'),
-  paymentMethod: Joi.string().allow('').default(''),
-  logs: Joi.array().items(LOG_ENTRY_SCHEMA).default([]),
-  deliveredAt: Joi.date().timestamp().allow(null).default(null),
-  createdAt: Joi.date().timestamp().default(Date.now),
-  updatedAt: Joi.date().timestamp().default(Date.now)
+  paymentMethod: z.string().default(''),
+  logs: z.array(LOG_ENTRY_SCHEMA).default([]),
+  deliveredAt: z.date().nullable().default(null),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 })
 
 /** Order document từ MongoDB */
@@ -145,14 +155,11 @@ interface OrderLogsResult {
 /**
  * Validate dữ liệu trước khi tạo order
  */
-const validateBeforeCreate = async (
+const validateBeforeCreate = (
   data: CreateOrderModelInput
-): Promise<CreateOrderModelInput> => {
-  const validData = await ORDER_COLLECTION_SCHEMA.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-  return validData
+): CreateOrderModelInput => {
+  const validData = ORDER_COLLECTION_SCHEMA.parse(data)
+  return validData as unknown as CreateOrderModelInput
 }
 
 /**
@@ -163,7 +170,7 @@ const createNew = async (
   options: SessionOptions = {}
 ): Promise<OrderDocument | null> => {
   try {
-    const validData = await validateBeforeCreate(data)
+    const validData = validateBeforeCreate(data)
     const dataToInsert = {
       ...validData,
       userId: new ObjectId(validData.userId)

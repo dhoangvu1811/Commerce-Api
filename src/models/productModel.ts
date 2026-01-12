@@ -3,6 +3,7 @@
  * Quản lý dữ liệu sản phẩm trong MongoDB
  */
 
+import { z } from 'zod'
 import { ObjectId } from 'mongodb'
 import type {
   WithId,
@@ -14,7 +15,6 @@ import type {
   ClientSession
 } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
-import Joi from 'joi'
 import type {
   Product,
   CreateProductInput,
@@ -25,19 +25,19 @@ import type {
 /** Tên collection trong MongoDB */
 const PRODUCT_COLLECTION_NAME = 'products'
 
-/** Schema validation với Joi */
-const PRODUCT_COLLECTION_SCHEMA = Joi.object({
-  name: Joi.string().required().trim().min(2).max(255),
-  image: Joi.string().required().uri(),
-  type: Joi.string().required().trim().min(2).max(100),
-  countInStock: Joi.number().required().integer().min(0),
-  price: Joi.number().required().positive().precision(2),
-  rating: Joi.number().min(0).max(5).precision(1).default(0),
-  description: Joi.string().trim().max(1000).allow('').default(''),
-  selled: Joi.number().integer().min(0).default(0),
-  discount: Joi.number().min(0).max(100).precision(2).default(0),
-  createdAt: Joi.date().timestamp().default(Date.now),
-  updatedAt: Joi.date().timestamp().default(Date.now)
+/** Schema validation với Zod */
+const PRODUCT_COLLECTION_SCHEMA = z.object({
+  name: z.string().min(2).max(255),
+  image: z.string().url(),
+  type: z.string().min(2).max(100),
+  countInStock: z.number().int().min(0),
+  price: z.number().positive(),
+  rating: z.number().min(0).max(5).default(0),
+  description: z.string().max(1000).default(''),
+  selled: z.number().int().min(0).default(0),
+  discount: z.number().min(0).max(100).default(0),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 })
 
 /** Product document từ MongoDB */
@@ -55,14 +55,9 @@ interface SessionOptions {
 /**
  * Validate dữ liệu trước khi tạo product
  */
-const validateBeforeCreate = async (
-  data: CreateProductInput
-): Promise<CreateProductInput> => {
-  const validData = await PRODUCT_COLLECTION_SCHEMA.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-  return validData
+const validateBeforeCreate = (data: CreateProductInput): CreateProductInput => {
+  const validData = PRODUCT_COLLECTION_SCHEMA.parse(data)
+  return validData as CreateProductInput
 }
 
 /**
@@ -72,7 +67,7 @@ const createNew = async (
   data: CreateProductInput
 ): Promise<ProductDocument | null> => {
   try {
-    const validData = await validateBeforeCreate(data)
+    const validData = validateBeforeCreate(data)
     const createdProduct = await GET_DB()
       .collection(PRODUCT_COLLECTION_NAME)
       .insertOne(validData)

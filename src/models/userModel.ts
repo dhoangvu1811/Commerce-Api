@@ -3,11 +3,15 @@
  * Quản lý dữ liệu người dùng trong MongoDB
  */
 
+import { z } from 'zod'
 import { ObjectId } from 'mongodb'
 import type { WithId, Document, Filter, Sort, DeleteResult } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
-import Joi from 'joi'
-import { EMAIL_RULE, PASSWORD_RULE } from '~/utils/validators.js'
+import {
+  EMAIL_RULE,
+  PASSWORD_RULE,
+  coerceDateNullable
+} from '~/utils/zodValidators.js'
 import type {
   User,
   CreateUserInput,
@@ -18,31 +22,29 @@ import type {
 /** Tên collection trong MongoDB */
 const USER_COLLECTION_NAME = 'users'
 
-/** Schema validation với Joi */
-const USER_COLLECTION_SCHEMA = Joi.object({
-  name: Joi.string().required().trim().min(2).max(100),
-  email: Joi.string().required().pattern(EMAIL_RULE).lowercase().trim(),
-  password: Joi.string().required().pattern(PASSWORD_RULE),
-  phone: Joi.string()
-    .trim()
-    .pattern(/^[0-9+\-\s()]+$/)
+/** Schema validation với Zod */
+const USER_COLLECTION_SCHEMA = z.object({
+  name: z.string().min(2).max(100),
+  email: z.string().regex(EMAIL_RULE).toLowerCase(),
+  password: z.string().regex(PASSWORD_RULE),
+  phone: z
+    .string()
+    .regex(/^[0-9+\-\s()]+$/)
     .min(10)
     .max(15)
-    .allow('')
+    .or(z.literal(''))
     .default(''),
-  address: Joi.string().trim().max(500).allow('').default(''),
-  avatar: Joi.string().uri().allow('').default(''),
-  dateOfBirth: Joi.date().max('now').allow(null).default(null),
-  gender: Joi.string().valid('male', 'female', 'other').allow('').default(''),
-  role: Joi.string().valid('admin', 'user').default('user'),
-  isActive: Joi.boolean().default(false),
-  emailVerified: Joi.boolean().default(false),
-  typeAccount: Joi.string()
-    .valid('LOCAL', 'GOOGLE', 'FACEBOOK')
-    .default('LOCAL'),
-  lastLogin: Joi.date().allow(null).default(null),
-  createdAt: Joi.date().timestamp().default(Date.now),
-  updatedAt: Joi.date().timestamp().default(Date.now)
+  address: z.string().max(500).default(''),
+  avatar: z.string().url().or(z.literal('')).default(''),
+  dateOfBirth: coerceDateNullable.default(null),
+  gender: z.enum(['male', 'female', 'other', '']).default(''),
+  role: z.enum(['admin', 'user']).default('user'),
+  isActive: z.boolean().default(false),
+  emailVerified: z.boolean().default(false),
+  typeAccount: z.enum(['LOCAL', 'GOOGLE', 'FACEBOOK']).default('LOCAL'),
+  lastLogin: coerceDateNullable.default(null),
+  createdAt: z.date().default(() => new Date()),
+  updatedAt: z.date().default(() => new Date())
 })
 
 /** User document từ MongoDB */
@@ -51,14 +53,9 @@ export type UserDocument = WithId<Document> & User
 /**
  * Validate dữ liệu trước khi tạo user
  */
-const validateBeforeCreate = async (
-  data: CreateUserInput
-): Promise<CreateUserInput> => {
-  const validData = await USER_COLLECTION_SCHEMA.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-  return validData
+const validateBeforeCreate = (data: CreateUserInput): CreateUserInput => {
+  const validData = USER_COLLECTION_SCHEMA.parse(data)
+  return validData as CreateUserInput
 }
 
 /**
@@ -68,7 +65,7 @@ const createNew = async (
   data: CreateUserInput
 ): Promise<UserDocument | null> => {
   try {
-    const validData = await validateBeforeCreate(data)
+    const validData = validateBeforeCreate(data)
     const createdUser = await GET_DB()
       .collection(USER_COLLECTION_NAME)
       .insertOne(validData)

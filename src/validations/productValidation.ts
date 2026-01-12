@@ -3,11 +3,126 @@
  * Xác thực dữ liệu đầu vào cho các API liên quan đến product
  */
 
+import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
-import Joi from 'joi'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
+import {
+  OBJECT_ID_RULE,
+  OBJECT_ID_RULE_MESSAGE
+} from '~/utils/zodValidators.js'
+
+/** Schema tạo product mới */
+const createProductSchema = z.object({
+  name: z
+    .string({ required_error: 'Tên sản phẩm là bắt buộc' })
+    .min(2, 'Tên sản phẩm phải có ít nhất 2 ký tự')
+    .max(255, 'Tên sản phẩm không được vượt quá 255 ký tự'),
+  image: z
+    .string({ required_error: 'Hình ảnh sản phẩm là bắt buộc' })
+    .url('Hình ảnh phải là URL hợp lệ'),
+  type: z
+    .string({ required_error: 'Loại sản phẩm là bắt buộc' })
+    .min(2, 'Loại sản phẩm phải có ít nhất 2 ký tự')
+    .max(100, 'Loại sản phẩm không được vượt quá 100 ký tự'),
+  countInStock: z
+    .number({ required_error: 'Số lượng tồn kho là bắt buộc' })
+    .int('Số lượng tồn kho phải là số nguyên')
+    .min(0, 'Số lượng tồn kho không được âm'),
+  price: z
+    .number({ required_error: 'Giá sản phẩm là bắt buộc' })
+    .positive('Giá sản phẩm phải lớn hơn 0'),
+  rating: z
+    .number()
+    .min(0, 'Đánh giá phải từ 0 đến 5')
+    .max(5, 'Đánh giá phải từ 0 đến 5')
+    .optional()
+    .default(0),
+  description: z
+    .string()
+    .max(1000, 'Mô tả không được vượt quá 1000 ký tự')
+    .optional()
+    .default(''),
+  selled: z
+    .number()
+    .int('Số lượng đã bán phải là số nguyên')
+    .min(0, 'Số lượng đã bán không được âm')
+    .optional()
+    .default(0),
+  discount: z
+    .number()
+    .min(0, 'Giảm giá không được âm')
+    .max(100, 'Giảm giá không được vượt quá 100%')
+    .optional()
+    .default(0)
+})
+
+/** Schema cập nhật product (tất cả optional, nhưng phải có ít nhất 1 field) */
+const updateProductSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, 'Tên sản phẩm phải có ít nhất 2 ký tự')
+      .max(255, 'Tên sản phẩm không được vượt quá 255 ký tự')
+      .optional(),
+    image: z.string().url('Hình ảnh phải là URL hợp lệ').optional(),
+    type: z
+      .string()
+      .min(2, 'Loại sản phẩm phải có ít nhất 2 ký tự')
+      .max(100, 'Loại sản phẩm không được vượt quá 100 ký tự')
+      .optional(),
+    countInStock: z
+      .number()
+      .int('Số lượng tồn kho phải là số nguyên')
+      .min(0, 'Số lượng tồn kho không được âm')
+      .optional(),
+    price: z.number().positive('Giá sản phẩm phải lớn hơn 0').optional(),
+    rating: z
+      .number()
+      .min(0, 'Đánh giá phải từ 0 đến 5')
+      .max(5, 'Đánh giá phải từ 0 đến 5')
+      .optional(),
+    description: z
+      .string()
+      .max(1000, 'Mô tả không được vượt quá 1000 ký tự')
+      .optional(),
+    selled: z
+      .number()
+      .int('Số lượng đã bán phải là số nguyên')
+      .min(0, 'Số lượng đã bán không được âm')
+      .optional(),
+    discount: z
+      .number()
+      .min(0, 'Giảm giá không được âm')
+      .max(100, 'Giảm giá không được vượt quá 100%')
+      .optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Vui lòng cung cấp ít nhất 1 trường để cập nhật'
+  })
+
+/** Schema xóa product theo ID */
+const deleteProductSchema = z.object({
+  id: z
+    .string({ required_error: 'ID sản phẩm là bắt buộc' })
+    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+})
+
+/** Schema xóa nhiều products */
+const deleteSelectedSchema = z.object({
+  productIds: z
+    .array(z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE), {
+      required_error: 'Danh sách ID sản phẩm là bắt buộc'
+    })
+    .min(1, 'Phải chọn ít nhất một sản phẩm để xóa')
+})
+
+/**
+ * Helper function để format Zod errors
+ */
+const formatZodError = (error: z.ZodError): string => {
+  return error.errors.map((e) => e.message).join(', ')
+}
 
 /**
  * Validation tạo product mới
@@ -17,78 +132,18 @@ const createNew = async (
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().required().trim().min(2).max(255).messages({
-      'string.empty': 'Tên sản phẩm không được để trống',
-      'string.min': 'Tên sản phẩm phải có ít nhất 2 ký tự',
-      'string.max': 'Tên sản phẩm không được vượt quá 255 ký tự',
-      'any.required': 'Tên sản phẩm là bắt buộc'
-    }),
-    image: Joi.string().required().uri().messages({
-      'string.empty': 'Hình ảnh sản phẩm không được để trống',
-      'string.uri': 'Hình ảnh phải là URL hợp lệ',
-      'any.required': 'Hình ảnh sản phẩm là bắt buộc'
-    }),
-    type: Joi.string().required().trim().min(2).max(100).messages({
-      'string.empty': 'Loại sản phẩm không được để trống',
-      'string.min': 'Loại sản phẩm phải có ít nhất 2 ký tự',
-      'string.max': 'Loại sản phẩm không được vượt quá 100 ký tự',
-      'any.required': 'Loại sản phẩm là bắt buộc'
-    }),
-    countInStock: Joi.number().required().integer().min(0).messages({
-      'number.base': 'Số lượng tồn kho phải là số',
-      'number.integer': 'Số lượng tồn kho phải là số nguyên',
-      'number.min': 'Số lượng tồn kho không được âm',
-      'any.required': 'Số lượng tồn kho là bắt buộc'
-    }),
-    price: Joi.number().required().positive().precision(2).messages({
-      'number.base': 'Giá sản phẩm phải là số',
-      'number.positive': 'Giá sản phẩm phải lớn hơn 0',
-      'any.required': 'Giá sản phẩm là bắt buộc'
-    }),
-    rating: Joi.number()
-      .optional()
-      .min(0)
-      .max(5)
-      .precision(1)
-      .default(0)
-      .messages({
-        'number.base': 'Đánh giá phải là số',
-        'number.min': 'Đánh giá phải từ 0 đến 5',
-        'number.max': 'Đánh giá phải từ 0 đến 5'
-      }),
-    description: Joi.string().optional().trim().max(1000).allow('').messages({
-      'string.max': 'Mô tả không được vượt quá 1000 ký tự'
-    }),
-    selled: Joi.number().optional().integer().min(0).default(0).messages({
-      'number.base': 'Số lượng đã bán phải là số',
-      'number.integer': 'Số lượng đã bán phải là số nguyên',
-      'number.min': 'Số lượng đã bán không được âm'
-    }),
-    discount: Joi.number()
-      .optional()
-      .min(0)
-      .max(100)
-      .precision(2)
-      .default(0)
-      .messages({
-        'number.base': 'Giảm giá phải là số',
-        'number.min': 'Giảm giá không được âm',
-        'number.max': 'Giảm giá không được vượt quá 100%'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = createProductSchema.safeParse(req.body)
+  if (!result.success) {
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
   }
+  // Gán data đã parse vào req.body
+  req.body = result.data
+  next()
 }
 
 /**
@@ -99,61 +154,18 @@ const update = async (
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().optional().trim().min(2).max(255).messages({
-      'string.empty': 'Tên sản phẩm không được để trống',
-      'string.min': 'Tên sản phẩm phải có ít nhất 2 ký tự',
-      'string.max': 'Tên sản phẩm không được vượt quá 255 ký tự'
-    }),
-    image: Joi.string().optional().uri().messages({
-      'string.empty': 'Hình ảnh sản phẩm không được để trống',
-      'string.uri': 'Hình ảnh phải là URL hợp lệ'
-    }),
-    type: Joi.string().optional().trim().min(2).max(100).messages({
-      'string.empty': 'Loại sản phẩm không được để trống',
-      'string.min': 'Loại sản phẩm phải có ít nhất 2 ký tự',
-      'string.max': 'Loại sản phẩm không được vượt quá 100 ký tự'
-    }),
-    countInStock: Joi.number().optional().integer().min(0).messages({
-      'number.base': 'Số lượng tồn kho phải là số',
-      'number.integer': 'Số lượng tồn kho phải là số nguyên',
-      'number.min': 'Số lượng tồn kho không được âm'
-    }),
-    price: Joi.number().optional().positive().precision(2).messages({
-      'number.base': 'Giá sản phẩm phải là số',
-      'number.positive': 'Giá sản phẩm phải lớn hơn 0'
-    }),
-    rating: Joi.number().optional().min(0).max(5).precision(1).messages({
-      'number.base': 'Đánh giá phải là số',
-      'number.min': 'Đánh giá phải từ 0 đến 5',
-      'number.max': 'Đánh giá phải từ 0 đến 5'
-    }),
-    description: Joi.string().optional().trim().max(1000).allow('').messages({
-      'string.max': 'Mô tả không được vượt quá 1000 ký tự'
-    }),
-    selled: Joi.number().optional().integer().min(0).messages({
-      'number.base': 'Số lượng đã bán phải là số',
-      'number.integer': 'Số lượng đã bán phải là số nguyên',
-      'number.min': 'Số lượng đã bán không được âm'
-    }),
-    discount: Joi.number().optional().min(0).max(100).precision(2).messages({
-      'number.base': 'Giảm giá phải là số',
-      'number.min': 'Giảm giá không được âm',
-      'number.max': 'Giảm giá không được vượt quá 100%'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = updateProductSchema.safeParse(req.body)
+  if (!result.success) {
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
   }
+  // Gán data đã parse vào req.body
+  req.body = result.data
+  next()
 }
 
 /**
@@ -164,25 +176,16 @@ const deleteProduct = async (
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.empty': 'ID sản phẩm không được để trống',
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'ID sản phẩm là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.params, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = deleteProductSchema.safeParse(req.params)
+  if (!result.success) {
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
   }
+  next()
 }
 
 /**
@@ -193,33 +196,17 @@ const deleteSelected = async (
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    productIds: Joi.array()
-      .required()
-      .min(1)
-      .items(
-        Joi.string().pattern(OBJECT_ID_RULE).messages({
-          'string.pattern.base': OBJECT_ID_RULE_MESSAGE
-        })
-      )
-      .messages({
-        'array.base': 'Danh sách ID phải là một mảng',
-        'array.min': 'Phải chọn ít nhất một sản phẩm để xóa',
-        'any.required': 'Danh sách ID sản phẩm là bắt buộc'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = deleteSelectedSchema.safeParse(req.body)
+  if (!result.success) {
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
   }
+  req.body = result.data
+  next()
 }
 
 export const productValidation = {

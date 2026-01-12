@@ -3,30 +3,29 @@
  * Quản lý phiên đăng nhập (refresh tokens) của người dùng trong MongoDB
  */
 
+import { z } from 'zod'
 import type { WithId, Document, UpdateResult, DeleteResult } from 'mongodb'
 import { GET_DB } from '~/config/mongodb.js'
-import Joi from 'joi'
-import { OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE } from '~/utils/validators.js'
+import {
+  OBJECT_ID_RULE,
+  OBJECT_ID_RULE_MESSAGE
+} from '~/utils/zodValidators.js'
 import type { Session, CreateSessionInput } from '~/types/session.types.js'
 
 /** Tên collection trong MongoDB */
 const SESSION_COLLECTION_NAME = 'sessions'
 
-/** Schema validation với Joi */
-const SESSION_COLLECTION_SCHEMA = Joi.object({
-  sessionId: Joi.string().required().trim(),
-  userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-    'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-    'any.required': 'UserId là bắt buộc',
-    'string.empty': 'UserId không được để trống'
-  }),
-  refreshToken: Joi.string().required().trim(),
-  deviceInfo: Joi.string().allow('').default(''), // User-Agent hoặc device info
-  ipAddress: Joi.string().allow('').default(''),
-  isActive: Joi.boolean().default(true),
-  logoutAt: Joi.date().timestamp().allow(null).default(null), // Thời điểm user logout
-  createdAt: Joi.date().timestamp().default(Date.now),
-  expiresAt: Joi.date().timestamp().required() // Thời gian hết hạn của refresh token
+/** Schema validation với Zod */
+const SESSION_COLLECTION_SCHEMA = z.object({
+  sessionId: z.string().min(1, 'SessionId là bắt buộc'),
+  userId: z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE),
+  refreshToken: z.string().min(1, 'Refresh token là bắt buộc'),
+  deviceInfo: z.string().default(''),
+  ipAddress: z.string().default(''),
+  isActive: z.boolean().default(true),
+  logoutAt: z.date().nullable().default(null),
+  createdAt: z.date().default(() => new Date()),
+  expiresAt: z.date()
 })
 
 /** Session document từ MongoDB */
@@ -41,14 +40,9 @@ export interface SessionsSummary {
 /**
  * Validate dữ liệu trước khi tạo session
  */
-const validateBeforeCreate = async (
-  data: CreateSessionInput
-): Promise<CreateSessionInput> => {
-  const validData = await SESSION_COLLECTION_SCHEMA.validateAsync(data, {
-    abortEarly: false,
-    allowUnknown: false
-  })
-  return validData
+const validateBeforeCreate = (data: CreateSessionInput): CreateSessionInput => {
+  const validData = SESSION_COLLECTION_SCHEMA.parse(data)
+  return validData as CreateSessionInput
 }
 
 /**
@@ -58,7 +52,7 @@ const createNew = async (
   data: CreateSessionInput
 ): Promise<SessionDocument | null> => {
   try {
-    const validData = await validateBeforeCreate(data)
+    const validData = validateBeforeCreate(data)
     const createdSession = await GET_DB()
       .collection(SESSION_COLLECTION_NAME)
       .insertOne(validData)

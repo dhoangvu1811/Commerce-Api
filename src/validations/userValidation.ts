@@ -3,8 +3,8 @@
  * Xác thực dữ liệu đầu vào cho các API liên quan đến user
  */
 
+import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
-import Joi from 'joi'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import {
@@ -14,688 +14,488 @@ import {
   EMAIL_RULE_MESSAGE,
   PASSWORD_RULE,
   PASSWORD_RULE_MESSAGE
-} from '~/utils/validators.js'
+} from '~/utils/zodValidators.js'
 
-/**
- * Validation đăng ký tài khoản
- */
+/** Helper function để format Zod errors */
+const formatZodError = (error: z.ZodError): string => {
+  return error.errors.map((e) => e.message).join(', ')
+}
+
+/** Phone regex */
+const PHONE_RULE = /^[0-9+\-\s()]+$/
+
+/** Helper để xử lý date nullable - chấp nhận string từ FE */
+const nullableDateSchema = z
+  .preprocess((val) => {
+    if (val === null || val === undefined || val === '') return null
+    if (val instanceof Date) return val
+    if (typeof val === 'string') return new Date(val)
+    return val
+  }, z.date().nullable())
+  .refine(
+    (date) => {
+      if (date === null) return true
+      return date <= new Date()
+    },
+    { message: 'Ngày sinh không được lớn hơn ngày hiện tại' }
+  )
+
+/** Schema đăng ký tài khoản */
+const registerSchema = z
+  .object({
+    name: z
+      .string({ required_error: 'Tên là bắt buộc' })
+      .min(2, 'Tên phải có ít nhất 2 ký tự')
+      .max(100, 'Tên không được vượt quá 100 ký tự'),
+    email: z
+      .string({ required_error: 'Email là bắt buộc' })
+      .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+      .transform((val) => val.toLowerCase().trim()),
+    password: z
+      .string({ required_error: 'Mật khẩu là bắt buộc' })
+      .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
+    confirmPassword: z.string({
+      required_error: 'Xác nhận mật khẩu là bắt buộc'
+    }),
+    phone: z
+      .string()
+      .regex(PHONE_RULE, 'Số điện thoại không đúng định dạng')
+      .min(10, 'Số điện thoại phải có ít nhất 10 ký tự')
+      .max(15, 'Số điện thoại không được vượt quá 15 ký tự')
+      .or(z.literal(''))
+      .optional(),
+    address: z
+      .string()
+      .max(500, 'Địa chỉ không được vượt quá 500 ký tự')
+      .optional(),
+    dateOfBirth: nullableDateSchema.optional(),
+    gender: z.enum(['male', 'female', 'other', '']).optional()
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Xác nhận mật khẩu không khớp',
+    path: ['confirmPassword']
+  })
+
+/** Schema đăng nhập */
+const loginSchema = z.object({
+  email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+    .transform((val) => val.toLowerCase().trim()),
+  password: z.string({ required_error: 'Mật khẩu là bắt buộc' })
+})
+
+/** Schema cập nhật user (tất cả optional, phải có ít nhất 1 field) */
+const updateUserSchema = z
+  .object({
+    name: z
+      .string()
+      .min(2, 'Tên phải có ít nhất 2 ký tự')
+      .max(100, 'Tên không được vượt quá 100 ký tự')
+      .optional(),
+    email: z
+      .string()
+      .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+      .transform((val) => val.toLowerCase().trim())
+      .optional(),
+    phone: z
+      .string()
+      .regex(PHONE_RULE, 'Số điện thoại không đúng định dạng')
+      .min(10, 'Số điện thoại phải có ít nhất 10 ký tự')
+      .max(15, 'Số điện thoại không được vượt quá 15 ký tự')
+      .or(z.literal(''))
+      .optional(),
+    address: z
+      .string()
+      .max(500, 'Địa chỉ không được vượt quá 500 ký tự')
+      .or(z.literal(''))
+      .optional(),
+    avatar: z
+      .string()
+      .url('Avatar phải là URL hợp lệ')
+      .or(z.literal(''))
+      .optional(),
+    dateOfBirth: nullableDateSchema.optional(),
+    gender: z.enum(['male', 'female', 'other', '']).optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Vui lòng cung cấp ít nhất 1 trường để cập nhật'
+  })
+
+/** Schema đổi mật khẩu */
+const updatePasswordSchema = z
+  .object({
+    currentPassword: z.string().optional(),
+    newPassword: z
+      .string({ required_error: 'Mật khẩu mới là bắt buộc' })
+      .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
+    confirmPassword: z.string({
+      required_error: 'Xác nhận mật khẩu là bắt buộc'
+    })
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Xác nhận mật khẩu không khớp',
+    path: ['confirmPassword']
+  })
+
+/** Schema xóa user */
+const deleteUserSchema = z.object({
+  id: z
+    .string({ required_error: 'ID người dùng là bắt buộc' })
+    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+})
+
+/** Schema xóa nhiều users */
+const deleteMultipleUsersSchema = z.object({
+  userIds: z
+    .array(z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE), {
+      required_error: 'Danh sách ID người dùng là bắt buộc'
+    })
+    .min(1, 'Phải chọn ít nhất 1 người dùng để xóa')
+})
+
+/** Schema cập nhật user bởi admin (phải có ít nhất 1 field) */
+const updateUserByAdminSchema = z
+  .object({
+    name: z.string().min(2).max(100).optional(),
+    email: z
+      .string()
+      .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+      .transform((val) => val.toLowerCase().trim())
+      .optional(),
+    phone: z
+      .string()
+      .regex(PHONE_RULE)
+      .min(10)
+      .max(15)
+      .or(z.literal(''))
+      .optional(),
+    address: z.string().max(500).or(z.literal('')).optional(),
+    avatar: z.string().url().or(z.literal('')).optional(),
+    dateOfBirth: nullableDateSchema.optional(),
+    gender: z.enum(['male', 'female', 'other', '']).optional(),
+    role: z.enum(['admin', 'user']).optional(),
+    isActive: z.boolean().optional(),
+    emailVerified: z.boolean().optional()
+  })
+  .refine((data) => Object.keys(data).length > 0, {
+    message: 'Vui lòng cung cấp ít nhất 1 trường để cập nhật'
+  })
+
+/** Schema tạo user bởi admin */
+const createUserByAdminSchema = z.object({
+  name: z.string({ required_error: 'Tên là bắt buộc' }).min(2).max(100),
+  avatar: z.string().url().or(z.literal('')).optional(),
+  email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+    .transform((val) => val.toLowerCase().trim()),
+  password: z
+    .string({ required_error: 'Mật khẩu là bắt buộc' })
+    .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
+  phone: z
+    .string()
+    .regex(PHONE_RULE)
+    .min(10)
+    .max(15)
+    .or(z.literal(''))
+    .optional(),
+  address: z.string().max(500).or(z.literal('')).optional(),
+  dateOfBirth: nullableDateSchema.optional(),
+  gender: z.enum(['male', 'female', 'other', '']).optional(),
+  role: z.enum(['admin', 'user']).default('user').optional(),
+  isActive: z.boolean().default(true).optional(),
+  emailVerified: z.boolean().default(false).optional()
+})
+
+/** Schema user activation */
+const userActivationSchema = z.object({
+  userId: z
+    .string({ required_error: 'User ID là bắt buộc' })
+    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+})
+
+/** Schema gửi email xác minh */
+const sendVerificationEmailSchema = z.object({
+  email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+    .transform((val) => val.toLowerCase().trim())
+})
+
+/** Schema xác minh tài khoản */
+const verifyUserAccountSchema = z.object({
+  email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+    .transform((val) => val.toLowerCase().trim()),
+  token: z.string({ required_error: 'Token xác minh là bắt buộc' })
+})
+
+/** Schema thu hồi session */
+const revokeSessionSchema = z.object({
+  sessionId: z
+    .string({ required_error: 'SessionId là bắt buộc' })
+    .min(1, 'SessionId không được để trống')
+})
+
+/** Schema thu hồi tất cả sessions / lấy sessions */
+const userIdParamSchema = z.object({
+  userId: z
+    .string({ required_error: 'UserId là bắt buộc' })
+    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+})
+
+// ============ Middleware Functions ============
+
 const register = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().required().trim().min(2).max(100).messages({
-      'string.empty': 'Tên không được để trống',
-      'string.min': 'Tên phải có ít nhất 2 ký tự',
-      'string.max': 'Tên không được vượt quá 100 ký tự',
-      'any.required': 'Tên là bắt buộc'
-    }),
-    email: Joi.string()
-      .required()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE,
-        'any.required': 'Email là bắt buộc'
-      }),
-    password: Joi.string().required().pattern(PASSWORD_RULE).messages({
-      'string.empty': 'Mật khẩu không được để trống',
-      'string.pattern.base': PASSWORD_RULE_MESSAGE,
-      'any.required': 'Mật khẩu là bắt buộc'
-    }),
-    confirmPassword: Joi.string()
-      .required()
-      .valid(Joi.ref('password'))
-      .messages({
-        'any.only': 'Xác nhận mật khẩu không khớp',
-        'any.required': 'Xác nhận mật khẩu là bắt buộc'
-      }),
-    phone: Joi.string()
-      .optional()
-      .trim()
-      .pattern(/^[0-9+\-\s()]+$/)
-      .min(10)
-      .max(15)
-      .allow('')
-      .messages({
-        'string.pattern.base': 'Số điện thoại không đúng định dạng',
-        'string.min': 'Số điện thoại phải có ít nhất 10 ký tự',
-        'string.max': 'Số điện thoại không được vượt quá 15 ký tự'
-      }),
-    address: Joi.string().optional().trim().max(500).allow('').messages({
-      'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
-    }),
-    dateOfBirth: Joi.alternatives()
-      .try(
-        Joi.date().max('now').messages({
-          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-        }),
-        Joi.valid(null, '')
+  const result = registerSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
       )
-      .optional(),
-    gender: Joi.string()
-      .optional()
-      .valid('male', 'female', 'other')
-      .allow('')
-      .messages({
-        'any.only': 'Giới tính phải là male, female hoặc other'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation đăng nhập
- */
 const login = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    email: Joi.string()
-      .required()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE,
-        'any.required': 'Email là bắt buộc'
-      }),
-    password: Joi.string().required().messages({
-      'string.empty': 'Mật khẩu không được để trống',
-      'any.required': 'Mật khẩu là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = loginSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation cập nhật thông tin user
- */
 const updateUser = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().optional().trim().min(2).max(100).messages({
-      'string.empty': 'Tên không được để trống',
-      'string.min': 'Tên phải có ít nhất 2 ký tự',
-      'string.max': 'Tên không được vượt quá 100 ký tự'
-    }),
-    email: Joi.string()
-      .optional()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE
-      }),
-    phone: Joi.string()
-      .optional()
-      .trim()
-      .pattern(/^[0-9+\-\s()]+$/)
-      .min(10)
-      .max(15)
-      .allow('')
-      .messages({
-        'string.pattern.base': 'Số điện thoại không đúng định dạng',
-        'string.min': 'Số điện thoại phải có ít nhất 10 ký tự',
-        'string.max': 'Số điện thoại không được vượt quá 15 ký tự'
-      }),
-    address: Joi.string().optional().trim().max(500).allow('').messages({
-      'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
-    }),
-    avatar: Joi.string().optional().uri().allow('').messages({
-      'string.uri': 'Avatar phải là URL hợp lệ'
-    }),
-    dateOfBirth: Joi.alternatives()
-      .try(
-        Joi.date().max('now').messages({
-          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-        }),
-        Joi.valid(null, '')
-      )
-      .optional(),
-    gender: Joi.string()
-      .optional()
-      .valid('male', 'female', 'other')
-      .allow('')
-      .messages({
-        'any.only': 'Giới tính phải là male, female hoặc other'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = updateUserSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation đổi mật khẩu
- */
 const updatePassword = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    currentPassword: Joi.string().optional().messages({
-      'string.empty': 'Mật khẩu hiện tại không được để trống',
-      'any.required': 'Mật khẩu hiện tại là bắt buộc'
-    }),
-    newPassword: Joi.string().required().pattern(PASSWORD_RULE).messages({
-      'string.empty': 'Mật khẩu mới không được để trống',
-      'string.pattern.base': PASSWORD_RULE_MESSAGE,
-      'any.required': 'Mật khẩu mới là bắt buộc'
-    }),
-    confirmPassword: Joi.string()
-      .required()
-      .valid(Joi.ref('newPassword'))
-      .messages({
-        'any.only': 'Xác nhận mật khẩu không khớp',
-        'any.required': 'Xác nhận mật khẩu là bắt buộc'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = updatePasswordSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation xóa user
- */
 const deleteUser = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    id: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.empty': 'ID người dùng không được để trống',
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'ID người dùng là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.params, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = deleteUserSchema.safeParse(req.params)
+  if (!result.success)
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
-  }
+  next()
 }
 
-/**
- * Validation xóa nhiều users
- */
 const deleteMultipleUsers = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    userIds: Joi.array()
-      .items(
-        Joi.string().pattern(OBJECT_ID_RULE).messages({
-          'string.pattern.base': OBJECT_ID_RULE_MESSAGE
-        })
-      )
-      .min(1)
-      .required()
-      .messages({
-        'array.min': 'Phải chọn ít nhất 1 người dùng để xóa',
-        'any.required': 'Danh sách ID người dùng là bắt buộc'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = deleteMultipleUsersSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation cập nhật user bởi admin
- */
 const updateUserByAdmin = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().optional().trim().min(2).max(100).messages({
-      'string.empty': 'Tên không được để trống',
-      'string.min': 'Tên phải có ít nhất 2 ký tự',
-      'string.max': 'Tên không được vượt quá 100 ký tự'
-    }),
-    email: Joi.string()
-      .optional()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE
-      }),
-    phone: Joi.string()
-      .optional()
-      .trim()
-      .pattern(/^[0-9+\-\s()]+$/)
-      .min(10)
-      .max(15)
-      .allow('')
-      .messages({
-        'string.pattern.base': 'Số điện thoại không đúng định dạng',
-        'string.min': 'Số điện thoại phải có ít nhất 10 ký tự',
-        'string.max': 'Số điện thoại không được vượt quá 15 ký tự'
-      }),
-    address: Joi.string().optional().trim().max(500).allow('').messages({
-      'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
-    }),
-    avatar: Joi.string().optional().uri().allow('').messages({
-      'string.uri': 'Avatar phải là URL hợp lệ'
-    }),
-    dateOfBirth: Joi.alternatives()
-      .try(
-        Joi.date().max('now').messages({
-          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-        }),
-        Joi.valid(null, '')
-      )
-      .optional(),
-    gender: Joi.string()
-      .optional()
-      .valid('male', 'female', 'other')
-      .allow('')
-      .messages({
-        'any.only': 'Giới tính phải là male, female hoặc other'
-      }),
-    role: Joi.string().optional().valid('admin', 'user').messages({
-      'any.only': 'Quyền phải là admin hoặc user'
-    }),
-    isActive: Joi.boolean().optional().messages({
-      'boolean.base': 'Trạng thái hoạt động phải là true hoặc false'
-    }),
-    emailVerified: Joi.boolean().optional().messages({
-      'boolean.base': 'Trạng thái xác thực email phải là true hoặc false'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    next(
+  const result = updateUserByAdminSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
       new ApiError(
         StatusCodes.UNPROCESSABLE_ENTITY,
-        new Error(String(error)).message
+        formatZodError(result.error)
       )
     )
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation tạo user bởi admin
- */
 const createUserByAdmin = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    name: Joi.string().required().trim().min(2).max(100).messages({
-      'string.empty': 'Tên không được để trống',
-      'string.min': 'Tên phải có ít nhất 2 ký tự',
-      'string.max': 'Tên không được vượt quá 100 ký tự',
-      'any.required': 'Tên là bắt buộc'
-    }),
-    avatar: Joi.string().optional().uri().allow('').messages({
-      'string.uri': 'Avatar phải là URL hợp lệ'
-    }),
-    email: Joi.string()
-      .required()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE,
-        'any.required': 'Email là bắt buộc'
-      }),
-    password: Joi.string().required().pattern(PASSWORD_RULE).messages({
-      'string.empty': 'Mật khẩu không được để trống',
-      'string.pattern.base': PASSWORD_RULE_MESSAGE,
-      'any.required': 'Mật khẩu là bắt buộc'
-    }),
-    phone: Joi.string()
-      .optional()
-      .trim()
-      .pattern(/^[0-9+\-\s()]+$/)
-      .min(10)
-      .max(15)
-      .allow('')
-      .messages({
-        'string.pattern.base': 'Số điện thoại không đúng định dạng',
-        'string.min': 'Số điện thoại phải có ít nhất 10 ký tự',
-        'string.max': 'Số điện thoại không được vượt quá 15 ký tự'
-      }),
-    address: Joi.string().optional().trim().max(500).allow('').messages({
-      'string.max': 'Địa chỉ không được vượt quá 500 ký tự'
-    }),
-    dateOfBirth: Joi.alternatives()
-      .try(
-        Joi.date().max('now').messages({
-          'date.max': 'Ngày sinh không được lớn hơn ngày hiện tại'
-        }),
-        Joi.valid(null, '')
+  const result = createUserByAdminSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
       )
-      .optional(),
-    gender: Joi.string()
-      .optional()
-      .valid('male', 'female', 'other')
-      .allow('')
-      .messages({
-        'any.only': 'Giới tính phải là male, female hoặc other'
-      }),
-    role: Joi.string()
-      .optional()
-      .valid('admin', 'user')
-      .default('user')
-      .messages({
-        'any.only': 'Quyền phải là admin hoặc user'
-      }),
-    isActive: Joi.boolean().optional().default(true).messages({
-      'boolean.base': 'Trạng thái hoạt động phải là true hoặc false'
-    }),
-    emailVerified: Joi.boolean().optional().default(false).messages({
-      'boolean.base': 'Trạng thái xác thực email phải là true hoặc false'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation kích hoạt/vô hiệu hóa user
- */
 const userActivation = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.empty': 'User ID không được để trống',
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'User ID là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.params, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = userActivationSchema.safeParse(req.params)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  next()
 }
 
-/**
- * Validation gửi email xác minh
- */
 const sendVerificationEmail = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    email: Joi.string()
-      .required()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE,
-        'any.required': 'Email là bắt buộc'
-      })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = sendVerificationEmailSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation xác minh tài khoản
- */
 const verifyUserAccount = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    email: Joi.string()
-      .required()
-      .pattern(EMAIL_RULE)
-      .lowercase()
-      .trim()
-      .messages({
-        'string.empty': 'Email không được để trống',
-        'string.pattern.base': EMAIL_RULE_MESSAGE,
-        'any.required': 'Email là bắt buộc'
-      }),
-    token: Joi.string().required().messages({
-      'string.empty': 'Token xác minh không được để trống',
-      'any.required': 'Token xác minh là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.query, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = verifyUserAccountSchema.safeParse(req.query)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  next()
 }
 
-/**
- * Validation thu hồi session
- */
 const revokeSession = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    sessionId: Joi.string().required().trim().messages({
-      'string.empty': 'SessionId không được để trống',
-      'any.required': 'SessionId là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = revokeSessionSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
-/**
- * Validation thu hồi tất cả sessions
- */
 const revokeAllSessions = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.empty': 'UserId không được để trống',
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'UserId là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.params, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = userIdParamSchema.safeParse(req.params)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  next()
 }
 
-/**
- * Validation lấy danh sách sessions của user
- */
 const getUserSessions = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    userId: Joi.string().required().pattern(OBJECT_ID_RULE).messages({
-      'string.empty': 'UserId không được để trống',
-      'string.pattern.base': OBJECT_ID_RULE_MESSAGE,
-      'any.required': 'UserId là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.params, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = userIdParamSchema.safeParse(req.params)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  next()
 }
 
-/**
- * Validation user thu hồi session của chính mình
- */
 const revokeMySession = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
-  const correctCondition = Joi.object({
-    sessionId: Joi.string().required().trim().messages({
-      'string.empty': 'SessionId không được để trống',
-      'any.required': 'SessionId là bắt buộc'
-    })
-  })
-
-  try {
-    await correctCondition.validateAsync(req.body, { abortEarly: false })
-    next()
-  } catch (error) {
-    const errorMessage = new Error(String(error)).message
-    const customError = new ApiError(
-      StatusCodes.UNPROCESSABLE_ENTITY,
-      errorMessage
+  const result = revokeSessionSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
     )
-    next(customError)
-  }
+  req.body = result.data
+  next()
 }
 
 export const userValidation = {
