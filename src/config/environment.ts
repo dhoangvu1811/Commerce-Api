@@ -13,6 +13,8 @@ export const env: EnvironmentVariables = {
   // MongoDB
   MONGODB_URI: process.env.MONGODB_URI || '',
   DATABASE_NAME: process.env.DATABASE_NAME || '',
+  // PostgreSQL
+  DATABASE_URL: process.env.DATABASE_URL || '',
 
   // App Configuration
   LOCAL_DEV_APP_HOST: process.env.LOCAL_DEV_APP_HOST || 'localhost',

@@ -195,3 +195,5 @@ coverage/
 
 # Documentation build
 docs/build/
+
+/src/generated/prisma

@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "cross-env BUILD_MODE=dev tsx watch ./src/server.ts",
     "build": "tsup",
+    "postinstall": "prisma generate",
     "production": "yarn build && cross-env BUILD_MODE=production node ./dist/server.js",
     "start": "cross-env BUILD_MODE=production node ./dist/server.js",
     "lint": "eslint src --ext .ts --report-unused-disable-directives",
@@ -16,10 +17,15 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "type-check": "tsc --noEmit",
     "test": "jest",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:migrate": "prisma migrate dev",
+    "db:studio": "prisma studio"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
+    "@prisma/client": "^7.2.0",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.7.0",
     "cookie-parser": "^1.4.7",
@@ -62,6 +68,7 @@
     "eslint": "^9.32.0",
     "globals": "^17.0.0",
     "jest": "^30.2.0",
+    "prisma": "^7.2.0",
     "rimraf": "^6.0.2",
     "tsup": "^8.5.1",
     "tsx": "^4.21.0",
