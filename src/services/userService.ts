@@ -1,15 +1,21 @@
 /* eslint-disable indent */
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
- * User Service
+ * User Service - Prisma Version
  * Xử lý logic business cho user - bao gồm auth, profile, admin management
  */
 
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import { userModel } from '~/models/userModel.js'
+import {
+  userModel,
+  type User,
+  type UserFilter,
+  UserStatus,
+  AccountType
+} from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
-import { ObjectId } from 'mongodb'
+import { prisma } from '~/config/prisma.js'
 import bcrypt from 'bcrypt'
 import { JwtProvider } from '~/providers/JwtProvider.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
@@ -19,9 +25,7 @@ import { v4 as uuidv4 } from 'uuid'
 import ms from 'ms'
 import { env } from '~/config/environment.js'
 import type {
-  User,
   UserRole,
-  TypeAccount,
   RegisterInput,
   LoginInput,
   LoginResult,
@@ -29,19 +33,28 @@ import type {
   UpdateUserByAdminInput,
   UpdatePasswordInput,
   UserResponse as UserResponseType,
-  CreateUserInput,
   UserQueryFilter,
-  UserMongoFilter,
   PaginatedUsersResult,
   RefreshTokenResult,
   EmailVerificationResult,
   VerifyAccountResult
 } from '~/types/user.types.js'
-import type {
-  SortOptions,
-  UploadResult,
-  DeleteResultInfo
-} from '~/types/common.types.js'
+import type { UploadResult, DeleteResultInfo } from '~/types/common.types.js'
+
+// Default role ID for regular users (seeded in database)
+const DEFAULT_USER_ROLE_ID = 2 // 'user' role
+const ADMIN_ROLE_ID = 1 // 'admin' role
+
+/**
+ * Parse userId string to number
+ */
+const parseUserId = (userId: string): number => {
+  const id = parseInt(userId, 10)
+  if (isNaN(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'User ID không hợp lệ')
+  }
+  return id
+}
 
 /**
  * Hash mật khẩu
@@ -62,6 +75,14 @@ const comparePassword = async (
 }
 
 /**
+ * Get role name from roleId
+ */
+const getRoleName = async (roleId: number): Promise<string> => {
+  const role = await prisma.role.findUnique({ where: { id: roleId } })
+  return role?.name || 'user'
+}
+
+/**
  * Đăng ký user mới
  */
 const register = async (userData: RegisterInput): Promise<UserResponseType> => {
@@ -79,21 +100,20 @@ const register = async (userData: RegisterInput): Promise<UserResponseType> => {
     // Hash mật khẩu
     const hashedPassword = await hashPassword(userData.password)
 
-    // Tạo user mới
-    const { confirmPassword: _confirmPassword, ...userDataWithoutConfirm } =
-      userData
-    const createUserData: CreateUserInput = {
-      ...userDataWithoutConfirm,
+    // Tạo user mới với Prisma
+    const createdUser = await userModel.createNew({
+      name: userData.name,
+      email: userData.email,
       password: hashedPassword,
-      typeAccount: 'LOCAL'
-    }
-
-    const createdUser = await userModel.createNew(createUserData)
+      roleId: DEFAULT_USER_ROLE_ID,
+      typeAccount: AccountType.LOCAL,
+      status: UserStatus.inactive
+    })
 
     // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = createdUser as User
+    const { password: _password, ...userResponse } = createdUser
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -123,9 +143,6 @@ const login = async (
       )
     }
 
-    // Lưu ý: User inactive vẫn có thể đăng nhập để xem sản phẩm
-    // Không chặn login dựa trên isActive nữa
-
     // So sánh mật khẩu
     const isPasswordValid = await comparePassword(password, user.password)
 
@@ -137,16 +154,19 @@ const login = async (
     }
 
     // Cập nhật thời gian đăng nhập cuối
-    await userModel.updateLastLogin(user._id!.toString())
+    await userModel.updateLastLogin(user.id)
 
     // Tạo sessionId unique
     const sessionId = uuidv4()
 
-    // Tạo token với sessionId - chuyển đổi user sang TokenUserData
+    // Get role name for token
+    const roleName = await getRoleName(user.roleId)
+
+    // Tạo token với sessionId
     const tokenUserData = {
-      _id: user._id!.toString(),
+      _id: String(user.id), // Convert to string for backward compatibility
       email: user.email,
-      role: user.role
+      role: roleName as UserRole
     }
     const accessToken = JwtProvider.generateAccessToken(
       tokenUserData,
@@ -163,13 +183,13 @@ const login = async (
     const refreshTokenExpiresIn = ms(refreshExpiresInStr)
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
-    // Lưu session vào DB
+    // Lưu session vào DB với Prisma
     await sessionModel.createNew({
       sessionId,
-      userId: user._id!.toString(),
+      userId: user.id, // Now number
       refreshToken,
-      deviceInfo: deviceInfo?.userAgent || '',
-      ipAddress: deviceInfo?.ip || '',
+      deviceInfo: deviceInfo?.userAgent || null,
+      ipAddress: deviceInfo?.ip || null,
       expiresAt
     })
 
@@ -177,10 +197,10 @@ const login = async (
     const { password: _userPassword, ...userResponse } = user
 
     return {
-      user: userResponse as Omit<User, 'password'>,
+      user: userResponse as unknown as Omit<User, 'password'>,
       accessToken,
       refreshToken,
-      sessionId // Trả về sessionId cho client debug (optional)
+      sessionId
     }
   } catch (error) {
     throw error
@@ -198,11 +218,11 @@ const refreshToken = async (
     const decoded = JwtProvider.verifyRefreshToken(refreshTokenValue)
 
     // Kiểm tra sessionId từ refresh token
-    const sessionId = decoded.sessionId
+    const sessionIdValue = decoded.sessionId
 
-    if (sessionId) {
+    if (sessionIdValue) {
       // Kiểm tra session có còn active không
-      const activeSession = await sessionModel.findBySessionId(sessionId)
+      const activeSession = await sessionModel.findBySessionId(sessionIdValue)
 
       if (!activeSession) {
         throw new ApiError(
@@ -212,7 +232,7 @@ const refreshToken = async (
       }
 
       // Kiểm tra session có khớp với user không
-      if (activeSession.userId !== decoded._id) {
+      if (String(activeSession.userId) !== decoded._id) {
         throw new ApiError(
           StatusCodes.UNAUTHORIZED,
           'Phiên đăng nhập không hợp lệ'
@@ -221,7 +241,8 @@ const refreshToken = async (
     }
 
     // Tìm user
-    const user = await userModel.findOneById(decoded._id)
+    const userId = parseUserId(decoded._id)
+    const user = await userModel.findOneById(userId)
 
     if (!user) {
       throw new ApiError(
@@ -230,15 +251,18 @@ const refreshToken = async (
       )
     }
 
-    // Tạo access token mới với sessionId (nếu có)
+    // Get role name
+    const roleName = await getRoleName(user.roleId)
+
+    // Tạo access token mới với sessionId
     const tokenUserData = {
-      _id: user._id!.toString(),
+      _id: String(user.id),
       email: user.email,
-      role: user.role
+      role: roleName as UserRole
     }
     const newAccessToken = JwtProvider.generateAccessToken(
       tokenUserData,
-      sessionId
+      sessionIdValue
     )
 
     return {
@@ -263,15 +287,8 @@ const refreshToken = async (
  */
 const getDetails = async (userId: string): Promise<UserResponseType> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(userId)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
-      )
-    }
-
-    const user = await userModel.findOneById(userId)
+    const userIdNum = parseUserId(userId)
+    const user = await userModel.findOneById(userIdNum)
 
     if (!user) {
       throw new ApiError(
@@ -281,9 +298,9 @@ const getDetails = async (userId: string): Promise<UserResponseType> => {
     }
 
     // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = user || {}
+    const { password: _password, ...userResponse } = user
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -297,16 +314,10 @@ const updateUser = async (
   updateData: UpdateUserInputType
 ): Promise<UserResponseType> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(userId)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
-      )
-    }
+    const userIdNum = parseUserId(userId)
 
     // Kiểm tra user có tồn tại không
-    const existingUser = await userModel.findOneById(userId)
+    const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -315,17 +326,19 @@ const updateUser = async (
     }
 
     // Cập nhật user
-    const dataToUpdate: Partial<User> = {
-      ...updateData,
-      updatedAt: new Date()
+    const updatedUser = await userModel.update(userIdNum, updateData)
+
+    if (!updatedUser) {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể cập nhật thông tin'
+      )
     }
 
-    const updatedUser = await userModel.update(userId, dataToUpdate)
-
     // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = updatedUser || {}
+    const { password: _password, ...userResponse } = updatedUser
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -339,16 +352,10 @@ const updatePassword = async (
   passwordData: UpdatePasswordInput
 ): Promise<{ message: string }> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(userId)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Thông tin tài khoản không hợp lệ. Vui lòng đăng nhập lại.'
-      )
-    }
+    const userIdNum = parseUserId(userId)
 
     // Tìm user
-    const user = await userModel.findOneById(userId)
+    const user = await userModel.findOneById(userIdNum)
     if (!user) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -356,7 +363,7 @@ const updatePassword = async (
       )
     }
 
-    // Kiểm tra mật khẩu hiện tại chỉ khi KHÔNG phải OAuth user (Google/Facebook) chưa set password
+    // Kiểm tra mật khẩu hiện tại
     const isOAuthUser =
       user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
     const hasOAuthPassword =
@@ -379,21 +386,22 @@ const updatePassword = async (
     // Hash mật khẩu mới
     const hashedNewPassword = await hashPassword(passwordData.newPassword)
 
-    // Cập nhật mật khẩu và typeAccount
-    const updateData: Partial<User> = {
-      password: hashedNewPassword,
-      updatedAt: new Date()
+    // Cập nhật mật khẩu
+    const updateData: { password: string; typeAccount?: AccountType } = {
+      password: hashedNewPassword
     }
 
-    // Nếu OAuth user lần đầu set password, chuyển về LOCAL để có thể login bằng cả 2 cách
+    // Nếu OAuth user lần đầu set password
     if (
-      (user.typeAccount === 'GOOGLE' && user.password === 'GOOGLE-AUTH1*#') ||
-      (user.typeAccount === 'FACEBOOK' && user.password === 'FACEBOOK-AUTH1*#')
+      (user.typeAccount === AccountType.GOOGLE &&
+        user.password === 'GOOGLE-AUTH1*#') ||
+      (user.typeAccount === AccountType.FACEBOOK &&
+        user.password === 'FACEBOOK-AUTH1*#')
     ) {
-      updateData.typeAccount = 'LOCAL'
+      updateData.typeAccount = AccountType.LOCAL
     }
 
-    await userModel.update(userId, updateData)
+    await userModel.update(userIdNum, updateData)
 
     return { message: 'Cập nhật mật khẩu thành công' }
   } catch (error) {
@@ -409,7 +417,6 @@ const uploadAvatar = async (
   folderName: string = 'users-commerceweb'
 ): Promise<UploadResult> => {
   try {
-    // Upload ảnh lên Cloudinary với folder 'users-commerceweb'
     const uploadResult = await CloudinaryProvider.streamUpload(
       fileBuffer,
       folderName
@@ -433,70 +440,64 @@ const getUsers = async (
   queryFilter: UserQueryFilter = {}
 ): Promise<PaginatedUsersResult> => {
   try {
-    const { search, role, isActive, sort } = queryFilter
+    const { search, role, status, sort } = queryFilter
 
-    // Tạo filter object
-    const filter: UserMongoFilter = {}
+    // Build Prisma filter
+    const filter: UserFilter = {}
 
-    // Tìm kiếm theo tên hoặc email
     if (search) {
-      filter.$or = [
-        { name: { $regex: search, $options: 'i' } },
-        { email: { $regex: search, $options: 'i' } }
-      ]
+      filter.search = search
     }
 
-    // Lọc theo role
+    // Role: lookup roleId from role name
     if (role) {
-      filter.role = role
+      const roleRecord = await prisma.role.findFirst({
+        where: { name: role }
+      })
+      if (roleRecord) {
+        filter.roleId = roleRecord.id
+      }
     }
 
-    // Lọc theo trạng thái hoạt động
-    if (isActive !== undefined) {
-      filter.isActive = isActive === 'true'
+    if (status !== undefined) {
+      filter.status = status
     }
 
-    // Tạo sort object
-    let sortOptions: SortOptions = { createdAt: -1 } // Mặc định sắp xếp theo ngày tạo mới nhất
+    // Build orderBy
+    let orderBy: { [key: string]: 'asc' | 'desc' } = { createdAt: 'desc' }
 
     if (sort) {
       switch (sort) {
         case 'name_asc':
-          sortOptions = { name: 1 }
+          orderBy = { name: 'asc' }
           break
         case 'name_desc':
-          sortOptions = { name: -1 }
+          orderBy = { name: 'desc' }
           break
         case 'email_asc':
-          sortOptions = { email: 1 }
+          orderBy = { email: 'asc' }
           break
         case 'email_desc':
-          sortOptions = { email: -1 }
+          orderBy = { email: 'desc' }
           break
         case 'lastLogin_desc':
-          sortOptions = { lastLogin: -1 }
+          orderBy = { lastLogin: 'desc' }
           break
         case 'lastLogin_asc':
-          sortOptions = { lastLogin: 1 }
+          orderBy = { lastLogin: 'asc' }
           break
         default:
-          sortOptions = { createdAt: -1 }
+          orderBy = { createdAt: 'desc' }
       }
     }
 
-    const result = await userModel.getMany(
-      filter,
-      page,
-      itemsPerPage,
-      sortOptions
-    )
+    const result = await userModel.getMany(filter, page, itemsPerPage, orderBy)
 
     // Loại bỏ password khỏi tất cả user trong response
-    const usersWithoutPassword =
-      result.users?.map((user) => {
-        const { password: _password, ...userWithoutPassword } = user || {}
-        return userWithoutPassword as UserResponseType
-      }) || []
+    const usersWithoutPassword = result.users.map((user) => {
+      const { password: _password, ...userWithoutPassword } = user
+      return userWithoutPassword as unknown as UserResponseType
+    })
 
     return {
       ...result,
@@ -515,21 +516,15 @@ const updateUserByAdmin = async (
   updateData: UpdateUserByAdminInput
 ): Promise<UserResponseType> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(userId)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Thông tin người dùng không hợp lệ'
-      )
-    }
+    const userIdNum = parseUserId(userId)
 
     // Kiểm tra user có tồn tại không
-    const existingUser = await userModel.findOneById(userId)
+    const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra duplicate email nếu có thay đổi email
+    // Kiểm tra duplicate email
     if (updateData.email && updateData.email !== existingUser.email) {
       const duplicateUser = await userModel.findOneByEmail(updateData.email)
       if (duplicateUser) {
@@ -540,18 +535,30 @@ const updateUserByAdmin = async (
       }
     }
 
-    // Cập nhật user
-    const dataToUpdate: Partial<User> = {
-      ...updateData,
-      updatedAt: new Date()
+    // Convert role name to roleId if provided
+    const prismaUpdateData: Record<string, unknown> = { ...updateData }
+
+    // Handle role to roleId conversion
+    if ('role' in updateData && updateData.role) {
+      const roleRecord = await prisma.role.findFirst({
+        where: { name: updateData.role }
+      })
+      if (roleRecord) {
+        prismaUpdateData.roleId = roleRecord.id
+      }
+      delete prismaUpdateData.role
     }
 
-    const updatedUser = await userModel.update(userId, dataToUpdate)
+    // Handle status mapping (if it's not already correct UserStatus)
+    if ('status' in updateData && updateData.status) {
+      prismaUpdateData.status = updateData.status
+    }
 
-    // Loại bỏ password khỏi response
+    const updatedUser = await userModel.update(userIdNum, prismaUpdateData)
+
     const { password: _password, ...userResponse } = updatedUser || {}
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -563,13 +570,12 @@ const updateUserByAdmin = async (
 const createUserByAdmin = async (
   userData: RegisterInput & {
     role?: UserRole
-    isActive?: boolean
+    status?: UserStatus
     emailVerified?: boolean
-    typeAccount?: TypeAccount
+    typeAccount?: AccountType
   }
 ): Promise<UserResponseType> => {
   try {
-    // Kiểm tra email đã tồn tại chưa
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
@@ -579,28 +585,34 @@ const createUserByAdmin = async (
       )
     }
 
-    // Hash mật khẩu
     const hashedPassword = await hashPassword(userData.password)
 
-    // Tạo user mới với dữ liệu từ admin
-    const { confirmPassword: _confirmPassword, ...userDataWithoutConfirm } =
-      userData
-    const newUser: CreateUserInput = {
-      ...userDataWithoutConfirm,
-      password: hashedPassword,
-      role: userData.role || 'user',
-      isActive: userData.isActive !== undefined ? userData.isActive : true,
-      emailVerified:
-        userData.emailVerified !== undefined ? userData.emailVerified : false,
-      typeAccount: userData.typeAccount || 'LOCAL'
+    // Get roleId from role name
+    let roleId = DEFAULT_USER_ROLE_ID
+    if (userData.role) {
+      const roleRecord = await prisma.role.findFirst({
+        where: { name: userData.role }
+      })
+      if (roleRecord) {
+        roleId = roleRecord.id
+      }
     }
 
-    const createdUser = await userModel.createNew(newUser)
+    const createdUser = await userModel.createNew({
+      name: userData.name,
+      email: userData.email,
+      password: hashedPassword,
+      roleId,
+      status:
+        userData.status !== undefined ? userData.status : UserStatus.active,
+      emailVerified:
+        userData.emailVerified !== undefined ? userData.emailVerified : false,
+      typeAccount: userData.typeAccount || AccountType.LOCAL
+    })
 
-    // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = createdUser as User
+    const { password: _password, ...userResponse } = createdUser
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -611,24 +623,19 @@ const createUserByAdmin = async (
  */
 const deleteUser = async (userId: string): Promise<DeleteResultInfo> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(userId)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Thông tin người dùng không hợp lệ'
-      )
-    }
+    const userIdNum = parseUserId(userId)
 
-    // Kiểm tra user có tồn tại không
-    const existingUser = await userModel.findOneById(userId)
+    const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Xóa user
-    const result = await userModel.deleteOneById(userId)
+    const result = await userModel.deleteOneById(userIdNum)
 
-    return result as DeleteResultInfo
+    return {
+      deletedCount: result ? 1 : 0,
+      acknowledged: result !== null
+    } as DeleteResultInfo
   } catch (error) {
     throw error
   }
@@ -641,7 +648,6 @@ const deleteMultipleUsers = async (
   userIds: string[]
 ): Promise<DeleteResultInfo> => {
   try {
-    // Validate input
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
@@ -649,22 +655,22 @@ const deleteMultipleUsers = async (
       )
     }
 
-    // Validate tất cả ObjectIds
-    const invalidIds = userIds.filter((id) => !ObjectId.isValid(id))
-    if (invalidIds.length > 0) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Một số người dùng được chọn không hợp lệ. Vui lòng làm mới trang và thử lại.'
-      )
-    }
-
-    // Chuyển đổi string IDs thành ObjectIds
-    const objectIds = userIds.map((id) => new ObjectId(id))
+    // Parse all IDs
+    const numberIds = userIds.map((id) => {
+      const num = parseInt(id, 10)
+      if (isNaN(num)) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'Một số người dùng được chọn không hợp lệ'
+        )
+      }
+      return num
+    })
 
     // Kiểm tra các user có tồn tại không
-    const existingUsers = await userModel.findByIds(objectIds)
-    const existingIds = existingUsers.map((user) => user?._id?.toString())
-    const notFoundIds = userIds.filter((id) => !existingIds.includes(id))
+    const existingUsers = await userModel.findByIds(numberIds)
+    const existingIds = existingUsers.map((user) => user.id)
+    const notFoundIds = numberIds.filter((id) => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
       throw new ApiError(
@@ -673,12 +679,11 @@ const deleteMultipleUsers = async (
       )
     }
 
-    // Xóa các user đã chọn
-    const result = await userModel.deleteManyByIds(userIds)
+    const result = await userModel.deleteManyByIds(numberIds)
 
     return {
-      deletedCount: result.deletedCount,
-      message: `Đã xóa ${result.deletedCount} người dùng được chọn`,
+      deletedCount: result.count,
+      message: `Đã xóa ${result.count} người dùng được chọn`,
       deletedIds: userIds
     }
   } catch (error) {
@@ -691,22 +696,21 @@ const deleteMultipleUsers = async (
  */
 const activateUser = async (userId: string): Promise<UserResponseType> => {
   try {
-    // Kiểm tra user có tồn tại không
-    const existingUser = await userModel.findOneById(userId)
+    const userIdNum = parseUserId(userId)
+
+    const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra user đã được kích hoạt chưa
-    if (existingUser.isActive) {
+    if (existingUser.status === UserStatus.active) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Tài khoản đã được kích hoạt trước đó'
       )
     }
 
-    // Kích hoạt user
-    const activatedUser = await userModel.activateUser(userId)
+    const activatedUser = await userModel.activateUser(userIdNum)
     if (!activatedUser) {
       throw new ApiError(
         StatusCodes.INTERNAL_SERVER_ERROR,
@@ -714,10 +718,9 @@ const activateUser = async (userId: string): Promise<UserResponseType> => {
       )
     }
 
-    // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = activatedUser as User
+    const { password: _password, ...userResponse } = activatedUser
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -728,30 +731,29 @@ const activateUser = async (userId: string): Promise<UserResponseType> => {
  */
 const deactivateUser = async (userId: string): Promise<UserResponseType> => {
   try {
-    // Kiểm tra user có tồn tại không
-    const existingUser = await userModel.findOneById(userId)
+    const userIdNum = parseUserId(userId)
+
+    const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Kiểm tra user có phải admin không (admin không thể bị vô hiệu hóa)
-    if (existingUser.role === 'admin') {
+    // Check admin (roleId = 1)
+    if (existingUser.roleId === ADMIN_ROLE_ID) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         'Không thể vô hiệu hóa tài khoản quản trị viên'
       )
     }
 
-    // Kiểm tra user đã bị vô hiệu hóa chưa
-    if (!existingUser.isActive) {
+    if (existingUser.status === UserStatus.inactive) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Tài khoản đã bị vô hiệu hóa trước đó'
       )
     }
 
-    // Vô hiệu hóa user
-    const deactivatedUser = await userModel.deactivateUser(userId)
+    const deactivatedUser = await userModel.deactivateUser(userIdNum)
     if (!deactivatedUser) {
       throw new ApiError(
         StatusCodes.INTERNAL_SERVER_ERROR,
@@ -759,10 +761,9 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
       )
     }
 
-    // Loại bỏ password khỏi response
-    const { password: _password, ...userResponse } = deactivatedUser as User
+    const { password: _password, ...userResponse } = deactivatedUser
 
-    return userResponse as UserResponseType
+    return userResponse as unknown as UserResponseType
   } catch (error) {
     throw error
   }
@@ -775,7 +776,6 @@ const sendVerificationEmail = async (
   email: string
 ): Promise<EmailVerificationResult> => {
   try {
-    // Kiểm tra user có tồn tại không
     const user = await userModel.findOneByEmail(email)
     if (!user) {
       throw new ApiError(
@@ -784,20 +784,15 @@ const sendVerificationEmail = async (
       )
     }
 
-    // Kiểm tra user đã verify chưa
     if (user.emailVerified) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được xác minh')
     }
 
-    // Tạo verification token sử dụng JwtProvider
     const verifyToken = JwtProvider.generateVerificationToken(email)
-
-    // Tạo verification link
     const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(
       email
     )}&token=${verifyToken}`
 
-    // HTML email template
     const emailSubject = 'Xác minh tài khoản - Commerce Web'
     const emailContent = `
         <!DOCTYPE html>
@@ -806,105 +801,35 @@ const sendVerificationEmail = async (
       <meta charset="utf-8">
       <title>Xác minh tài khoản</title>
       <style>
-        body {
-          font-family: Arial, sans-serif;
-          background-color: #f4f6f9;
-          color: #333;
-          margin: 0;
-          padding: 0;
-        }
-        .container {
-          max-width: 600px;
-          margin: 30px auto;
-          background: #ffffff;
-          border-radius: 10px;
-          overflow: hidden;
-          box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
-        .header {
-          background: linear-gradient(90deg, #007bff, #0056b3);
-          color: #ffffff;
-          text-align: center;
-          padding: 30px 20px;
-        }
-        .header h1 {
-          margin: 0;
-          font-size: 24px;
-        }
-        .content {
-          padding: 30px 25px;
-          line-height: 1.6;
-        }
-        .content h2 {
-          margin-top: 0;
-          color: #007bff;
-          font-size: 20px;
-        }
-        .button {
-          display: inline-block;
-          background: #007bff;
-          color: #ffffff !important;
-          padding: 14px 35px;
-          text-decoration: none;
-          border-radius: 6px;
-          font-size: 16px;
-          margin: 20px 0;
-          transition: background 0.3s;
-        }
-        .button:hover {
-          background: #0056b3;
-        }
-        .link-box {
-          background: #f1f3f5;
-          padding: 12px;
-          border-radius: 6px;
-          font-size: 14px;
-          word-break: break-all;
-        }
-        .footer {
-          text-align: center;
-          font-size: 12px;
-          color: #666;
-          padding: 20px;
-          border-top: 1px solid #eaeaea;
-          background: #fafafa;
-        }
+        body { font-family: Arial, sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 0; }
+        .container { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .header { background: linear-gradient(90deg, #007bff, #0056b3); color: #ffffff; text-align: center; padding: 30px 20px; }
+        .header h1 { margin: 0; font-size: 24px; }
+        .content { padding: 30px 25px; line-height: 1.6; }
+        .content h2 { margin-top: 0; color: #007bff; font-size: 20px; }
+        .button { display: inline-block; background: #007bff; color: #ffffff !important; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-size: 16px; margin: 20px 0; }
+        .link-box { background: #f1f3f5; padding: 12px; border-radius: 6px; font-size: 14px; word-break: break-all; }
+        .footer { text-align: center; font-size: 12px; color: #666; padding: 20px; border-top: 1px solid #eaeaea; background: #fafafa; }
       </style>
     </head>
     <body>
       <div class="container">
-        <div class="header">
-          <h1>Xác minh tài khoản của bạn</h1>
-        </div>
+        <div class="header"><h1>Xác minh tài khoản của bạn</h1></div>
         <div class="content">
           <h2>Xin chào,</h2>
           <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>Commerce Web</strong>.</p>
-          <p>Để hoàn tất đăng ký, vui lòng nhấp vào nút bên dưới để xác minh địa chỉ email:</p>
-
-          <div style="text-align: center;">
-            <a href="${verificationLink}" class="button">Xác minh ngay</a>
-          </div>
-
-          <p>Nếu nút trên không hoạt động, bạn có thể sao chép và dán đường link sau vào trình duyệt của mình:</p>
-          <div class="link-box">
-            ${verificationLink}
-          </div>
-
-          <p><strong>Lưu ý:</strong></p>
-          <ul>
-            <li>Link xác minh có hiệu lực trong vòng <strong>24 giờ</strong>.</li>
-            <li>Nếu bạn không tạo tài khoản này, vui lòng bỏ qua email này.</li>
-          </ul>
+          <p>Để hoàn tất đăng ký, vui lòng nhấp vào nút bên dưới:</p>
+          <div style="text-align: center;"><a href="${verificationLink}" class="button">Xác minh ngay</a></div>
+          <p>Nếu nút không hoạt động, sao chép link sau vào trình duyệt:</p>
+          <div class="link-box">${verificationLink}</div>
+          <p><strong>Lưu ý:</strong> Link có hiệu lực trong 24 giờ.</p>
         </div>
-        <div class="footer">
-          <p>© ${new Date().getFullYear()} Commerce Web. Mọi quyền được bảo lưu.</p>
-        </div>
+        <div class="footer"><p>© ${new Date().getFullYear()} Commerce Web. Mọi quyền được bảo lưu.</p></div>
       </div>
     </body>
     </html>
     `
 
-    // Gửi email
     await BrevoProvider.sendEmail(email, emailSubject, emailContent)
 
     return {
@@ -925,10 +850,8 @@ const verifyUserAccount = async (
   token: string
 ): Promise<VerifyAccountResult> => {
   try {
-    // Xác minh token sử dụng JwtProvider
     const decoded = JwtProvider.verifyVerificationToken(token)
 
-    // Kiểm tra email khớp với token
     if (decoded.email !== email) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
@@ -936,13 +859,11 @@ const verifyUserAccount = async (
       )
     }
 
-    // Tìm user
     const user = await userModel.findOneByEmail(email)
     if (!user) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Người dùng không tồn tại')
     }
 
-    // Kiểm tra đã verify chưa
     if (user.emailVerified) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
@@ -950,21 +871,19 @@ const verifyUserAccount = async (
       )
     }
 
-    // Cập nhật trạng thái emailVerified và isActive
-    const updatedUser = await userModel.update(user._id!.toString(), {
+    const updatedUser = await userModel.update(user.id, {
       emailVerified: true,
-      isActive: true,
-      updatedAt: new Date()
+      status: UserStatus.active
     })
 
     return {
       message: 'Xác minh tài khoản thành công',
       user: {
-        _id: updatedUser!._id!,
+        _id: updatedUser!.id,
         email: updatedUser!.email,
         name: updatedUser!.name,
-        emailVerified: updatedUser!.emailVerified!,
-        isActive: updatedUser!.isActive!
+        emailVerified: updatedUser!.emailVerified,
+        status: updatedUser!.status as UserStatus
       }
     }
   } catch (error) {

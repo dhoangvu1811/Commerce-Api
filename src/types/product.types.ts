@@ -2,14 +2,14 @@
  * Product type definitions
  */
 
-import type { ObjectId } from 'mongodb'
 import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
- * Product document trong MongoDB
+ * Product entity (PostgreSQL/Prisma)
+ * Note: _id is string for backward compatibility with API responses
  */
 export interface Product extends Timestamps {
-  _id?: ObjectId
+  _id?: string | number
   name: string
   image: string
   type: string
@@ -80,7 +80,8 @@ export interface ProductQueryFilter {
 }
 
 /**
- * MongoDB filter for products
+ * Product filter (legacy - kept for backward compatibility)
+ * Note: Prisma uses different filter structure
  */
 export interface ProductMongoFilter {
   name?: { $regex: string; $options: string }

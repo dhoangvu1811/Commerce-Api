@@ -120,7 +120,7 @@ const getDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -139,7 +139,7 @@ const getCurrentUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.jwtDecoded!._id
+    const userId = String(req.jwtDecoded!._id)
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -158,7 +158,7 @@ const updateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const updatedUser = await userService.updateUser(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -207,7 +207,7 @@ const updateUserByAdmin = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const updateData = { ...req.body }
 
     const updatedUser = await userService.updateUserByAdmin(userId, updateData)
@@ -228,7 +228,7 @@ const updatePassword = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.jwtDecoded!._id
+    const userId = String(req.jwtDecoded!._id)
     const updatedUser = await userService.updatePassword(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -247,7 +247,7 @@ const deleteUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const result = await userService.deleteUser(userId)
 
     res.status(StatusCodes.OK).json({
@@ -453,7 +453,7 @@ const googleOAuthSuccess = async (
 
     // Sử dụng service để tạo JWT tokens với session tracking
     const authResult = await oAuthService.generateAuthTokens(
-      user,
+      user as unknown as Parameters<typeof oAuthService.generateAuthTokens>[0],
       deviceInfo,
       ipAddress
     )
@@ -530,7 +530,7 @@ const facebookOAuthSuccess = async (
 
     // Sử dụng service để tạo JWT tokens với session tracking
     const authResult = await oAuthService.generateAuthTokens(
-      user,
+      user as unknown as Parameters<typeof oAuthService.generateAuthTokens>[0],
       deviceInfo,
       ipAddress
     )
@@ -592,7 +592,7 @@ const activateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
 
     const activatedUser = await userService.activateUser(userId)
 
@@ -612,7 +612,7 @@ const deactivateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
 
     const deactivatedUser = await userService.deactivateUser(userId)
 
@@ -699,7 +699,7 @@ const revokeAllUserSessions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
     const result = await sessionService.revokeAllUserSessions(userId)
 
     res.status(StatusCodes.OK).json({
@@ -719,7 +719,7 @@ const getUserSessions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
     const result = await sessionService.getUserSessions(userId)
 
     res.status(StatusCodes.OK).json({

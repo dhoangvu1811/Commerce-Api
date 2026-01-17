@@ -10,9 +10,6 @@ import type { EnvironmentVariables } from '~/types/environment.types.js'
  * @type {EnvironmentVariables}
  */
 export const env: EnvironmentVariables = {
-  // MongoDB
-  MONGODB_URI: process.env.MONGODB_URI || '',
-  DATABASE_NAME: process.env.DATABASE_NAME || '',
   // PostgreSQL
   DATABASE_URL: process.env.DATABASE_URL || '',
 

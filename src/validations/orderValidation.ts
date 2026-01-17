@@ -8,8 +8,11 @@ import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { OBJECT_ID_RULE } from '~/utils/zodValidators.js'
-import { orderModel } from '~/models/orderModel.js'
-import { ALLOWED_PAYMENT_METHODS } from '~/utils/constants.js'
+import {
+  ALLOWED_PAYMENT_METHODS,
+  ORDER_STATUS,
+  PAYMENT_STATUS
+} from '~/utils/constants.js'
 
 /** Schema cho order item */
 const orderItemSchema = z.object({
@@ -72,18 +75,15 @@ const orderIdSchema = z.object({
 
 /** Schema update order status */
 const updateStatusSchema = z.object({
-  status: z.enum(
-    orderModel.ORDER_STATUS as unknown as readonly [string, ...string[]],
-    {
-      required_error: 'Vui lòng chọn trạng thái đơn hàng'
-    }
-  )
+  status: z.enum(ORDER_STATUS as unknown as readonly [string, ...string[]], {
+    required_error: 'Vui lòng chọn trạng thái đơn hàng'
+  })
 })
 
 /** Schema update payment status */
 const updatePaymentStatusSchema = z.object({
   paymentStatus: z.enum(
-    orderModel.PAYMENT_STATUS as unknown as readonly [string, ...string[]],
+    PAYMENT_STATUS as unknown as readonly [string, ...string[]],
     {
       required_error: 'Vui lòng chọn trạng thái thanh toán'
     }

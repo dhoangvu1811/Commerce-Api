@@ -13,6 +13,59 @@ datasource db {
 }
 
 // ============================================================
+// ENUMS
+// ============================================================
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  BANK_TRANSFER
+  MOMO
+  VNPAY
+  ZALOPAY
+}
+
+enum VoucherType {
+  percent
+  fixed
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum AccountType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+}
+
+// ============================================================
 // USERS & AUTHENTICATION
 // ============================================================
 
@@ -59,24 +112,23 @@ model User {
   id Int @id @default(autoincrement())
 
   // ===== Từ MongoDB hiện tại =====
-  name          String    @db.VarChar(100)
-  email         String    @unique @db.VarChar(255)
-  password      String    @db.VarChar(255)
-  phoneNumber   String?   @map("phone_number") @db.VarChar(15)
-  address       String?   @db.VarChar(500)
-  avatar        String?   @db.VarChar(500)
-  dateOfBirth   DateTime? @map("date_of_birth")
-  gender        String?   @db.VarChar(10) // 'male' | 'female' | 'other' | ''
-  isActive      Boolean   @default(false) @map("is_active")
-  emailVerified Boolean   @default(false) @map("email_verified")
-  typeAccount   String    @default("LOCAL") @map("type_account") @db.VarChar(20) // 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
-  lastLogin     DateTime? @map("last_login")
+  name          String      @db.VarChar(100)
+  email         String      @unique @db.VarChar(255)
+  password      String      @db.VarChar(255)
+  phoneNumber   String?     @map("phone_number") @db.VarChar(15)
+  address       String?     @db.VarChar(500)
+  avatar        String?     @db.VarChar(500)
+  dateOfBirth   DateTime?   @map("date_of_birth")
+  gender        Gender?     @default(other)
+  emailVerified Boolean     @default(false) @map("email_verified")
+  typeAccount   AccountType @default(LOCAL) @map("type_account")
+  lastLogin     DateTime?   @map("last_login")
 
   // ===== Từ ERD (normalize) =====
-  roleId          Int     @map("role_id")
-  activationToken String? @map("activation_token") @db.VarChar(255)
-  googleId        String? @map("google_id") @db.VarChar(255)
-  status          String? @db.VarChar(20) // active, inactive, banned
+  roleId          Int         @map("role_id")
+  activationToken String?     @map("activation_token") @db.VarChar(255)
+  googleId        String?     @map("google_id") @db.VarChar(255)
+  status          UserStatus? @default(inactive)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -133,7 +185,6 @@ model Category {
   slug        String   @unique @db.VarChar(100)
   description String?  @db.Text
   image       String?  @db.VarChar(500)
-  city        String?  @db.VarChar(100)
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -255,12 +306,10 @@ model Order {
   id Int @id @default(autoincrement())
 
   // ===== Từ MongoDB hiện tại =====
-  userId        Int       @map("user_id")
-  orderCode     String    @unique @map("order_code") @db.VarChar(50)
-  status        String    @default("PENDING") @db.VarChar(20)
-  paymentStatus String    @default("PENDING") @map("payment_status") @db.VarChar(20)
-  paymentMethod String?   @map("payment_method") @db.VarChar(50)
-  deliveredAt   DateTime? @map("delivered_at")
+  userId      Int         @map("user_id")
+  orderCode   String      @unique @map("order_code") @db.VarChar(50)
+  status      OrderStatus @default(PENDING)
+  deliveredAt DateTime?   @map("delivered_at")
 
   // ===== Totals (flatten từ embedded) =====
   subtotal       Decimal @db.Decimal(15, 2)
@@ -313,18 +362,18 @@ model OrderItem {
 
 /// Order_Log table - lịch sử đầy đủ của đơn hàng (thay thế embedded logs)
 model OrderLog {
-  id                Int      @id @default(autoincrement())
-  orderId           Int      @map("order_id")
-  action            String   @db.VarChar(50) // 'create', 'updateStatus', 'markPaid', 'cancel', etc.
-  performedById     Int?     @map("performed_by_id")
-  performedByRole   String?  @map("performed_by_role") @db.VarChar(20) // 'user' | 'admin' | 'system'
-  fromStatus        String?  @map("from_status") @db.VarChar(20)
-  toStatus          String?  @map("to_status") @db.VarChar(20)
-  fromPaymentStatus String?  @map("from_payment_status") @db.VarChar(20)
-  toPaymentStatus   String?  @map("to_payment_status") @db.VarChar(20)
-  note              String?  @db.Text
+  id                Int            @id @default(autoincrement())
+  orderId           Int            @map("order_id")
+  action            String         @db.VarChar(50) // 'create', 'updateStatus', 'markPaid', 'cancel', etc.
+  performedById     Int?           @map("performed_by_id")
+  performedByRole   String?        @map("performed_by_role") @db.VarChar(20) // 'user' | 'admin' | 'system'
+  fromStatus        OrderStatus?   @map("from_status")
+  toStatus          OrderStatus?   @map("to_status")
+  fromPaymentStatus PaymentStatus? @map("from_payment_status")
+  toPaymentStatus   PaymentStatus? @map("to_payment_status")
+  note              String?        @db.Text
   meta              Json? // flexible metadata
-  createdAt         DateTime @default(now()) @map("created_at")
+  createdAt         DateTime       @default(now()) @map("created_at")
 
   // Relations
   order       Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -342,11 +391,11 @@ model OrderVoucher {
   voucherId Int @map("voucher_id")
 
   // ===== Snapshot data (từ MongoDB embedded) =====
-  code          String   @db.VarChar(50)
-  type          String   @db.VarChar(20) // 'percent' | 'fixed'
-  amount        Decimal  @db.Decimal(15, 2) // giá trị gốc của voucher
-  maxDiscount   Decimal? @map("max_discount") @db.Decimal(15, 2)
-  discountValue Decimal  @map("discount_value") @db.Decimal(15, 2) // số tiền thực tế được giảm
+  code          String      @db.VarChar(50)
+  type          VoucherType
+  amount        Decimal     @db.Decimal(15, 2) // giá trị gốc của voucher
+  maxDiscount   Decimal?    @map("max_discount") @db.Decimal(15, 2)
+  discountValue Decimal     @map("discount_value") @db.Decimal(15, 2) // số tiền thực tế được giảm
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -360,14 +409,14 @@ model OrderVoucher {
 
 /// Payments table - thông tin thanh toán
 model Payment {
-  id            Int       @id @default(autoincrement())
-  orderId       Int       @map("order_id")
-  paymentMethod String    @map("payment_method") @db.VarChar(50)
-  transactionId String?   @map("transaction_id") @db.VarChar(100)
-  value         Decimal   @db.Decimal(15, 2)
-  status        String    @default("PENDING") @db.VarChar(20)
-  paidAt        DateTime? @map("paid_at")
-  createdAt     DateTime  @default(now()) @map("created_at")
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @map("order_id")
+  paymentMethod PaymentMethod @map("payment_method")
+  transactionId String?       @map("transaction_id") @db.VarChar(100)
+  value         Decimal       @db.Decimal(15, 2)
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
 
   // Relations
   order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
@@ -385,17 +434,17 @@ model Voucher {
   id Int @id @default(autoincrement())
 
   // ===== Từ MongoDB hiện tại =====
-  code          String    @unique @db.VarChar(50)
-  type          String    @db.VarChar(20) // 'percent' | 'fixed'
-  amount        Decimal   @db.Decimal(15, 2) // Giá trị giảm giá (value → amount)
-  maxDiscount   Decimal?  @map("max_discount") @db.Decimal(15, 2)
-  minOrderValue Decimal?  @map("min_order_value") @db.Decimal(15, 2)
-  startDate     DateTime? @map("start_date")
-  endDate       DateTime? @map("end_date")
-  usageLimit    Int?      @map("usage_limit")
-  usedCount     Int       @default(0) @map("used_count")
-  isActive      Boolean   @default(true) @map("is_active")
-  description   String?   @db.Text
+  code          String      @unique @db.VarChar(50)
+  type          VoucherType @default(fixed)
+  amount        Decimal     @db.Decimal(15, 2) // Giá trị giảm giá (value → amount)
+  maxDiscount   Decimal?    @map("max_discount") @db.Decimal(15, 2)
+  minOrderValue Decimal?    @map("min_order_value") @db.Decimal(15, 2)
+  startDate     DateTime?   @map("start_date")
+  endDate       DateTime?   @map("end_date")
+  usageLimit    Int?        @map("usage_limit")
+  usedCount     Int         @default(0) @map("used_count")
+  isActive      Boolean     @default(true) @map("is_active")
+  description   String?     @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -442,17 +491,16 @@ model Notification {
 
 /// Shipping_Addresses table - địa chỉ giao hàng (với đầy đủ fields từ MongoDB)
 model ShippingAddress {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @map("user_id")
-  fullName    String   @map("full_name") @db.VarChar(100)
-  phone       String   @db.VarChar(15)
-  address     String   @db.VarChar(500)
-  city        String   @db.VarChar(100)
-  province    String   @db.VarChar(100) // Thêm từ MongoDB
-  postalCode  String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
-  fullAddress String?  @map("full_address") @db.VarChar(500) // Thêm từ MongoDB
-  isDefault   Boolean  @default(false) @map("is_default")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  fullName   String   @map("full_name") @db.VarChar(100)
+  phone      String   @db.VarChar(15)
+  address    String   @db.VarChar(500)
+  city       String   @db.VarChar(100)
+  province   String   @db.VarChar(100) // Thêm từ MongoDB
+  postalCode String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
 
   // Relations
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)

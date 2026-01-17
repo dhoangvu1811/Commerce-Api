@@ -116,6 +116,8 @@ const verifyUserOwnership = async (
   }
 }
 
+import { UserStatus } from '~/generated/prisma/index.js'
+
 /**
  * Middleware kiểm tra tài khoản có đang hoạt động
  * Yêu cầu đã qua verifyToken
@@ -133,7 +135,7 @@ const verifyActiveUser = async (
     }
 
     // Kiểm tra trạng thái active của user
-    const user = await userModel.findOneById(userId)
+    const user = await userModel.findOneById(parseInt(userId, 10))
     if (!user) {
       throw new ApiError(
         StatusCodes.NOT_FOUND,
@@ -141,10 +143,10 @@ const verifyActiveUser = async (
       )
     }
 
-    if (!user.isActive) {
+    if (user.status !== UserStatus.active) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
-        'Tài khoản chưa được kích hoạt. Vui lòng liên hệ admin để kích hoạt tài khoản.'
+        'Tài khoản chưa được kích hoạt hoặc đã bị khóa. Vui lòng liên hệ admin để biết thêm chi tiết.'
       )
     }
 
@@ -183,7 +185,7 @@ const verifySession = async (
     }
 
     // Kiểm tra session có khớp với user hiện tại không
-    if (activeSession.userId !== req.jwtDecoded?._id) {
+    if (String(activeSession.userId) !== req.jwtDecoded?._id) {
       throw new ApiError(
         StatusCodes.UNAUTHORIZED,
         'Phiên đăng nhập không hợp lệ'

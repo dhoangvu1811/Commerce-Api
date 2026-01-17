@@ -1,35 +1,13 @@
 /**
- * Session Model
- * Quản lý phiên đăng nhập (refresh tokens) của người dùng trong MongoDB
+ * Session Model - Prisma Version
+ * Quản lý phiên đăng nhập (refresh tokens) của người dùng
  */
 
-import { z } from 'zod'
-import type { WithId, Document, UpdateResult, DeleteResult } from 'mongodb'
-import { GET_DB } from '~/config/mongodb.js'
-import {
-  OBJECT_ID_RULE,
-  OBJECT_ID_RULE_MESSAGE
-} from '~/utils/zodValidators.js'
-import type { Session, CreateSessionInput } from '~/types/session.types.js'
+import { prisma } from '~/config/prisma.js'
+import type { Session } from '~/generated/prisma/index.js'
 
-/** Tên collection trong MongoDB */
-const SESSION_COLLECTION_NAME = 'sessions'
-
-/** Schema validation với Zod */
-const SESSION_COLLECTION_SCHEMA = z.object({
-  sessionId: z.string().min(1, 'SessionId là bắt buộc'),
-  userId: z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE),
-  refreshToken: z.string().min(1, 'Refresh token là bắt buộc'),
-  deviceInfo: z.string().default(''),
-  ipAddress: z.string().default(''),
-  isActive: z.boolean().default(true),
-  logoutAt: z.date().nullable().default(null),
-  createdAt: z.date().default(() => new Date()),
-  expiresAt: z.date()
-})
-
-/** Session document từ MongoDB */
-export type SessionDocument = WithId<Document> & Session
+/** Session type export từ Prisma */
+export type { Session }
 
 /** Kết quả aggregation cho session summary */
 export interface SessionsSummary {
@@ -37,52 +15,46 @@ export interface SessionsSummary {
   activeSessions: number
 }
 
-/**
- * Validate dữ liệu trước khi tạo session
- */
-const validateBeforeCreate = (data: CreateSessionInput): CreateSessionInput => {
-  const validData = SESSION_COLLECTION_SCHEMA.parse(data)
-  return validData as CreateSessionInput
+/** Input tạo session mới */
+export interface CreateSessionInput {
+  sessionId: string
+  userId: number
+  refreshToken: string
+  deviceInfo?: string | null
+  ipAddress?: string | null
+  expiresAt: Date
 }
 
 /**
  * Tạo session mới
  */
-const createNew = async (
-  data: CreateSessionInput
-): Promise<SessionDocument | null> => {
-  try {
-    const validData = validateBeforeCreate(data)
-    const createdSession = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .insertOne(validData)
-
-    return (await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .findOne({ _id: createdSession.insertedId })) as SessionDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const createNew = async (data: CreateSessionInput): Promise<Session> => {
+  const session = await prisma.session.create({
+    data: {
+      sessionId: data.sessionId,
+      userId: data.userId,
+      refreshToken: data.refreshToken,
+      deviceInfo: data.deviceInfo || null,
+      ipAddress: data.ipAddress || null,
+      expiresAt: data.expiresAt,
+      isActive: true
+    }
+  })
+  return session
 }
 
 /**
  * Tìm session theo sessionId (chỉ active và chưa hết hạn)
  */
-const findBySessionId = async (
-  sessionId: string
-): Promise<SessionDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .findOne({
-        sessionId: sessionId,
-        isActive: true,
-        expiresAt: { $gt: new Date() }
-      })
-    return result as SessionDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findBySessionId = async (sessionId: string): Promise<Session | null> => {
+  const session = await prisma.session.findFirst({
+    where: {
+      sessionId: sessionId,
+      isActive: true,
+      expiresAt: { gt: new Date() }
+    }
+  })
+  return session
 }
 
 /**
@@ -90,178 +62,133 @@ const findBySessionId = async (
  */
 const findBySessionIdAny = async (
   sessionId: string
-): Promise<SessionDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .findOne({ sessionId: sessionId })
-    return result as SessionDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+): Promise<Session | null> => {
+  const session = await prisma.session.findUnique({
+    where: { sessionId: sessionId }
+  })
+  return session
 }
 
 /**
  * Tìm tất cả session của user (chỉ active và chưa hết hạn)
  */
-const findByUserId = async (userId: string): Promise<SessionDocument[]> => {
-  try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .find({
-        userId: userId,
-        isActive: true,
-        expiresAt: { $gt: new Date() }
-      })
-      .sort({ createdAt: -1 })
-      .toArray()
-    return result as SessionDocument[]
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findByUserId = async (userId: number): Promise<Session[]> => {
+  const sessions = await prisma.session.findMany({
+    where: {
+      userId: userId,
+      isActive: true,
+      expiresAt: { gt: new Date() }
+    },
+    orderBy: { createdAt: 'desc' }
+  })
+  return sessions
 }
 
 /**
  * Tìm tất cả session của user (bao gồm cả inactive và hết hạn) - Dành cho Admin
  */
-const findAllSessionsByUserId = async (
-  userId: string
-): Promise<SessionDocument[]> => {
-  try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .find({ userId: userId })
-      .sort({ createdAt: -1 })
-      .toArray()
-    return result as SessionDocument[]
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findAllSessionsByUserId = async (userId: number): Promise<Session[]> => {
+  const sessions = await prisma.session.findMany({
+    where: { userId: userId },
+    orderBy: { createdAt: 'desc' }
+  })
+  return sessions
 }
 
 /**
  * Đếm sessions theo userId cho overview table
  */
 const getSessionsSummaryByUserId = async (
-  userId: string
+  userId: number
 ): Promise<SessionsSummary> => {
-  try {
-    const now = new Date()
-    const pipeline = [
-      { $match: { userId: userId } },
-      {
-        $group: {
-          _id: null,
-          totalSessions: { $sum: 1 },
-          activeSessions: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$isActive', true] },
-                    { $gt: ['$expiresAt', now] }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          }
-        }
+  const now = new Date()
+
+  const [totalSessions, activeSessions] = await Promise.all([
+    prisma.session.count({ where: { userId } }),
+    prisma.session.count({
+      where: {
+        userId,
+        isActive: true,
+        expiresAt: { gt: now }
       }
-    ]
+    })
+  ])
 
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .aggregate(pipeline)
-      .toArray()
-
-    return (
-      (result[0] as SessionsSummary) || { totalSessions: 0, activeSessions: 0 }
-    )
-  } catch (error) {
-    throw new Error(String(error))
-  }
+  return { totalSessions, activeSessions }
 }
 
 /**
  * Vô hiệu hóa session (revoke)
  */
-const revokeSession = async (sessionId: string): Promise<UpdateResult> => {
+const revokeSession = async (sessionId: string): Promise<Session | null> => {
   try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .updateOne(
-        { sessionId: sessionId },
-        {
-          $set: {
-            isActive: false,
-            updatedAt: Date.now()
-          }
-        }
-      )
-    return result
+    const session = await prisma.session.update({
+      where: { sessionId },
+      data: { isActive: false }
+    })
+    return session
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Session không tồn tại
+    }
+    // Re-throw other errors (validation, constraint violations, etc.)
+    throw error
   }
 }
 
 /**
  * Vô hiệu hóa tất cả session của user
  */
-const revokeAllUserSessions = async (userId: string): Promise<UpdateResult> => {
-  try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .updateMany(
-        { userId: userId, isActive: true },
-        {
-          $set: {
-            isActive: false,
-            updatedAt: Date.now()
-          }
-        }
-      )
-    return result
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const revokeAllUserSessions = async (
+  userId: number
+): Promise<{ count: number }> => {
+  const result = await prisma.session.updateMany({
+    where: { userId, isActive: true },
+    data: { isActive: false }
+  })
+  return { count: result.count }
 }
 
 /**
  * Đánh dấu logout (soft delete) - Giữ session để tracking
  */
-const logoutSession = async (sessionId: string): Promise<UpdateResult> => {
+const logoutSession = async (sessionId: string): Promise<Session | null> => {
   try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .updateOne(
-        { sessionId: sessionId },
-        {
-          $set: {
-            isActive: false,
-            logoutAt: new Date(),
-            updatedAt: Date.now()
-          }
-        }
-      )
-    return result
+    const session = await prisma.session.update({
+      where: { sessionId },
+      data: {
+        isActive: false,
+        logoutAt: new Date()
+      }
+    })
+    return session
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Session không tồn tại
+    }
+    // Re-throw other errors (validation, constraint violations, etc.)
+    throw error
   }
 }
 
 /**
  * Xóa session (hard delete) - Chỉ dùng cho cleanup cron job
  */
-const deleteSession = async (sessionId: string): Promise<DeleteResult> => {
+const deleteSession = async (sessionId: string): Promise<Session | null> => {
   try {
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .deleteOne({ sessionId: sessionId })
-    return result
+    const session = await prisma.session.delete({
+      where: { sessionId }
+    })
+    return session
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Session không tồn tại
+    }
+    // Re-throw other errors (constraint violations, etc.)
+    throw error
   }
 }
 
@@ -270,35 +197,33 @@ const deleteSession = async (sessionId: string): Promise<DeleteResult> => {
  */
 const cleanupExpiredSessions = async (
   retentionDays: number = 90
-): Promise<DeleteResult> => {
-  try {
-    const retentionDate = new Date()
-    retentionDate.setDate(retentionDate.getDate() - retentionDays)
-
-    const result = await GET_DB()
-      .collection(SESSION_COLLECTION_NAME)
-      .deleteMany({
-        $or: [
-          // Sessions đã hết hạn và cũ hơn retention period
-          {
-            expiresAt: { $lt: retentionDate }
-          },
-          // Sessions đã logout và cũ hơn retention period
-          {
-            isActive: false,
-            logoutAt: { $lt: retentionDate, $ne: null }
-          }
-        ]
-      })
-    return result
-  } catch (error) {
-    throw new Error(String(error))
+): Promise<{ count: number }> => {
+  // Safety check: Minimum retention days
+  if (retentionDays < 7) {
+    throw new Error('Retention days must be at least 7 days')
   }
+
+  const retentionDate = new Date()
+  retentionDate.setDate(retentionDate.getDate() - retentionDays)
+
+  const result = await prisma.session.deleteMany({
+    where: {
+      OR: [
+        // Sessions đã hết hạn và cũ hơn retention period
+        { expiresAt: { lt: retentionDate } },
+        // Sessions đã logout và cũ hơn retention period
+        {
+          isActive: false,
+          logoutAt: { lt: retentionDate, not: null }
+        }
+      ]
+    }
+  })
+
+  return { count: result.count }
 }
 
 export const sessionModel = {
-  SESSION_COLLECTION_NAME,
-  SESSION_COLLECTION_SCHEMA,
   createNew,
   findBySessionId,
   findBySessionIdAny,

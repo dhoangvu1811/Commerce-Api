@@ -40,7 +40,7 @@ passport.use(
         // Sử dụng service để xử lý logic OAuth
         const provider: OAuthProvider = 'GOOGLE'
         const user = await oAuthService.handleOAuth(profile, provider)
-        // Type assertion vì oAuthService trả về Document từ MongoDB
+        // Type assertion để convert Prisma User type to Express.User
         done(null, user as unknown as Express.User | undefined)
       } catch (error) {
         if (env.BUILD_MODE === 'dev') {
@@ -77,7 +77,7 @@ passport.use(
         // Sử dụng service để xử lý logic OAuth
         const provider: OAuthProvider = 'FACEBOOK'
         const user = await oAuthService.handleOAuth(profile, provider)
-        // Type assertion vì oAuthService trả về Document từ MongoDB
+        // Type assertion để convert Prisma User type to Express.User
         done(null, user as unknown as Express.User | undefined)
       } catch (error) {
         if (env.BUILD_MODE === 'dev') {

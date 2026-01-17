@@ -2,8 +2,13 @@
  * User type definitions
  */
 
-import type { ObjectId } from 'mongodb'
 import type { Timestamps, PaginationInfo } from './common.types.js'
+
+import {
+  UserStatus,
+  Gender as PrismaGender,
+  AccountType as PrismaAccountType
+} from '../generated/prisma/index.js'
 
 /**
  * User roles
@@ -11,40 +16,43 @@ import type { Timestamps, PaginationInfo } from './common.types.js'
 export type UserRole = 'admin' | 'user'
 
 /**
- * Gender options
+ * Gender options (re-export from Prisma)
  */
-export type Gender = 'male' | 'female' | 'other' | ''
+export type Gender = PrismaGender
 
 /**
- * Account type - cách user đăng ký
+ * Account type (re-export from Prisma)
  */
-export type AccountType = 'LOCAL' | 'GOOGLE' | 'FACEBOOK'
+export type AccountType = PrismaAccountType
 
 /**
- * Alias cho TypeAccount (backward compatibility)
- */
-export type TypeAccount = AccountType
-
-/**
- * User document trong MongoDB
+ * User entity (PostgreSQL/Prisma)
+ * Matches Prisma generated User type with some additions for API compatibility
  */
 export interface User extends Timestamps {
-  _id?: ObjectId
+  // Prisma fields
+  id: number
   name: string
   email: string
   password: string
-  phone: string
-  address: string
-  avatar: string
-  dateOfBirth: Date | null
-  gender: Gender
-  role: UserRole
-  isActive: boolean
+  phoneNumber?: string | null // Prisma field name
+  address?: string | null
+  avatar?: string | null
+  dateOfBirth?: Date | null
+  gender?: Gender | null
+  roleId: number // Prisma uses roleId, not role
   emailVerified: boolean
   typeAccount: AccountType
-  lastLogin: Date | null
-  userName?: string
-  displayName?: string
+  lastLogin?: Date | null
+  activationToken?: string | null
+  googleId?: string | null
+  status: UserStatus | null
+
+  // Backward compatibility aliases (for API responses)
+  _id?: string | number // String for API, number for DB
+  role?: UserRole // Resolved from roleId
+  phone?: string // Alias for phoneNumber
+  isActive?: boolean // Derived from status === 'active'
 }
 
 /**
@@ -56,13 +64,13 @@ export type UserResponse = Omit<User, 'password'>
  * Public user info - chỉ các trường công khai
  */
 export interface PublicUser {
-  _id?: ObjectId
+  _id?: string | number
   email: string
   userName?: string
   displayName?: string
   avatar: string
   role: UserRole
-  isActive: boolean
+  status: UserStatus
   createdAt?: Date
   updatedAt?: Date | null
 }
@@ -117,7 +125,7 @@ export interface UpdateUserInput {
 export interface UpdateUserByAdminInput extends UpdateUserInput {
   email?: string
   role?: UserRole
-  isActive?: boolean
+  status?: UserStatus
   emailVerified?: boolean
 }
 
@@ -133,12 +141,14 @@ export interface UpdatePasswordInput {
 /**
  * Input data để tạo user mới - extends từ RegisterInput với các field bổ sung
  */
-export interface CreateUserInput
-  extends Omit<RegisterInput, 'confirmPassword'> {
+export interface CreateUserInput extends Omit<
+  RegisterInput,
+  'confirmPassword'
+> {
   password: string // password đã được hash
   avatar?: string
   role?: UserRole
-  isActive?: boolean
+  status?: UserStatus
   emailVerified?: boolean
   typeAccount?: AccountType
 }
@@ -179,12 +189,13 @@ export type PaginatedUsersModelResult<T = UserResponse> =
 export interface UserQueryFilter {
   search?: string
   role?: UserRole
-  isActive?: string
+  status?: UserStatus
   sort?: string
 }
 
 /**
- * MongoDB filter for users
+ * User filter (legacy - kept for backward compatibility)
+ * Note: Prisma uses different filter structure
  */
 export interface UserMongoFilter {
   $or?: Array<
@@ -192,7 +203,7 @@ export interface UserMongoFilter {
     | { email: { $regex: string; $options: string } }
   >
   role?: UserRole
-  isActive?: boolean
+  status?: UserStatus
 }
 
 /**
@@ -217,10 +228,10 @@ export interface EmailVerificationResult {
 export interface VerifyAccountResult {
   message: string
   user: {
-    _id: ObjectId
+    _id: string | number
     email: string
     name: string
     emailVerified: boolean
-    isActive: boolean
+    status: UserStatus
   }
 }

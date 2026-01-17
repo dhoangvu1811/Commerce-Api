@@ -2,19 +2,21 @@
  * Voucher type definitions
  */
 
-import type { ObjectId } from 'mongodb'
 import type { Timestamps, PaginationInfo } from './common.types.js'
 
 /**
  * Loại voucher
  */
-export type VoucherType = 'percent' | 'fixed'
+import { VoucherType } from '~/generated/prisma/index.js'
+
+export { VoucherType }
 
 /**
- * Voucher document trong MongoDB
+ * Voucher entity (PostgreSQL/Prisma)
+ * Note: _id is string for backward compatibility with API responses
  */
 export interface Voucher extends Timestamps {
-  _id?: ObjectId
+  _id?: string | number
   code: string
   type: VoucherType
   amount: number
@@ -88,31 +90,6 @@ export interface VoucherQueryFilter {
   type?: VoucherType
   isActive?: string
   sort?: string
-}
-
-/**
- * MongoDB filter for vouchers
- */
-export interface VoucherMongoFilter {
-  $or?: Array<{ code: { $regex: string; $options: string } }>
-  type?: VoucherType
-  isActive?: boolean
-}
-
-/**
- * MongoDB filter for active public vouchers
- */
-export interface ActivePublicVoucherFilter {
-  isActive: boolean
-  $and: Array<
-    | { $or: Array<{ startDate: null } | { startDate: { $lte: Date } }> }
-    | { $or: Array<{ endDate: null } | { endDate: { $gte: Date } }> }
-    | {
-        $or: Array<
-          { usageLimit: number } | { $expr: { $lt: [string, string] } }
-        >
-      }
-  >
 }
 
 /**

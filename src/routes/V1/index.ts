@@ -10,7 +10,7 @@ import { productRoute } from './productRouter.js'
 import { userRoute } from './userRouter.js'
 import { voucherRoute } from './voucherRouter.js'
 import { orderRoute } from './orderRouter.js'
-import { GET_DB } from '~/config/mongodb.js'
+import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
 
@@ -22,8 +22,8 @@ RouterInstance.get('/status', (_req: Request, res: Response) => {
 /* Health check endpoint với database ping */
 RouterInstance.get('/health', async (_req: Request, res: Response) => {
   try {
-    // Kiểm tra kết nối database bằng ping command
-    await GET_DB().command({ ping: 1 })
+    // Kiểm tra kết nối PostgreSQL bằng query đơn giản
+    await prisma.$queryRaw`SELECT 1`
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       status: 'healthy',

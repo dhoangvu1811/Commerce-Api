@@ -1,23 +1,22 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable indent */
 /**
- * Product Service
+ * Product Service - Prisma Version
  * Xử lý logic business cho product
  */
 
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import { productModel } from '~/models/productModel.js'
+import {
+  productModel,
+  type Product,
+  type ProductFilter
+} from '~/models/productModel.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
-import { ObjectId } from 'mongodb'
-import type {
-  Product,
-  ProductQueryFilter,
-  ProductFilter
-} from '~/types/product.types.js'
+import { prisma } from '~/config/prisma.js'
+import type { ProductQueryFilter } from '~/types/product.types.js'
 import type {
   PaginationInfo,
-  SortOptions,
   UploadResult,
   DeleteResultInfo
 } from '~/types/common.types.js'
@@ -29,33 +28,74 @@ interface PaginatedProductsResult {
 }
 
 /**
+ * Parse productId string to number
+ */
+const parseProductId = (productId: string): number => {
+  const id = parseInt(productId, 10)
+  if (isNaN(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
+  }
+  return id
+}
+
+/**
+ * Generate slug from product name
+ */
+const generateSlug = (name: string): string => {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+}
+
+/**
  * Tạo product mới
  */
-const createNew = async (productData: Partial<Product>): Promise<Product> => {
+const createNew = async (productData: {
+  name: string
+  categoryId: number
+  image?: string
+  description?: string
+  price: number
+  stock?: number
+  rating?: number
+  selled?: number
+  discount?: number
+  status?: string
+}): Promise<Product> => {
   try {
-    // Kiểm tra sản phẩm đã tồn tại chưa (theo tên và loại)
-    const existingProduct = await productModel.findByNameAndType(
-      productData.name!,
-      productData.type!
+    // Kiểm tra sản phẩm đã tồn tại chưa (theo tên và category)
+    const existingProduct = await productModel.findByNameAndCategory(
+      productData.name,
+      productData.categoryId
     )
 
     if (existingProduct) {
+      // Get category name for error message
+      const category = await prisma.category.findUnique({
+        where: { id: productData.categoryId }
+      })
       throw new ApiError(
         StatusCodes.CONFLICT,
-        `Sản phẩm "${productData.name}" thuộc loại "${productData.type}" đã tồn tại`
+        `Sản phẩm "${productData.name}" thuộc danh mục "${
+          category?.name || productData.categoryId
+        }" đã tồn tại`
       )
     }
 
+    // Generate slug
+    const slug = generateSlug(productData.name) + '-' + Date.now()
+
     // Tạo sản phẩm mới
-    const newProduct: Partial<Product> = {
+    const createdProduct = await productModel.createNew({
       ...productData,
-      createdAt: new Date(),
-      updatedAt: new Date()
-    }
+      slug
+    })
 
-    const createdProduct = await productModel.createNew(newProduct as Product)
-
-    return createdProduct as Product
+    return createdProduct
   } catch (error) {
     throw error
   }
@@ -66,18 +106,14 @@ const createNew = async (productData: Partial<Product>): Promise<Product> => {
  */
 const getDetails = async (productId: string): Promise<Product> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(productId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
-    }
-
-    const product = await productModel.findOneById(productId)
+    const productIdNum = parseProductId(productId)
+    const product = await productModel.findOneById(productIdNum)
 
     if (!product) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
     }
 
-    return product as Product
+    return product
   } catch (error) {
     throw error
   }
@@ -88,48 +124,68 @@ const getDetails = async (productId: string): Promise<Product> => {
  */
 const update = async (
   productId: string,
-  updateData: Partial<Product>
+  updateData: Partial<{
+    name: string
+    categoryId: number
+    image: string
+    description: string
+    price: number
+    stock: number
+    rating: number
+    selled: number
+    discount: number
+    status: string
+  }>
 ): Promise<Product> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(productId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
-    }
+    const productIdNum = parseProductId(productId)
 
     // Kiểm tra sản phẩm có tồn tại không
-    const existingProduct = await productModel.findOneById(productId)
+    const existingProduct = await productModel.findOneById(productIdNum)
     if (!existingProduct) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
     }
 
-    // Kiểm tra duplicate nếu có thay đổi name hoặc type
-    if (updateData.name || updateData.type) {
+    // Kiểm tra duplicate nếu có thay đổi name hoặc categoryId
+    if (updateData.name || updateData.categoryId) {
       const nameToCheck = updateData.name || existingProduct.name
-      const typeToCheck = updateData.type || existingProduct.type
+      const categoryToCheck =
+        updateData.categoryId || existingProduct.categoryId
 
-      const duplicateProduct = await productModel.findByNameAndType(
+      const duplicateProduct = await productModel.findByNameAndCategory(
         nameToCheck,
-        typeToCheck
+        categoryToCheck
       )
 
       // Nếu tìm thấy sản phẩm trùng và không phải là chính sản phẩm đang update
-      if (duplicateProduct && duplicateProduct._id?.toString() !== productId) {
+      if (duplicateProduct && duplicateProduct.id !== productIdNum) {
+        const category = await prisma.category.findUnique({
+          where: { id: categoryToCheck }
+        })
         throw new ApiError(
           StatusCodes.CONFLICT,
-          `Sản phẩm "${nameToCheck}" thuộc loại "${typeToCheck}" đã tồn tại`
+          `Sản phẩm "${nameToCheck}" thuộc danh mục "${category?.name}" đã tồn tại`
         )
       }
     }
 
-    // Cập nhật sản phẩm
-    const dataToUpdate: Partial<Product> = {
-      ...updateData,
-      updatedAt: new Date()
+    // Update slug if name changed
+    const dataToUpdate = { ...updateData }
+    if (updateData.name) {
+      ;(dataToUpdate as { slug?: string }).slug =
+        generateSlug(updateData.name) + '-' + Date.now()
     }
 
-    const updatedProduct = await productModel.update(productId, dataToUpdate)
+    const updatedProduct = await productModel.update(productIdNum, dataToUpdate)
 
-    return updatedProduct as Product
+    if (!updatedProduct) {
+      throw new ApiError(
+        StatusCodes.INTERNAL_SERVER_ERROR,
+        'Không thể cập nhật sản phẩm'
+      )
+    }
+
+    return updatedProduct
   } catch (error) {
     throw error
   }
@@ -140,22 +196,19 @@ const update = async (
  */
 const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
   try {
-    // Validate ObjectId
-    if (!ObjectId.isValid(productId)) {
-      throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
-    }
+    const productIdNum = parseProductId(productId)
 
     // Kiểm tra sản phẩm có tồn tại không
-    const existingProduct = await productModel.findOneById(productId)
+    const existingProduct = await productModel.findOneById(productIdNum)
     if (!existingProduct) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
     }
 
     // Xóa sản phẩm
-    const result = await productModel.deleteOneById(productId)
+    const result = await productModel.deleteOneById(productIdNum)
 
     return {
-      deletedCount: result.deletedCount,
+      deletedCount: result ? 1 : 0,
       message: 'Đã xóa sản phẩm thành công'
     }
   } catch (error) {
@@ -178,24 +231,22 @@ const deleteSelectedProducts = async (
       )
     }
 
-    // Validate tất cả ObjectIds
-    const invalidIds = productIds.filter((id) => !ObjectId.isValid(id))
-    if (invalidIds.length > 0) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `ID sản phẩm không hợp lệ: ${invalidIds.join(', ')}`
-      )
-    }
-
-    // Chuyển đổi string IDs thành ObjectIds
-    const objectIds = productIds.map((id) => new ObjectId(id))
+    // Parse all IDs
+    const numberIds = productIds.map((id) => {
+      const num = parseInt(id, 10)
+      if (isNaN(num)) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          `ID sản phẩm không hợp lệ: ${id}`
+        )
+      }
+      return num
+    })
 
     // Kiểm tra các sản phẩm có tồn tại không
-    const existingProducts = await productModel.findByIds(objectIds)
-    const existingIds = existingProducts.map((product) =>
-      product._id?.toString()
-    )
-    const notFoundIds = productIds.filter((id) => !existingIds.includes(id))
+    const existingProducts = await productModel.findByIds(numberIds)
+    const existingIds = existingProducts.map((product) => product.id)
+    const notFoundIds = numberIds.filter((id) => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
       throw new ApiError(
@@ -205,13 +256,11 @@ const deleteSelectedProducts = async (
     }
 
     // Xóa các sản phẩm đã chọn
-    const result = await productModel.deleteMany({
-      _id: { $in: objectIds }
-    })
+    const result = await productModel.deleteMany({ id: { in: numberIds } })
 
     return {
-      deletedCount: result.deletedCount,
-      message: `Đã xóa ${result.deletedCount} sản phẩm được chọn`,
+      deletedCount: result.count,
+      message: `Đã xóa ${result.count} sản phẩm được chọn`,
       deletedIds: productIds
     }
   } catch (error) {
@@ -230,44 +279,48 @@ const getProducts = async (
   try {
     const { search, type, sort } = queryFilter
 
-    // Tạo filter object
+    // Build Prisma filter
     const filter: ProductFilter = {}
 
-    // Tìm kiếm theo tên
     if (search) {
-      filter.name = { $regex: search, $options: 'i' }
+      filter.search = search
     }
 
-    // Lọc theo loại
+    // type → categoryId lookup
     if (type) {
-      filter.type = type
+      const category = await prisma.category.findFirst({
+        where: { name: { equals: type, mode: 'insensitive' } }
+      })
+      if (category) {
+        filter.categoryId = category.id
+      }
     }
 
-    // Tạo sort object
-    let sortOptions: SortOptions = { createdAt: -1 } // Mặc định sắp xếp theo ngày tạo mới nhất
+    // Build orderBy
+    let orderBy: { [key: string]: 'asc' | 'desc' } = { createdAt: 'desc' }
 
     if (sort) {
       switch (sort) {
         case 'price_asc':
-          sortOptions = { price: 1 }
+          orderBy = { price: 'asc' }
           break
         case 'price_desc':
-          sortOptions = { price: -1 }
+          orderBy = { price: 'desc' }
           break
         case 'rating_desc':
-          sortOptions = { rating: -1 }
+          orderBy = { rating: 'desc' }
           break
         case 'name_asc':
-          sortOptions = { name: 1 }
+          orderBy = { name: 'asc' }
           break
         case 'name_desc':
-          sortOptions = { name: -1 }
+          orderBy = { name: 'desc' }
           break
         case 'selled_desc':
-          sortOptions = { selled: -1 }
+          orderBy = { selled: 'desc' }
           break
         default:
-          sortOptions = { createdAt: -1 }
+          orderBy = { createdAt: 'desc' }
       }
     }
 
@@ -275,17 +328,17 @@ const getProducts = async (
       filter,
       page,
       itemsPerPage,
-      sortOptions
+      orderBy
     )
 
-    return result as PaginatedProductsResult
+    return result
   } catch (error) {
     throw error
   }
 }
 
 /**
- * Lấy products theo type
+ * Lấy products theo category (thay thế getProductsByType)
  */
 const getProductsByType = async (
   type: string,
@@ -294,57 +347,62 @@ const getProductsByType = async (
   sort: string = 'createdAt'
 ): Promise<PaginatedProductsResult> => {
   try {
-    const filter = { type }
+    // Lookup categoryId from type name
+    const category = await prisma.category.findFirst({
+      where: { name: { equals: type, mode: 'insensitive' } }
+    })
 
-    // Tạo sort object
-    let sortOptions: SortOptions = { createdAt: -1 }
+    const filter: ProductFilter = {}
+    if (category) {
+      filter.categoryId = category.id
+    }
 
-    if (sort) {
-      switch (sort) {
-        case 'price_asc':
-          sortOptions = { price: 1 }
-          break
-        case 'price_desc':
-          sortOptions = { price: -1 }
-          break
-        case 'rating_desc':
-          sortOptions = { rating: -1 }
-          break
-        case 'name_asc':
-          sortOptions = { name: 1 }
-          break
-        case 'name_desc':
-          sortOptions = { name: -1 }
-          break
-        case 'selled_desc':
-          sortOptions = { selled: -1 }
-          break
-        default:
-          sortOptions = { createdAt: -1 }
-      }
+    // Build orderBy
+    let orderBy: { [key: string]: 'asc' | 'desc' } = { createdAt: 'desc' }
+
+    switch (sort) {
+      case 'price_asc':
+        orderBy = { price: 'asc' }
+        break
+      case 'price_desc':
+        orderBy = { price: 'desc' }
+        break
+      case 'rating_desc':
+        orderBy = { rating: 'desc' }
+        break
+      case 'name_asc':
+        orderBy = { name: 'asc' }
+        break
+      case 'name_desc':
+        orderBy = { name: 'desc' }
+        break
+      case 'selled_desc':
+        orderBy = { selled: 'desc' }
+        break
+      default:
+        orderBy = { createdAt: 'desc' }
     }
 
     const result = await productModel.getMany(
       filter,
       page,
       itemsPerPage,
-      sortOptions
+      orderBy
     )
 
-    return result as PaginatedProductsResult
+    return result
   } catch (error) {
     throw error
   }
 }
 
 /**
- * Lấy tất cả types
+ * Lấy tất cả categories (thay thế getAllTypes)
  */
 const getAllTypes = async (): Promise<string[]> => {
   try {
-    const types = await productModel.getAllTypes()
-
-    return types
+    const categories = await productModel.getAllCategories()
+    return categories.map((c) => c.name)
   } catch (error) {
     throw error
   }
@@ -358,7 +416,6 @@ const uploadImage = async (
   folderName: string = 'products'
 ): Promise<UploadResult> => {
   try {
-    // Upload ảnh lên Cloudinary
     const uploadResult = await CloudinaryProvider.streamUpload(
       fileBuffer,
       folderName

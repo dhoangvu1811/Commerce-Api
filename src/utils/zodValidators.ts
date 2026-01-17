@@ -6,11 +6,20 @@
 import { z } from 'zod'
 
 /**
- * Schema cho MongoDB ObjectId (24 ký tự hex)
+ * Schema cho MongoDB ObjectId (24 ký tự hex) - Legacy
+ * Note: PostgreSQL uses integer IDs, but kept for backward compatibility
  */
 export const objectIdSchema = z
   .string()
   .regex(/^[0-9a-fA-F]{24}$/, 'Thông tin không hợp lệ. Vui lòng thử lại.')
+
+/**
+ * Schema cho PostgreSQL integer ID
+ */
+export const integerIdSchema = z
+  .string()
+  .regex(/^\d+$/, 'ID phải là số nguyên hợp lệ.')
+  .transform((val) => parseInt(val, 10))
 
 /**
  * Schema cho email hợp lệ
@@ -42,7 +51,8 @@ export const phoneSchema = z
 /**
  * RegExp constants (để tương thích với code cũ)
  */
-export const OBJECT_ID_RULE = /^[0-9a-fA-F]{24}$/
+export const OBJECT_ID_RULE = /^[0-9a-fA-F]{24}$/ // Legacy MongoDB ObjectId
+export const INTEGER_ID_RULE = /^\d+$/ // PostgreSQL integer ID
 export const EMAIL_RULE = /^\S+@\S+\.\S+$/
 export const PASSWORD_RULE = /^(?=.*[a-zA-Z])(?=.*\d)[A-Za-z\d\W]{8,256}$/
 

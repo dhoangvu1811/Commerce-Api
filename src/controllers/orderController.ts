@@ -66,8 +66,8 @@ const getDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.jwtDecoded!._id
-    const id = req.params.id!
+    const userId = String(req.jwtDecoded!._id)
+    const id = String(req.params.id)
     const order = await orderService.getDetails(id, userId, false)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -113,7 +113,7 @@ const adminGetDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const order = await orderService.getDetails(id, '', true)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -131,9 +131,9 @@ const adminUpdateStatus = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const { status } = req.body
-    const adminId = req.jwtDecoded!._id
+    const adminId = String(req.jwtDecoded!._id)
 
     // Chỉ update status, không đụng đến paymentStatus
     const updated = await orderService.updateStatus(id, { status }, adminId)
@@ -154,9 +154,9 @@ const adminUpdatePaymentStatus = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const { paymentStatus } = req.body
-    const adminId = req.jwtDecoded!._id
+    const adminId = String(req.jwtDecoded!._id)
 
     // Chỉ update paymentStatus, không đụng đến status
     const updated = await orderService.updatePaymentStatus(
@@ -181,8 +181,8 @@ const adminMarkPaid = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
-    const adminId = req.jwtDecoded!._id
+    const id = String(req.params.id)
+    const adminId = String(req.jwtDecoded!._id)
     const updated = await orderService.markPaid(id, adminId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -200,8 +200,8 @@ const userCancel = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
-    const userId = req.jwtDecoded!._id
+    const id = String(req.params.id)
+    const userId = String(req.jwtDecoded!._id)
     const updated = await orderService.cancel(id, userId, false)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -219,8 +219,8 @@ const adminCancel = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
-    const adminId = req.jwtDecoded!._id
+    const id = String(req.params.id)
+    const adminId = String(req.jwtDecoded!._id)
     const updated = await orderService.cancel(id, adminId, true)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -238,7 +238,7 @@ const adminGetOrderLogs = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const orderId = req.params.id!
+    const orderId = String(req.params.id)
     const result = await orderService.adminGetOrderLogs(orderId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
