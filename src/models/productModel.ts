@@ -4,7 +4,11 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Product, Prisma, DecimalType as Decimal } from '~/generated/prisma/index.js'
+import type {
+  Product,
+  Prisma,
+  DecimalType as Decimal
+} from '~/generated/prisma/index.js'
 
 /** Product type export từ Prisma */
 export type { Product }
@@ -76,7 +80,8 @@ const createNew = async (data: CreateProductInput): Promise<Product> => {
       selled: data.selled ?? 0,
       discount: data.discount ?? 0,
       status: data.status || 'active'
-    }
+    },
+    include: { category: true, images: true }
   })
   return product
 }
@@ -86,7 +91,8 @@ const createNew = async (data: CreateProductInput): Promise<Product> => {
  */
 const findOneById = async (productId: number): Promise<Product | null> => {
   const product = await prisma.product.findUnique({
-    where: { id: productId }
+    where: { id: productId },
+    include: { category: true, images: true }
   })
   return product
 }
@@ -96,7 +102,8 @@ const findOneById = async (productId: number): Promise<Product | null> => {
  */
 const findBySlug = async (slug: string): Promise<Product | null> => {
   const product = await prisma.product.findUnique({
-    where: { slug }
+    where: { slug },
+    include: { category: true, images: true }
   })
   return product
 }
@@ -112,7 +119,8 @@ const findByNameAndCategory = async (
     where: {
       name: { equals: name, mode: 'insensitive' },
       categoryId
-    }
+    },
+    include: { category: true, images: true }
   })
   return product
 }
@@ -122,7 +130,8 @@ const findByNameAndCategory = async (
  */
 const findByIds = async (productIds: number[]): Promise<Product[]> => {
   const products = await prisma.product.findMany({
-    where: { id: { in: productIds } }
+    where: { id: { in: productIds } },
+    include: { category: true, images: true }
   })
   return products
 }
@@ -159,7 +168,8 @@ const getMany = async (
       where,
       orderBy,
       skip,
-      take: itemsPerPage
+      take: itemsPerPage,
+      include: { category: true, images: true }
     }),
     prisma.product.count({ where })
   ])
@@ -189,7 +199,8 @@ const update = async (
   try {
     const product = await prisma.product.update({
       where: { id: productId },
-      data: updateData
+      data: updateData,
+      include: { category: true, images: true }
     })
     return product
   } catch (error) {
@@ -208,7 +219,8 @@ const update = async (
 const deleteOneById = async (productId: number): Promise<Product | null> => {
   try {
     const product = await prisma.product.delete({
-      where: { id: productId }
+      where: { id: productId },
+      include: { category: true, images: true }
     })
     return product
   } catch (error) {

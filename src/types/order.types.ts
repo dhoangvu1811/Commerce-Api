@@ -125,9 +125,16 @@ export interface Order extends Timestamps {
   orderCode: string
   items: OrderItem[]
   shippingAddress: ShippingAddress
+  user?: {
+    id: number
+    name: string
+    email: string
+    role: { id: number; name: string }
+  }
   vouchers?: OrderVoucher[] // Changed to array if multiple allowed, or keep as snapshot
   totals: OrderTotals
   status: OrderStatus
+  paymentStatus?: PaymentStatus // Derived from latest payment
   payments: Payment[] // Relation to Payment table
   logs: LogEntry[]
   deliveredAt: Date | null

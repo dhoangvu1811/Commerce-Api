@@ -16,7 +16,6 @@ import {
   AccountType
 } from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
-import { prisma } from '~/config/prisma.js'
 import { JwtProvider } from '~/providers/JwtProvider.js'
 import ApiError from '~/utils/ApiError.js'
 import { StatusCodes } from 'http-status-codes'
@@ -150,14 +149,6 @@ const normalizeOAuthProfile = (
 }
 
 /**
- * Get role name from roleId
- */
-const getRoleName = async (roleId: number): Promise<string> => {
-  const role = await prisma.role.findUnique({ where: { id: roleId } })
-  return role?.name || 'user'
-}
-
-/**
  * Generic handler cho OAuth authentication
  */
 const handleOAuth = async (
@@ -223,8 +214,9 @@ const generateAuthTokens = async (
     // Tạo sessionId unique
     const sessionId = uuidv4()
 
-    // Get role name for token
-    const roleName = await getRoleName(user.roleId)
+    // Get role name from included relation (no separate query needed)
+    const roleName =
+      (user as unknown as { role: { name: string } }).role?.name || 'user'
 
     // Tạo tokens với sessionId
     const tokenUserData = {

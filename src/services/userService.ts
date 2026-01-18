@@ -75,14 +75,6 @@ const comparePassword = async (
 }
 
 /**
- * Get role name from roleId
- */
-const getRoleName = async (roleId: number): Promise<string> => {
-  const role = await prisma.role.findUnique({ where: { id: roleId } })
-  return role?.name || 'user'
-}
-
-/**
  * Đăng ký user mới
  */
 const register = async (userData: RegisterInput): Promise<UserResponseType> => {
@@ -159,8 +151,9 @@ const login = async (
     // Tạo sessionId unique
     const sessionId = uuidv4()
 
-    // Get role name for token
-    const roleName = await getRoleName(user.roleId)
+    // Get role name from included relation (no separate query needed)
+    const roleName =
+      (user as unknown as { role: { name: string } }).role?.name || 'user'
 
     // Tạo token với sessionId
     const tokenUserData = {
@@ -251,8 +244,9 @@ const refreshToken = async (
       )
     }
 
-    // Get role name
-    const roleName = await getRoleName(user.roleId)
+    // Get role name from included relation
+    const roleName =
+      (user as unknown as { role: { name: string } }).role?.name || 'user'
 
     // Tạo access token mới với sessionId
     const tokenUserData = {

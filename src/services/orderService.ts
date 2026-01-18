@@ -104,6 +104,15 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
       postalCode: order.shippingAddress?.postalCode || undefined,
       isDefault: order.shippingAddress?.isDefault
     },
+    user: order.user
+      ? {
+          id: order.user.id,
+          name: order.user.name,
+          email: order.user.email,
+          role: order.user.role
+        }
+      : undefined,
+    paymentStatus: order.payments[0]?.status || 'PENDING',
     vouchers: order.orderVouchers.map((ov) => ({
       voucherId: ov.voucherId,
       code: ov.code,

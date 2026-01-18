@@ -29,6 +29,12 @@ export type OrderWithRelations = Order & {
   orderVouchers: OrderVoucher[]
   shippingAddress?: ShippingAddress
   payments: Payment[]
+  user?: {
+    id: number
+    name: string
+    email: string
+    role: { id: number; name: string }
+  }
 }
 
 /** Paginated result cho orders */
@@ -223,7 +229,15 @@ const findOneById = async (
       logs: { orderBy: { createdAt: 'desc' } },
       orderVouchers: true,
       shippingAddress: true,
-      payments: { orderBy: { createdAt: 'desc' } }
+      payments: { orderBy: { createdAt: 'desc' } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
     }
   })
   return order as OrderWithRelations | null
@@ -242,7 +256,15 @@ const findByOrderCode = async (
       logs: { orderBy: { createdAt: 'desc' } },
       orderVouchers: true,
       shippingAddress: true,
-      payments: { orderBy: { createdAt: 'desc' } }
+      payments: { orderBy: { createdAt: 'desc' } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
     }
   })
   return order as OrderWithRelations | null
@@ -300,7 +322,15 @@ const getMany = async (
         logs: { orderBy: { createdAt: 'desc' }, take: 5 },
         orderVouchers: true,
         shippingAddress: true,
-        payments: { orderBy: { createdAt: 'desc' }, take: 1 }
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
       }
     }),
     prisma.order.count({ where })

@@ -88,7 +88,8 @@ const createNew = async (data: CreateUserInput): Promise<User> => {
       activationToken: data.activationToken || null,
       googleId: data.googleId || null,
       status: data.status || UserStatus.inactive
-    }
+    },
+    include: { role: true }
   })
   return user
 }
@@ -98,7 +99,8 @@ const createNew = async (data: CreateUserInput): Promise<User> => {
  */
 const findOneById = async (userId: number): Promise<User | null> => {
   const user = await prisma.user.findUnique({
-    where: { id: userId }
+    where: { id: userId },
+    include: { role: true }
   })
   return user
 }
@@ -108,7 +110,8 @@ const findOneById = async (userId: number): Promise<User | null> => {
  */
 const findOneByEmail = async (email: string): Promise<User | null> => {
   const user = await prisma.user.findUnique({
-    where: { email: email.toLowerCase().trim() }
+    where: { email: email.toLowerCase().trim() },
+    include: { role: true }
   })
   return user
 }
@@ -118,7 +121,8 @@ const findOneByEmail = async (email: string): Promise<User | null> => {
  */
 const findByIds = async (userIds: number[]): Promise<User[]> => {
   const users = await prisma.user.findMany({
-    where: { id: { in: userIds } }
+    where: { id: { in: userIds } },
+    include: { role: true }
   })
   return users
 }
@@ -155,7 +159,8 @@ const getMany = async (
       where,
       orderBy,
       skip,
-      take: itemsPerPage
+      take: itemsPerPage,
+      include: { role: true }
     }),
     prisma.user.count({ where })
   ])
@@ -185,7 +190,8 @@ const update = async (
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: updateData
+      data: updateData,
+      include: { role: true }
     })
     return user
   } catch (error) {
@@ -205,7 +211,8 @@ const updateLastLogin = async (userId: number): Promise<User | null> => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { lastLogin: new Date() }
+      data: { lastLogin: new Date() },
+      include: { role: true }
     })
     return user
   } catch {
@@ -220,7 +227,8 @@ const activateUser = async (userId: number): Promise<User | null> => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { status: UserStatus.active }
+      data: { status: UserStatus.active },
+      include: { role: true }
     })
     return user
   } catch {
@@ -235,7 +243,8 @@ const deactivateUser = async (userId: number): Promise<User | null> => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
-      data: { status: UserStatus.inactive }
+      data: { status: UserStatus.inactive },
+      include: { role: true }
     })
     return user
   } catch {
@@ -251,7 +260,8 @@ const findActiveUserById = async (userId: number): Promise<User | null> => {
     where: {
       id: userId,
       status: UserStatus.active
-    }
+    },
+    include: { role: true }
   })
   return user
 }
@@ -264,7 +274,8 @@ const findActiveUserByEmail = async (email: string): Promise<User | null> => {
     where: {
       email: email.toLowerCase().trim(),
       status: UserStatus.active
-    }
+    },
+    include: { role: true }
   })
   return user
 }
@@ -275,7 +286,8 @@ const findActiveUserByEmail = async (email: string): Promise<User | null> => {
 const deleteOneById = async (userId: number): Promise<User | null> => {
   try {
     const user = await prisma.user.delete({
-      where: { id: userId }
+      where: { id: userId },
+      include: { role: true }
     })
     return user
   } catch {
