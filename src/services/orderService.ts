@@ -11,6 +11,7 @@ import { orderModel, type OrderWithRelations } from '~/models/orderModel.js'
 import { productModel } from '~/models/productModel.js'
 import { voucherModel } from '~/models/voucherModel.js'
 import { userModel } from '~/models/userModel.js'
+import { notificationService } from '~/services/notificationService.js'
 import {
   OrderStatus,
   PaymentStatus,
@@ -19,7 +20,13 @@ import {
   Prisma
 } from '../generated/prisma/index.js'
 import { prisma } from '~/config/prisma.js'
-import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants.js'
+import {
+  ORDER_STATUS,
+  PAYMENT_STATUS,
+  MAX_SHIPPING_FEE,
+  ORDER_STATUS_NAMES as STATUS_NAMES,
+  PAYMENT_STATUS_NAMES
+} from '~/utils/constants.js'
 import {
   applyVoucher,
   calcLineTotal,
@@ -50,26 +57,6 @@ import type { PaginationInfo } from '~/types/common.types.js'
 interface PaginatedOrdersResult {
   orders: Order[]
   pagination: PaginationInfo
-}
-
-/** Status names for error messages */
-const STATUS_NAMES: Record<OrderStatus, string> = {
-  PENDING: 'Chờ xác nhận',
-  CONFIRMED: 'Đã xác nhận',
-  PROCESSING: 'Đang xử lý',
-  SHIPPING: 'Đang giao hàng',
-  DELIVERED: 'Đã giao hàng',
-  CANCELLED: 'Đã hủy'
-}
-
-/** Payment status names - used for error messages */
-export const PAYMENT_STATUS_NAMES: Record<PaymentStatus, string> = {
-  PENDING: 'chưa thanh toán',
-  PROCESSING: 'đang xử lý thanh toán',
-  PAID: 'đã thanh toán',
-  FAILED: 'thanh toán thất bại',
-  REFUNDED: 'đã hoàn tiền',
-  CANCELLED: 'đã hủy thanh toán'
 }
 
 /**
@@ -307,7 +294,7 @@ const create = async (
 
     // 6) Tính tổng thanh toán
     const shipping = Number(shippingFee || 0)
-    if (shipping < 0 || shipping > 10000000) {
+    if (shipping < 0 || shipping > MAX_SHIPPING_FEE) {
       throw new ApiError(
         StatusCodes.BAD_REQUEST,
         'Phí vận chuyển không hợp lệ.'
@@ -648,6 +635,15 @@ const updateStatus = async (
       note: 'Admin cập nhật trạng thái'
     })
 
+    // Notify User
+    await notificationService.createNotification(
+      order.userId,
+      'ORDER_STATUS',
+      `Đơn hàng #${order.orderCode} của bạn đã chuyển sang trạng thái: ${
+        STATUS_NAMES[status] || status
+      }`
+    )
+
     const refreshed = await orderModel.findOneById(orderIdNum)
     return mapOrderToApi(refreshed!)
   } catch (error) {
@@ -739,6 +735,15 @@ const updatePaymentStatus = async (
       toPaymentStatus: paymentStatus,
       note: 'Admin cập nhật trạng thái thanh toán'
     })
+
+    // Notify User
+    await notificationService.createNotification(
+      order.userId,
+      'ORDER_STATUS',
+      `Trạng thái thanh toán đơn hàng #${order.orderCode} đã cập nhật: ${
+        PAYMENT_STATUS_NAMES[paymentStatus] || paymentStatus
+      }`
+    )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
     return mapOrderToApi(refreshed!)
@@ -847,6 +852,13 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       toPaymentStatus: PaymentStatus.PAID,
       note: 'Xác nhận thanh toán thành công'
     })
+
+    // Notify User
+    await notificationService.createNotification(
+      order.userId,
+      'ORDER_STATUS',
+      `Đơn hàng #${order.orderCode} của bạn đã được xác nhận thanh toán thành công.`
+    )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
     return mapOrderToApi(refreshed!)

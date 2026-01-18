@@ -61,3 +61,32 @@ export const ALLOWED_PAYMENT_METHODS = [
   PaymentMethod.VNPAY,
   PaymentMethod.ZALOPAY
 ] as const
+
+/**
+ * Phí vận chuyển tối đa (10 triệu VNĐ)
+ */
+export const MAX_SHIPPING_FEE = 10_000_000
+
+/**
+ * Tên hiển thị trạng thái đơn hàng (Tiếng Việt)
+ */
+export const ORDER_STATUS_NAMES: Record<OrderStatus, string> = {
+  [OrderStatus.PENDING]: 'Chờ xác nhận',
+  [OrderStatus.CONFIRMED]: 'Đã xác nhận',
+  [OrderStatus.PROCESSING]: 'Đang xử lý',
+  [OrderStatus.SHIPPING]: 'Đang giao hàng',
+  [OrderStatus.DELIVERED]: 'Đã giao hàng',
+  [OrderStatus.CANCELLED]: 'Đã hủy'
+}
+
+/**
+ * Tên hiển thị trạng thái thanh toán (Tiếng Việt)
+ */
+export const PAYMENT_STATUS_NAMES: Record<PaymentStatus, string> = {
+  [PaymentStatus.PENDING]: 'chưa thanh toán',
+  [PaymentStatus.PROCESSING]: 'đang xử lý thanh toán',
+  [PaymentStatus.PAID]: 'đã thanh toán',
+  [PaymentStatus.FAILED]: 'thanh toán thất bại',
+  [PaymentStatus.REFUNDED]: 'đã hoàn tiền',
+  [PaymentStatus.CANCELLED]: 'đã hủy thanh toán'
+}
