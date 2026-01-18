@@ -10,6 +10,9 @@ import { productRoute } from './productRouter.js'
 import { userRoute } from './userRouter.js'
 import { voucherRoute } from './voucherRouter.js'
 import { orderRoute } from './orderRouter.js'
+import { shippingAddressRouter } from './shippingAddressRouter.js'
+import { cartRouter } from './cartRouter.js'
+import { wishlistRouter } from './wishlistRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -51,5 +54,14 @@ RouterInstance.use('/vouchers', voucherRoute)
 
 /* Order APIs */
 RouterInstance.use('/orders', orderRoute)
+
+/* Shipping Address APIs */
+RouterInstance.use('/shipping-addresses', shippingAddressRouter)
+
+/* Cart APIs */
+RouterInstance.use('/cart', cartRouter)
+
+/* Wishlist APIs */
+RouterInstance.use('/wishlist', wishlistRouter)
 
 export const APIs_V1 = RouterInstance

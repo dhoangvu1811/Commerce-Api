@@ -55,6 +55,7 @@ export const OBJECT_ID_RULE = /^[0-9a-fA-F]{24}$/ // Legacy MongoDB ObjectId
 export const INTEGER_ID_RULE = /^\d+$/ // PostgreSQL integer ID
 export const EMAIL_RULE = /^\S+@\S+\.\S+$/
 export const PASSWORD_RULE = /^(?=.*[a-zA-Z])(?=.*\d)[A-Za-z\d\W]{8,256}$/
+export const PHONE_RULE = /^[0-9+\-\s()]+$/
 
 /**
  * Error messages (để tương thích với code cũ)
@@ -64,6 +65,7 @@ export const OBJECT_ID_RULE_MESSAGE =
 export const EMAIL_RULE_MESSAGE = 'Email không hợp lệ. Ví dụ: ten@email.com'
 export const PASSWORD_RULE_MESSAGE =
   'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và số.'
+export const PHONE_RULE_MESSAGE = 'Số điện thoại không hợp lệ'
 export const FIELD_REQUIRED_MESSAGE = 'Trường này là bắt buộc.'
 
 /**
