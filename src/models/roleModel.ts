@@ -26,6 +26,25 @@ const findAll = async (): Promise<Role[]> => {
   })
 }
 
+/** Role with user count type */
+export type RoleWithUserCount = Role & {
+  _count: { users: number }
+}
+
+/**
+ * Find all roles with user count
+ */
+const findAllWithUserCount = async (): Promise<RoleWithUserCount[]> => {
+  return await prisma.role.findMany({
+    orderBy: { id: 'asc' },
+    include: {
+      _count: {
+        select: { users: true }
+      }
+    }
+  })
+}
+
 /**
  * Find role by ID with permissions
  */
@@ -106,6 +125,20 @@ const assignPermission = async (
 }
 
 /**
+ * Bulk assign permissions to role
+ */
+const bulkAssignPermissions = async (
+  roleId: number,
+  permissionIds: number[]
+): Promise<number> => {
+  const result = await prisma.rolePermission.createMany({
+    data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+    skipDuplicates: true
+  })
+  return result.count
+}
+
+/**
  * Remove permission from role
  */
 const removePermission = async (
@@ -157,6 +190,7 @@ const hasPermission = async (
 
 export const roleModel = {
   findAll,
+  findAllWithUserCount,
   findById,
   findByName,
   create,
@@ -164,6 +198,7 @@ export const roleModel = {
   countUsers,
   deleteById,
   assignPermission,
+  bulkAssignPermissions,
   removePermission,
   getPermissions,
   hasPermission

@@ -16,6 +16,8 @@ import { wishlistRouter } from './wishlistRouter.js'
 import { reviewRouter } from './reviewRouter.js'
 import { contactRouter } from './contactRouter.js'
 import { notificationRouter } from './notificationRouter.js'
+import { roleRoute } from './roleRouter.js'
+import { permissionRoute } from './permissionRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -75,5 +77,11 @@ RouterInstance.use('/contacts', contactRouter)
 
 /* Notification APIs */
 RouterInstance.use('/notifications', notificationRouter)
+
+/* Role APIs (Admin Only) */
+RouterInstance.use('/roles', roleRoute)
+
+/* Permission APIs (Admin Only) */
+RouterInstance.use('/permissions', permissionRoute)
 
 export const APIs_V1 = RouterInstance
