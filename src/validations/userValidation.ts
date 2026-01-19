@@ -82,7 +82,8 @@ const loginSchema = z.object({
     .string({ required_error: 'Email là bắt buộc' })
     .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
     .transform((val) => val.toLowerCase().trim()),
-  password: z.string({ required_error: 'Mật khẩu là bắt buộc' })
+  password: z.string({ required_error: 'Mật khẩu là bắt buộc' }),
+  loginContext: z.enum(['admin', 'client']).optional()
 })
 
 /** Schema cập nhật user (tất cả optional, phải có ít nhất 1 field) */

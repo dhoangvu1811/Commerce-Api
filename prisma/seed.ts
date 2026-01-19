@@ -39,13 +39,98 @@ async function main() {
     create: { name: 'user' }
   })
 
-  const employeeRole = await prisma.role.upsert({
-    where: { name: 'employee' },
+  const staffRole = await prisma.role.upsert({
+    where: { name: 'staff' },
     update: {},
-    create: { name: 'employee' }
+    create: { name: 'staff' }
   })
 
-  // 2. Tạo Users (Admin & User)
+  // 2. Tạo Permissions
+  console.log('🔐 Đang tạo Permissions...')
+  const permissions = await Promise.all([
+    prisma.permission.upsert({
+      where: { name: 'manage_users' },
+      update: {},
+      create: { name: 'manage_users' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'manage_roles' },
+      update: {},
+      create: { name: 'manage_roles' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'manage_products' },
+      update: {},
+      create: { name: 'manage_products' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'manage_orders' },
+      update: {},
+      create: { name: 'manage_orders' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'manage_vouchers' },
+      update: {},
+      create: { name: 'manage_vouchers' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'view_analytics' },
+      update: {},
+      create: { name: 'view_analytics' }
+    }),
+    prisma.permission.upsert({
+      where: { name: 'manage_contacts' },
+      update: {},
+      create: { name: 'manage_contacts' }
+    })
+  ])
+
+  // 3. Gán Permissions cho Roles
+  console.log('🔗 Đang gán Permissions cho Roles...')
+  // Admin có tất cả permissions
+  for (const permission of permissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: adminRole.id,
+          permissionId: permission.id
+        }
+      },
+      update: {},
+      create: {
+        roleId: adminRole.id,
+        permissionId: permission.id
+      }
+    })
+  }
+
+  // Staff có các permissions liên quan đến quản lý sản phẩm, đơn hàng, voucher
+  const staffPermissions = permissions.filter((p) =>
+    [
+      'manage_products',
+      'manage_orders',
+      'manage_vouchers',
+      'view_analytics',
+      'manage_contacts'
+    ].includes(p.name)
+  )
+  for (const permission of staffPermissions) {
+    await prisma.rolePermission.upsert({
+      where: {
+        roleId_permissionId: {
+          roleId: staffRole.id,
+          permissionId: permission.id
+        }
+      },
+      update: {},
+      create: {
+        roleId: staffRole.id,
+        permissionId: permission.id
+      }
+    })
+  }
+
+  // 4. Tạo Users (Admin & User)
   console.log('👤 Đang tạo Users...')
   const hashedPassword = await bcryptLib.hash('123456', 10)
 
@@ -103,7 +188,25 @@ async function main() {
     }
   })
 
-  // 3. Tạo Categories
+  const staffUser = await prisma.user.upsert({
+    where: { email: 'staff@commerce.vn' },
+    update: {},
+    create: {
+      name: 'Staff Commerce',
+      email: 'staff@commerce.vn',
+      password: hashedPassword,
+      phoneNumber: '0934567890',
+      address: '100 Võ Văn Tần, Q.3, TP.HCM',
+      gender: 'male',
+      emailVerified: true,
+      status: UserStatus.active,
+      typeAccount: AccountType.LOCAL,
+      roleId: staffRole.id,
+      dateOfBirth: new Date('1992-03-10')
+    }
+  })
+
+  // 5. Tạo Categories
   console.log('📂 Đang tạo Categories...')
   const categories = await Promise.all([
     prisma.category.upsert({
@@ -418,14 +521,16 @@ async function main() {
 
   console.log('✅ Seed database hoàn tất!')
   console.log('\n📊 Tóm tắt dữ liệu:')
-  console.log(`  - Roles: 3 (admin, user, employee)`)
-  console.log(`  - Users: 3 (1 admin, 2 users)`)
+  console.log(`  - Roles: 3 (admin, staff, user)`)
+  console.log(`  - Permissions: ${permissions.length}`)
+  console.log(`  - Users: 4 (1 admin, 1 staff, 2 users)`)
   console.log(`  - Categories: ${categories.length}`)
   console.log(`  - Products: ${products.length}`)
   console.log(`  - Vouchers: 4`)
   console.log(`  - Shipping Addresses: 2`)
   console.log('\n🔑 Thông tin đăng nhập:')
   console.log(`  Admin: admin@commerce.vn / 123456`)
+  console.log(`  Staff: staff@commerce.vn / 123456`)
   console.log(`  User 1: user@example.com / 123456`)
   console.log(`  User 2: nguyen.thi.b@gmail.com / 123456`)
 }

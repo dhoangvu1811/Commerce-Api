@@ -90,11 +90,17 @@ export interface RegisterInput {
 }
 
 /**
+ * Login context - determines which platform the user is logging into
+ */
+export type LoginContext = 'admin' | 'client'
+
+/**
  * Input cho đăng nhập
  */
 export interface LoginInput {
   email: string
   password: string
+  loginContext?: LoginContext
 }
 
 /**

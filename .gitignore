@@ -197,3 +197,4 @@ coverage/
 docs/build/
 
 /src/generated/prisma
+commit-message-instruction.md

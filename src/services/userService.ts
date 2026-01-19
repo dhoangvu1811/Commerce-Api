@@ -155,6 +155,16 @@ const login = async (
     const roleName =
       (user as unknown as { role: { name: string } }).role?.name || 'user'
 
+    // Kiểm tra loginContext - nếu đăng nhập từ Admin Dashboard thì phải là admin hoặc staff
+    const { loginContext } = loginData
+    const adminRoles = ['admin', 'staff']
+    if (loginContext === 'admin' && !adminRoles.includes(roleName)) {
+      throw new ApiError(
+        StatusCodes.FORBIDDEN,
+        'Bạn không có quyền truy cập vào trang quản trị'
+      )
+    }
+
     // Tạo token với sessionId
     const tokenUserData = {
       _id: String(user.id), // Convert to string for backward compatibility
