@@ -249,11 +249,146 @@ const verifyTokenForLogout = async (
   }
 }
 
+import { permissionModel } from '~/models/permissionModel.js'
+
+/**
+ * Middleware kiểm tra permission
+ * Yêu cầu đã qua verifyToken
+ * Sử dụng: requirePermission('manage_products')
+ */
+const requirePermission = (permissionName: string) => {
+  return async (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.jwtDecoded?._id
+
+      if (!userId) {
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Vui lòng đăng nhập')
+      }
+
+      // Admin luôn có tất cả permissions
+      if (req.jwtDecoded?.role === 'admin') {
+        next()
+        return
+      }
+
+      // Kiểm tra user có permission hay không
+      const hasPermission = await permissionModel.checkUserPermission(
+        parseInt(userId, 10),
+        permissionName
+      )
+
+      if (!hasPermission) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          `Bạn không có quyền "${permissionName}" để thực hiện hành động này`
+        )
+      }
+
+      next()
+    } catch (error) {
+      next(error)
+    }
+  }
+}
+
+/**
+ * Middleware kiểm tra có ít nhất 1 trong các permissions (Optimized - single query)
+ * Sử dụng: requireAnyPermission(['manage_products', 'view_analytics'])
+ */
+const requireAnyPermission = (permissionNames: string[]) => {
+  return async (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.jwtDecoded?._id
+
+      if (!userId) {
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Vui lòng đăng nhập')
+      }
+
+      // Admin luôn có tất cả permissions
+      if (req.jwtDecoded?.role === 'admin') {
+        next()
+        return
+      }
+
+      // Kiểm tra user có ít nhất 1 permission (single query)
+      const hasAnyPermission = await permissionModel.checkUserAnyPermission(
+        parseInt(userId, 10),
+        permissionNames
+      )
+
+      if (!hasAnyPermission) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          `Bạn cần có ít nhất 1 trong các quyền: ${permissionNames.join(', ')}`
+        )
+      }
+
+      next()
+    } catch (error) {
+      next(error)
+    }
+  }
+}
+
+/**
+ * Middleware kiểm tra có TẤT CẢ các permissions
+ * Sử dụng: requireAllPermissions(['manage_products', 'manage_orders'])
+ */
+const requireAllPermissions = (permissionNames: string[]) => {
+  return async (
+    req: Request,
+    _res: Response,
+    next: NextFunction
+  ): Promise<void> => {
+    try {
+      const userId = req.jwtDecoded?._id
+
+      if (!userId) {
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Vui lòng đăng nhập')
+      }
+
+      // Admin luôn có tất cả permissions
+      if (req.jwtDecoded?.role === 'admin') {
+        next()
+        return
+      }
+
+      // Kiểm tra user có tất cả permissions
+      const hasAllPermissions = await permissionModel.checkUserAllPermissions(
+        parseInt(userId, 10),
+        permissionNames
+      )
+
+      if (!hasAllPermissions) {
+        throw new ApiError(
+          StatusCodes.FORBIDDEN,
+          `Bạn cần có tất cả các quyền sau: ${permissionNames.join(', ')}`
+        )
+      }
+
+      next()
+    } catch (error) {
+      next(error)
+    }
+  }
+}
+
 export const authMiddleware = {
   verifyToken,
   verifyAdmin,
   verifyUserOwnership,
   verifyActiveUser,
   verifySession,
-  verifyTokenForLogout
+  verifyTokenForLogout,
+  requirePermission,
+  requireAnyPermission,
+  requireAllPermissions
 }

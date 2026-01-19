@@ -99,6 +99,54 @@ const checkUserPermission = async (
   return count > 0
 }
 
+/**
+ * Check if user has ANY of the specified permissions (optimized - single query)
+ */
+const checkUserAnyPermission = async (
+  userId: number,
+  permissionNames: string[]
+): Promise<boolean> => {
+  const count = await prisma.rolePermission.count({
+    where: {
+      permission: { name: { in: permissionNames } },
+      role: {
+        users: {
+          some: { id: userId }
+        }
+      }
+    }
+  })
+  return count > 0
+}
+
+/**
+ * Check if user has ALL of the specified permissions
+ */
+const checkUserAllPermissions = async (
+  userId: number,
+  permissionNames: string[]
+): Promise<boolean> => {
+  // Count how many of the required permissions the user has
+  const userPermissions = await prisma.rolePermission.findMany({
+    where: {
+      permission: { name: { in: permissionNames } },
+      role: {
+        users: {
+          some: { id: userId }
+        }
+      }
+    },
+    select: {
+      permission: { select: { name: true } }
+    },
+    distinct: ['permissionId']
+  })
+
+  // Check if user has all required permissions
+  const userPermissionNames = userPermissions.map((p) => p.permission.name)
+  return permissionNames.every((name) => userPermissionNames.includes(name))
+}
+
 export const permissionModel = {
   findAll,
   findById,
@@ -107,5 +155,7 @@ export const permissionModel = {
   update,
   countRoles,
   deleteById,
-  checkUserPermission
+  checkUserPermission,
+  checkUserAnyPermission,
+  checkUserAllPermissions
 }
