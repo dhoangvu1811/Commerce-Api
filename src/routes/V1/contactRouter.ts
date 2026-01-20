@@ -13,7 +13,12 @@ const router: Router = express.Router()
 // Public: Gửi liên hệ
 router.post('/', contactValidation.createContact, contactController.sendContact)
 
-// Protected (Admin): Xem danh sách liên hệ
-router.get('/', authMiddleware.verifyToken, contactController.getContacts)
+// Protected (Admin): Xem danh sách liên hệ - requires manage_contacts permission
+router.get(
+  '/',
+  authMiddleware.verifyToken,
+  authMiddleware.requirePermission('manage_contacts'),
+  contactController.getContacts
+)
 
 export const contactRouter = router

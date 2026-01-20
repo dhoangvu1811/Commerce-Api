@@ -17,8 +17,11 @@ RouterInstance.get('/details/:id', productController.getDetails)
 RouterInstance.get('/getAll', productController.getProducts)
 RouterInstance.get('/getAllType', productController.getAllTypes)
 
-// Protected routes - yêu cầu xác thực và quyền admin
-RouterInstance.use(authMiddleware.verifyToken, authMiddleware.verifyAdmin)
+// Protected routes - requires manage_products permission
+RouterInstance.use(
+  authMiddleware.verifyToken,
+  authMiddleware.requirePermission('manage_products')
+)
 
 // Admin-only routes - quản lý sản phẩm
 RouterInstance.post(

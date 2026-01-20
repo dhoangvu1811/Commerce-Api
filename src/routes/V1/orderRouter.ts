@@ -39,45 +39,45 @@ RouterInstance.post(
   orderController.userCancel
 )
 
-// Admin routes - admin luôn active, chỉ cần verify admin
+// Admin routes - requires manage_orders permission
 RouterInstance.get(
   '/all',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderController.adminGetOrders
 )
 RouterInstance.get(
   '/admin/details/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.validateOrderId,
   orderController.adminGetDetails
 )
 RouterInstance.put(
   '/admin/update/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.updateStatus,
   orderController.adminUpdateStatus
 )
 RouterInstance.put(
   '/admin/update-payment/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.updatePaymentStatus,
   orderController.adminUpdatePaymentStatus
 )
 RouterInstance.post(
   '/admin/mark-paid/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.validateOrderId,
   orderController.adminMarkPaid
 )
 RouterInstance.post(
   '/admin/cancel/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.validateOrderId,
   orderController.adminCancel
 )
 RouterInstance.get(
   '/admin/logs/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_orders'),
   orderValidation.validateOrderId,
   orderController.adminGetOrderLogs
 )

@@ -98,19 +98,23 @@ RouterInstance.use(authMiddleware.verifySession) // Kiểm tra session có còn 
 // Routes không yêu cầu active user
 RouterInstance.get('/me', userController.getCurrentUser)
 
-// Admin routes - chỉ admin mới có quyền (admin luôn active)
-RouterInstance.get('/all', authMiddleware.verifyAdmin, userController.getUsers)
+// Admin routes - requires manage_users permission
+RouterInstance.get(
+  '/all',
+  authMiddleware.requirePermission('manage_users'),
+  userController.getUsers
+)
 
 // Lấy users với session summary cho table overview
 RouterInstance.get(
   '/overview',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userController.getUsersWithSessionSummary
 )
 
 RouterInstance.post(
   '/create',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.createUserByAdmin,
   userController.createUserByAdmin
 )
@@ -123,36 +127,36 @@ RouterInstance.get(
 
 RouterInstance.put(
   '/update/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.updateUserByAdmin,
   userController.updateUserByAdmin
 )
 
 RouterInstance.delete(
   '/delete/:id',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.deleteUser,
   userController.deleteUser
 )
 
 RouterInstance.post(
   '/delete-multiple',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.deleteMultipleUsers,
   userController.deleteMultipleUsers
 )
 
-// User activation/deactivation routes - chỉ admin mới có quyền
+// User activation/deactivation routes - requires manage_users permission
 RouterInstance.patch(
   '/activate/:userId',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.userActivation,
   userController.activateUser
 )
 
 RouterInstance.patch(
   '/deactivate/:userId',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.userActivation,
   userController.deactivateUser
 )
@@ -165,24 +169,24 @@ RouterInstance.patch(
   userController.changeUserRole
 )
 
-// Session management routes - Admin
+// Session management routes - requires manage_users permission
 RouterInstance.post(
   '/revoke-session',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.revokeSession,
   userController.revokeUserSession
 )
 
 RouterInstance.delete(
   '/revoke-all-sessions/:userId',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.revokeAllSessions,
   userController.revokeAllUserSessions
 )
 
 RouterInstance.get(
   '/sessions/:userId',
-  authMiddleware.verifyAdmin,
+  authMiddleware.requirePermission('manage_users'),
   userValidation.getUserSessions,
   userController.getUserSessions
 )
