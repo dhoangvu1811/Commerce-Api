@@ -15,6 +15,7 @@ import {
   AccountType
 } from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
+import { roleModel } from '~/models/roleModel.js'
 import { prisma } from '~/config/prisma.js'
 import bcrypt from 'bcrypt'
 import { JwtProvider } from '~/providers/JwtProvider.js'
@@ -895,6 +896,67 @@ const verifyUserAccount = async (
   }
 }
 
+/**
+ * Change user role (Admin only)
+ * Không cho phép thay đổi role của chính mình hoặc của admin khác
+ */
+const changeUserRole = async (
+  targetUserId: string,
+  newRoleId: number,
+  currentUserId: string
+): Promise<{
+  user: UserResponseType
+  newRole: { id: number; name: string }
+}> => {
+  const targetId = parseUserId(targetUserId)
+  const currentId = parseUserId(currentUserId)
+
+  // Không cho thay đổi role của chính mình
+  if (targetId === currentId) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Bạn không thể thay đổi role của chính mình'
+    )
+  }
+
+  // Kiểm tra user tồn tại
+  const user = await userModel.findOneById(targetId)
+  if (!user) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy user')
+  }
+
+  const oldRoleId = user.roleId
+
+  // Kiểm tra role mới tồn tại
+  const newRole = await roleModel.findById(newRoleId)
+  if (!newRole) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Role không tồn tại')
+  }
+
+  // Không cho thay đổi role của admin khác (bảo vệ admin)
+  if (user.roleId === ADMIN_ROLE_ID && newRoleId !== ADMIN_ROLE_ID) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Không thể thay đổi role của admin khác'
+    )
+  }
+
+  // Cập nhật role
+  const updatedUser = await userModel.update(targetId, {
+    roleId: newRoleId
+  })
+
+  // Ghi audit log
+  console.log(
+    `[AUDIT] User ${currentId} changed role of user ${targetId} from ${oldRoleId} to ${newRoleId} (${newRole.name})`
+  )
+
+  return {
+    user: updatedUser as UserResponseType,
+    newRole: { id: newRole.id, name: newRole.name }
+  }
+}
+
 export const userService = {
   register,
   login,
@@ -913,5 +975,6 @@ export const userService = {
   hashPassword,
   comparePassword,
   sendVerificationEmail,
-  verifyUserAccount
+  verifyUserAccount,
+  changeUserRole
 }

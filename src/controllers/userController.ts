@@ -777,6 +777,31 @@ const revokeMySession = async (
   }
 }
 
+/**
+ * Change user role (Admin only)
+ */
+const changeUserRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string
+    const { roleId } = req.body
+    const currentUserId = req.jwtDecoded!._id
+
+    const result = await userService.changeUserRole(id, roleId, currentUserId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: `Đã thay đổi role thành "${result.newRole.name}" thành công`,
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -806,5 +831,6 @@ export const userController = {
   revokeAllUserSessions,
   getUserSessions,
   getCurrentUserSessions,
-  revokeMySession
+  revokeMySession,
+  changeUserRole
 }

@@ -157,6 +157,14 @@ RouterInstance.patch(
   userController.deactivateUser
 )
 
+// Change user role route - requires manage_users permission
+RouterInstance.patch(
+  '/:id/role',
+  authMiddleware.requirePermission('manage_users'),
+  userValidation.changeUserRole,
+  userController.changeUserRole
+)
+
 // Session management routes - Admin
 RouterInstance.post(
   '/revoke-session',

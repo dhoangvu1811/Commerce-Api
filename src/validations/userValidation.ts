@@ -499,6 +499,28 @@ const revokeMySession = async (
   next()
 }
 
+/** Schema thay đổi role của user */
+const changeUserRoleSchema = z.object({
+  roleId: z
+    .number({ required_error: 'Role ID là bắt buộc' })
+    .int('Role ID phải là số nguyên')
+    .positive('Role ID phải lớn hơn 0')
+})
+
+/** Middleware validate thay đổi role */
+const changeUserRole = (req: Request, _res: Response, next: NextFunction) => {
+  const result = changeUserRoleSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
+    )
+  req.body = result.data
+  next()
+}
+
 export const userValidation = {
   register,
   login,
@@ -514,5 +536,6 @@ export const userValidation = {
   revokeSession,
   revokeAllSessions,
   getUserSessions,
-  revokeMySession
+  revokeMySession,
+  changeUserRole
 }
