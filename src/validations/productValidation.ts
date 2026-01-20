@@ -7,10 +7,7 @@ import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import {
-  OBJECT_ID_RULE,
-  OBJECT_ID_RULE_MESSAGE
-} from '~/utils/zodValidators.js'
+import { ID_RULE, ID_RULE_MESSAGE } from '~/utils/zodValidators.js'
 
 /** Schema tạo product mới */
 const createProductSchema = z.object({
@@ -105,13 +102,13 @@ const updateProductSchema = z
 const deleteProductSchema = z.object({
   id: z
     .string({ required_error: 'ID sản phẩm là bắt buộc' })
-    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+    .regex(ID_RULE, ID_RULE_MESSAGE)
 })
 
 /** Schema xóa nhiều products */
 const deleteSelectedSchema = z.object({
   productIds: z
-    .array(z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE), {
+    .array(z.string().regex(ID_RULE, ID_RULE_MESSAGE), {
       required_error: 'Danh sách ID sản phẩm là bắt buộc'
     })
     .min(1, 'Phải chọn ít nhất một sản phẩm để xóa')

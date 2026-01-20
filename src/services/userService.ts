@@ -608,6 +608,10 @@ const createUserByAdmin = async (
       email: userData.email,
       password: hashedPassword,
       roleId,
+      phoneNumber: userData.phoneNumber || undefined,
+      address: userData.address || undefined,
+      dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
+      gender: userData.gender || undefined,
       status:
         userData.status !== undefined ? userData.status : UserStatus.active,
       emailVerified:
@@ -626,9 +630,21 @@ const createUserByAdmin = async (
 /**
  * Xóa user
  */
-const deleteUser = async (userId: string): Promise<DeleteResultInfo> => {
+const deleteUser = async (
+  userId: string,
+  currentUserId: string
+): Promise<DeleteResultInfo> => {
   try {
     const userIdNum = parseUserId(userId)
+    const currentUserIdNum = parseUserId(currentUserId)
+
+    // Không cho phép xóa chính mình
+    if (userIdNum === currentUserIdNum) {
+      throw new ApiError(
+        StatusCodes.BAD_REQUEST,
+        'Bạn không thể xóa chính tài khoản của mình'
+      )
+    }
 
     const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
@@ -650,7 +666,8 @@ const deleteUser = async (userId: string): Promise<DeleteResultInfo> => {
  * Xóa nhiều users
  */
 const deleteMultipleUsers = async (
-  userIds: string[]
+  userIds: string[],
+  currentUserId: string
 ): Promise<DeleteResultInfo> => {
   try {
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
@@ -661,12 +678,19 @@ const deleteMultipleUsers = async (
     }
 
     // Parse all IDs
+    const currentUserIdNum = parseUserId(currentUserId)
     const numberIds = userIds.map((id) => {
       const num = parseInt(id, 10)
       if (isNaN(num)) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
           'Một số người dùng được chọn không hợp lệ'
+        )
+      }
+      if (num === currentUserIdNum) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'Bạn không thể xóa chính tài khoản của mình trong danh sách'
         )
       }
       return num
@@ -925,8 +949,6 @@ const changeUserRole = async (
     throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy user')
   }
 
-  const oldRoleId = user.roleId
-
   // Kiểm tra role mới tồn tại
   const newRole = await roleModel.findById(newRoleId)
   if (!newRole) {
@@ -945,11 +967,6 @@ const changeUserRole = async (
   const updatedUser = await userModel.update(targetId, {
     roleId: newRoleId
   })
-
-  // Ghi audit log
-  console.log(
-    `[AUDIT] User ${currentId} changed role of user ${targetId} from ${oldRoleId} to ${newRoleId} (${newRole.name})`
-  )
 
   return {
     user: updatedUser as UserResponseType,

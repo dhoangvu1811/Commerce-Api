@@ -7,7 +7,7 @@ import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import { OBJECT_ID_RULE } from '~/utils/zodValidators.js'
+import { ID_RULE, ID_RULE_MESSAGE } from '~/utils/zodValidators.js'
 import {
   ALLOWED_PAYMENT_METHODS,
   ORDER_STATUS,
@@ -18,7 +18,7 @@ import {
 const orderItemSchema = z.object({
   productId: z
     .string({ required_error: 'Vui lòng chọn sản phẩm' })
-    .regex(OBJECT_ID_RULE, 'Sản phẩm không hợp lệ. Vui lòng thử lại.'),
+    .regex(ID_RULE, ID_RULE_MESSAGE),
   quantity: z
     .number({ required_error: 'Vui lòng nhập số lượng' })
     .int()
@@ -70,7 +70,7 @@ const createOrderSchema = z.object({
 const orderIdSchema = z.object({
   id: z
     .string({ required_error: 'Vui lòng chọn đơn hàng' })
-    .regex(OBJECT_ID_RULE, 'Đơn hàng không hợp lệ. Vui lòng thử lại.')
+    .regex(ID_RULE, 'Đơn hàng không hợp lệ. Vui lòng thử lại.')
 })
 
 /** Schema update order status */

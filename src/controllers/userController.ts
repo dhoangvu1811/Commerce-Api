@@ -15,7 +15,7 @@ import { WEBSITE_DOMAIN } from '~/utils/constants.js'
 import { env } from '~/config/environment.js'
 import { sessionModel } from '~/models/sessionModel.js'
 import ms from 'ms'
-import type { User, UserRole } from '~/types/user.types.js'
+import type { User, UserRole, UserStatus } from '~/types/user.types.js'
 
 // Request type đã được mở rộng trong ~/types/express.d.ts với jwtDecoded và file
 
@@ -248,7 +248,7 @@ const deleteUser = async (
 ): Promise<void> => {
   try {
     const userId = String(req.params.id)
-    const result = await userService.deleteUser(userId)
+    const result = await userService.deleteUser(userId, req.jwtDecoded!._id)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -267,7 +267,10 @@ const deleteMultipleUsers = async (
 ): Promise<void> => {
   try {
     const { userIds } = req.body || {}
-    const result = await userService.deleteMultipleUsers(userIds)
+    const result = await userService.deleteMultipleUsers(
+      userIds,
+      req.jwtDecoded!._id
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -285,11 +288,11 @@ const getUsers = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
+    const { page, itemsPerPage, search, role, status, sort } = req.query || {}
     const queryFilter = {
       search: search as string | undefined,
       role: role as UserRole | undefined,
-      isActive: isActive as string | undefined,
+      status: status as UserStatus | undefined,
       sort: sort as string | undefined
     }
 
@@ -316,11 +319,11 @@ const getUsersWithSessionSummary = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
+    const { page, itemsPerPage, search, role, status, sort } = req.query || {}
     const queryFilter = {
       search: search as string | undefined,
       role: role as UserRole | undefined,
-      isActive: isActive as string | undefined,
+      status: status as UserStatus | undefined,
       sort: sort as string | undefined
     }
 

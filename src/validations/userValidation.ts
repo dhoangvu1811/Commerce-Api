@@ -8,8 +8,8 @@ import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import {
-  OBJECT_ID_RULE,
-  OBJECT_ID_RULE_MESSAGE,
+  ID_RULE,
+  ID_RULE_MESSAGE,
   EMAIL_RULE,
   EMAIL_RULE_MESSAGE,
   PASSWORD_RULE,
@@ -143,13 +143,13 @@ const updatePasswordSchema = z
 const deleteUserSchema = z.object({
   id: z
     .string({ required_error: 'ID người dùng là bắt buộc' })
-    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+    .regex(ID_RULE, ID_RULE_MESSAGE)
 })
 
 /** Schema xóa nhiều users */
 const deleteMultipleUsersSchema = z.object({
   userIds: z
-    .array(z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE), {
+    .array(z.string().regex(ID_RULE, ID_RULE_MESSAGE), {
       required_error: 'Danh sách ID người dùng là bắt buộc'
     })
     .min(1, 'Phải chọn ít nhất 1 người dùng để xóa')
@@ -164,7 +164,7 @@ const updateUserByAdminSchema = z
       .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
       .transform((val) => val.toLowerCase().trim())
       .optional(),
-    phone: z
+    phoneNumber: z
       .string()
       .regex(PHONE_RULE)
       .min(10)
@@ -176,7 +176,7 @@ const updateUserByAdminSchema = z
     dateOfBirth: nullableDateSchema.optional(),
     gender: z.enum(['male', 'female', 'other', '']).optional(),
     role: z.enum(['admin', 'user']).optional(),
-    isActive: z.boolean().optional(),
+    status: z.enum(['active', 'inactive']).optional(),
     emailVerified: z.boolean().optional()
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -194,7 +194,7 @@ const createUserByAdminSchema = z.object({
   password: z
     .string({ required_error: 'Mật khẩu là bắt buộc' })
     .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
-  phone: z
+  phoneNumber: z
     .string()
     .regex(PHONE_RULE)
     .min(10)
@@ -204,8 +204,8 @@ const createUserByAdminSchema = z.object({
   address: z.string().max(500).or(z.literal('')).optional(),
   dateOfBirth: nullableDateSchema.optional(),
   gender: z.enum(['male', 'female', 'other', '']).optional(),
-  role: z.enum(['admin', 'user']).default('user').optional(),
-  isActive: z.boolean().default(true).optional(),
+  role: z.enum(['admin', 'user', 'staff']).default('user').optional(),
+  status: z.enum(['active', 'inactive']).default('active').optional(),
   emailVerified: z.boolean().default(false).optional()
 })
 
@@ -213,7 +213,7 @@ const createUserByAdminSchema = z.object({
 const userActivationSchema = z.object({
   userId: z
     .string({ required_error: 'User ID là bắt buộc' })
-    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+    .regex(ID_RULE, ID_RULE_MESSAGE)
 })
 
 /** Schema gửi email xác minh */
@@ -244,7 +244,7 @@ const revokeSessionSchema = z.object({
 const userIdParamSchema = z.object({
   userId: z
     .string({ required_error: 'UserId là bắt buộc' })
-    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+    .regex(ID_RULE, ID_RULE_MESSAGE)
 })
 
 // ============ Middleware Functions ============

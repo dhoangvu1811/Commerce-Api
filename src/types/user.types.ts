@@ -26,6 +26,11 @@ export type Gender = PrismaGender
 export type AccountType = PrismaAccountType
 
 /**
+ * User status (re-export from Prisma)
+ */
+export { UserStatus }
+
+/**
  * User entity (PostgreSQL/Prisma)
  * Matches Prisma generated User type with some additions for API compatibility
  */
@@ -82,8 +87,8 @@ export interface RegisterInput {
   name: string
   email: string
   password: string
-  confirmPassword: string
-  phone?: string
+  confirmPassword?: string
+  phoneNumber?: string
   address?: string
   dateOfBirth?: string | Date | null
   gender?: Gender

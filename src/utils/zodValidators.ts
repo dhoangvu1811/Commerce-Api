@@ -49,10 +49,13 @@ export const phoneSchema = z
   .or(z.literal(''))
 
 /**
- * RegExp constants (để tương thích với code cũ)
+ * RegExp constants
  */
-export const OBJECT_ID_RULE = /^[0-9a-fA-F]{24}$/ // Legacy MongoDB ObjectId
-export const INTEGER_ID_RULE = /^\d+$/ // PostgreSQL integer ID
+export const OBJECT_ID_RULE = /^[0-9a-fA-F]{24}$/ // Legacy MongoDB ObjectId (Deprecated)
+// PostgreSQL integer ID rule (matches string containing only digits)
+export const INTEGER_ID_RULE = /^\d+$/
+export const ID_RULE = INTEGER_ID_RULE // Generic ID rule for PostgreSQL
+
 export const EMAIL_RULE = /^\S+@\S+\.\S+$/
 export const PASSWORD_RULE = /^(?=.*[a-zA-Z])(?=.*\d)[A-Za-z\d\W]{8,256}$/
 export const PHONE_RULE = /^[0-9+\-\s()]+$/
@@ -62,6 +65,7 @@ export const PHONE_RULE = /^[0-9+\-\s()]+$/
  */
 export const OBJECT_ID_RULE_MESSAGE =
   'Thông tin không hợp lệ. Vui lòng thử lại.'
+export const ID_RULE_MESSAGE = 'ID không hợp lệ. ID phải là số nguyên.'
 export const EMAIL_RULE_MESSAGE = 'Email không hợp lệ. Ví dụ: ten@email.com'
 export const PASSWORD_RULE_MESSAGE =
   'Mật khẩu phải có ít nhất 8 ký tự, bao gồm chữ cái và số.'
