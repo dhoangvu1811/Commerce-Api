@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /**
- * Session Service
+ * Session Service - Prisma Version
  * Xử lý logic business cho session management
  */
 
@@ -20,6 +20,17 @@ import type {
   RevokeSessionResponse,
   RevokeAllSessionsResponse
 } from '~/types/session.types.js'
+
+/**
+ * Parse userId string to number
+ */
+const parseUserId = (userId: string): number => {
+  const id = parseInt(userId, 10)
+  if (isNaN(id)) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'User ID không hợp lệ')
+  }
+  return id
+}
 
 /**
  * Revoke một session cụ thể
@@ -50,10 +61,10 @@ const revokeUserSession = async (
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Phiên đăng nhập đã hết hạn')
     }
 
-    // Revoke session
+    // Revoke session - Prisma returns Session | null
     const result = await sessionModel.revokeSession(sessionId)
 
-    if (result.modifiedCount === 0) {
+    if (result === null) {
       throw new ApiError(
         StatusCodes.INTERNAL_SERVER_ERROR,
         'Không thể thu hồi phiên đăng nhập'
@@ -77,19 +88,21 @@ const revokeAllUserSessions = async (
   userId: string
 ): Promise<RevokeAllSessionsResponse> => {
   try {
+    const userIdNum = parseUserId(userId)
+
     // Verify user tồn tại
-    const user = await userModel.findOneById(userId)
+    const user = await userModel.findOneById(userIdNum)
     if (!user) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Revoke tất cả sessions của user
-    const result = await sessionModel.revokeAllUserSessions(userId)
+    // Revoke tất cả sessions của user - Prisma returns { count }
+    const result = await sessionModel.revokeAllUserSessions(userIdNum)
 
     return {
       userId,
-      revokedSessions: result.modifiedCount,
-      message: `Đã thu hồi ${result.modifiedCount} phiên đăng nhập. User sẽ bị logout trong vòng 5 phút`
+      revokedSessions: result.count,
+      message: `Đã thu hồi ${result.count} phiên đăng nhập. User sẽ bị logout trong vòng 5 phút`
     }
   } catch (error) {
     throw error
@@ -103,14 +116,16 @@ const getUserSessions = async (
   userId: string
 ): Promise<GetUserSessionsResponse> => {
   try {
+    const userIdNum = parseUserId(userId)
+
     // Verify user tồn tại
-    const user = await userModel.findOneById(userId)
+    const user = await userModel.findOneById(userIdNum)
     if (!user) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
     // Lấy tất cả sessions của user (bao gồm cả inactive và hết hạn) để tracking
-    const sessions = await sessionModel.findAllSessionsByUserId(userId)
+    const sessions = await sessionModel.findAllSessionsByUserId(userIdNum)
 
     // Loại bỏ refreshToken khỏi response vì lý do bảo mật và thêm thông tin tracking
     const safeSessions: SafeSessionInfo[] = sessions.map((session) => {
@@ -130,8 +145,8 @@ const getUserSessions = async (
 
       return {
         sessionId: session.sessionId,
-        deviceInfo: session.deviceInfo,
-        ipAddress: session.ipAddress,
+        deviceInfo: session.deviceInfo || '',
+        ipAddress: session.ipAddress || '',
         createdAt: session.createdAt,
         expiresAt: session.expiresAt,
         logoutAt: session.logoutAt,
@@ -179,14 +194,16 @@ const getCurrentUserSessions = async (
   currentSessionId: string | null = null
 ): Promise<GetCurrentUserSessionsResponse> => {
   try {
+    const userIdNum = parseUserId(userId)
+
     // Lấy tất cả sessions active của user hiện tại
-    const sessions = await sessionModel.findByUserId(userId)
+    const sessions = await sessionModel.findByUserId(userIdNum)
 
     // Loại bỏ refreshToken khỏi response và highlight current session
     const safeSessions: CurrentUserSession[] = sessions.map((session) => ({
       sessionId: session.sessionId,
-      deviceInfo: session.deviceInfo,
-      ipAddress: session.ipAddress,
+      deviceInfo: session.deviceInfo || '',
+      ipAddress: session.ipAddress || '',
       createdAt: session.createdAt,
       expiresAt: session.expiresAt,
       isActive: session.isActive,
@@ -221,22 +238,34 @@ const getUsersWithSessionSummary = async (
     // Lấy session summary cho từng user
     const usersWithSessions: UserWithSessionSummary[] = await Promise.all(
       usersResult.users.map(async (user) => {
+        // Cast to access Prisma User fields
+        const prismaUser = user as unknown as {
+          id: number
+          name: string
+          phoneNumber?: string
+          email: string
+          isActive: boolean
+          emailVerified: boolean
+          avatar?: string
+          lastLogin?: Date | null
+        }
+
         const sessionSummary = await sessionModel.getSessionsSummaryByUserId(
-          user._id!.toString()
+          prismaUser.id
         )
 
         return {
-          _id: user._id,
-          name: user.name,
-          phone: user.phone || '',
-          email: user.email,
-          isActive: user.isActive,
-          emailVerified: user.emailVerified,
-          avatar: user.avatar || '',
-          status: user.isActive ? 'Hoạt động' : 'Không hoạt động',
+          _id: prismaUser.id, // Map id to _id for backward compatibility
+          name: prismaUser.name,
+          phone: prismaUser.phoneNumber || '',
+          email: prismaUser.email,
+          isActive: prismaUser.isActive,
+          emailVerified: prismaUser.emailVerified,
+          avatar: prismaUser.avatar || '',
+          status: prismaUser.isActive ? 'Hoạt động' : 'Không hoạt động',
           totalSessions: sessionSummary.totalSessions,
           activeSessions: sessionSummary.activeSessions,
-          lastLogin: user.lastLogin
+          lastLogin: prismaUser.lastLogin ?? null
         }
       })
     )
@@ -258,6 +287,8 @@ const revokeMySession = async (
   sessionId: string
 ): Promise<RevokeSessionResponse> => {
   try {
+    const userIdNum = parseUserId(userId)
+
     // Tìm session bất kể trạng thái để verify tồn tại
     const session = await sessionModel.findBySessionIdAny(sessionId)
     if (!session) {
@@ -268,7 +299,7 @@ const revokeMySession = async (
     }
 
     // Kiểm tra session có thuộc về user hiện tại không
-    if (session.userId !== userId) {
+    if (session.userId !== userIdNum) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         'Bạn không có quyền thu hồi phiên đăng nhập này'
@@ -288,10 +319,10 @@ const revokeMySession = async (
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Phiên đăng nhập đã hết hạn')
     }
 
-    // Revoke session
+    // Revoke session - Prisma returns Session | null
     const result = await sessionModel.revokeSession(sessionId)
 
-    if (result.modifiedCount === 0) {
+    if (result === null) {
       throw new ApiError(
         StatusCodes.INTERNAL_SERVER_ERROR,
         'Không thể thu hồi phiên đăng nhập'

@@ -1,32 +1,31 @@
 /**
  * Helper Functions
- * Các hàm tiện ích cho business logic
+ * Các hàm tiện ích cho business logic - Prisma Version
  */
 
-import type { OrderStatus, PaymentStatus, Order } from '~/types/order.types.js'
+import {
+  OrderStatus,
+  PaymentStatus,
+  PaymentMethod,
+  VoucherType
+} from '../generated/prisma/index.js'
+import type { Order } from '~/types/order.types.js'
 import type { Voucher } from '~/types/voucher.types.js'
 
 /** Định nghĩa valid transitions cho order status */
 type OrderStatusTransitions = Record<OrderStatus, readonly OrderStatus[]>
 
 const validOrderStatusTransitions: OrderStatusTransitions = {
-  PENDING: ['CONFIRMED', 'CANCELLED'],
-  CONFIRMED: ['PROCESSING', 'CANCELLED'],
-  PROCESSING: ['PACKED', 'CANCELLED'],
-  PACKED: ['SHIPPED', 'CANCELLED'],
-  SHIPPED: ['DELIVERED', 'RETURNED'],
-  DELIVERED: ['COMPLETED', 'RETURNED'],
-  COMPLETED: ['RETURNED'], // Cho phép trả hàng sau khi hoàn thành
-  CANCELLED: [], // final state
-  RETURNED: ['REFUNDED'],
-  REFUNDED: [] // final state
+  [OrderStatus.PENDING]: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+  [OrderStatus.CONFIRMED]: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  [OrderStatus.PROCESSING]: [OrderStatus.SHIPPING, OrderStatus.CANCELLED],
+  [OrderStatus.SHIPPING]: [OrderStatus.DELIVERED],
+  [OrderStatus.DELIVERED]: [], // final for success
+  [OrderStatus.CANCELLED]: [] // final for failure
 }
 
 /**
  * Kiểm tra chuyển đổi trạng thái đơn hàng hợp lệ
- * @param {OrderStatus} fromStatus - Trạng thái hiện tại
- * @param {OrderStatus} toStatus - Trạng thái muốn chuyển đến
- * @returns {boolean} Có hợp lệ hay không
  */
 export const isValidStatusTransition = (
   fromStatus: OrderStatus,
@@ -39,20 +38,25 @@ export const isValidStatusTransition = (
 type PaymentStatusTransitions = Record<PaymentStatus, readonly PaymentStatus[]>
 
 const validPaymentStatusTransitions: PaymentStatusTransitions = {
-  PENDING: ['PROCESSING', 'PAID', 'FAILED', 'EXPIRED', 'CANCELLED'],
-  PROCESSING: ['PAID', 'FAILED', 'CANCELLED'],
-  PAID: ['REFUNDED'], // Chỉ qua /admin/cancel, không được set trực tiếp
-  FAILED: ['PENDING', 'CANCELLED'], // allow retry
-  EXPIRED: ['CANCELLED'],
-  CANCELLED: [], // final state
-  REFUNDED: [] // final state
+  [PaymentStatus.PENDING]: [
+    PaymentStatus.PROCESSING,
+    PaymentStatus.PAID,
+    PaymentStatus.FAILED,
+    PaymentStatus.CANCELLED
+  ],
+  [PaymentStatus.PROCESSING]: [
+    PaymentStatus.PAID,
+    PaymentStatus.FAILED,
+    PaymentStatus.CANCELLED
+  ],
+  [PaymentStatus.PAID]: [PaymentStatus.REFUNDED],
+  [PaymentStatus.FAILED]: [PaymentStatus.PENDING, PaymentStatus.CANCELLED],
+  [PaymentStatus.REFUNDED]: [],
+  [PaymentStatus.CANCELLED]: []
 }
 
 /**
  * Kiểm tra chuyển đổi trạng thái thanh toán hợp lệ
- * @param {PaymentStatus} fromPaymentStatus - Trạng thái thanh toán hiện tại
- * @param {PaymentStatus} toPaymentStatus - Trạng thái thanh toán muốn chuyển
- * @returns {boolean} Có hợp lệ hay không
  */
 export const isValidPaymentStatusTransition = (
   fromPaymentStatus: PaymentStatus,
@@ -67,25 +71,42 @@ export const isValidPaymentStatusTransition = (
 
 /**
  * Kiểm tra có phải phương thức COD không
- * @param {string} paymentMethod - Phương thức thanh toán
- * @returns {boolean} Có phải COD hay không
  */
 export const isCODPayment = (paymentMethod: string = ''): boolean => {
+  if (paymentMethod === PaymentMethod.COD) return true
   const method = paymentMethod.toLowerCase()
   return method === 'cod' || method.includes('cod') || method.includes('cash')
 }
 
 /**
  * Kiểm tra có phải thanh toán Online không
- * @param {string} paymentMethod - Phương thức thanh toán
- * @returns {boolean} Có phải online payment hay không
  */
 export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
+  if (
+    (
+      [
+        PaymentMethod.VNPAY,
+        PaymentMethod.MOMO,
+        PaymentMethod.ZALOPAY,
+        PaymentMethod.BANK_TRANSFER
+      ] as PaymentMethod[]
+    ).includes(paymentMethod as PaymentMethod)
+  ) {
+    return true
+  }
+
   const method = paymentMethod.toLowerCase()
   return (
-    ['card', 'ewallet', 'bank', 'credit', 'debit', 'momo', 'zalopay'].some(
-      (keyword) => method.includes(keyword)
-    ) ||
+    [
+      'card',
+      'ewallet',
+      'bank',
+      'credit',
+      'debit',
+      'momo',
+      'zalopay',
+      'vnpay'
+    ].some((keyword) => method.includes(keyword)) ||
     (!isCODPayment(paymentMethod) && paymentMethod.trim() !== '')
   )
 }
@@ -99,9 +120,6 @@ interface StatusUpdateResult {
 
 /**
  * Kiểm tra có thể update status hay không dựa trên payment method
- * @param {Order | null} order - Đơn hàng
- * @param {OrderStatus} newStatus - Trạng thái mới
- * @returns {StatusUpdateResult} Kết quả kiểm tra
  */
 export const canUpdateStatus = (
   order: Order | null,
@@ -109,13 +127,15 @@ export const canUpdateStatus = (
 ): StatusUpdateResult => {
   if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
 
-  const { paymentStatus, paymentMethod } = order
+  const latestPayment = order.payments?.[0]
+  const paymentStatus = latestPayment?.status || PaymentStatus.PENDING
+  const paymentMethod = latestPayment?.paymentMethod || ''
 
   // Các status không cần kiểm tra payment
   const freeStatusUpdates: readonly OrderStatus[] = [
-    'PENDING',
-    'CONFIRMED',
-    'CANCELLED'
+    OrderStatus.PENDING,
+    OrderStatus.CONFIRMED,
+    OrderStatus.CANCELLED
   ]
   if (freeStatusUpdates.includes(newStatus)) {
     return { allowed: true, reason: null }
@@ -130,26 +150,22 @@ export const canUpdateStatus = (
     }
   }
 
-  // Online Payment: Phải markPaid trước mới được update status
+  // Online Payment: Phải markPaid trước mới được update status (except for PENDING/CONFIRMED)
   if (isOnlinePayment(paymentMethod)) {
     const requiresPaymentStatuses: readonly OrderStatus[] = [
-      'PROCESSING',
-      'PACKED',
-      'SHIPPED',
-      'DELIVERED',
-      'COMPLETED'
+      OrderStatus.PROCESSING,
+      OrderStatus.SHIPPING,
+      OrderStatus.DELIVERED
     ]
 
     if (
       requiresPaymentStatuses.includes(newStatus) &&
-      paymentStatus !== 'PAID'
+      paymentStatus !== PaymentStatus.PAID
     ) {
       const statusNames: Record<string, string> = {
-        PROCESSING: 'Đang xử lý',
-        PACKED: 'Đã đóng gói',
-        SHIPPED: 'Đang giao hàng',
-        DELIVERED: 'Đã giao hàng',
-        COMPLETED: 'Hoàn thành'
+        [OrderStatus.PROCESSING]: 'Đang xử lý',
+        [OrderStatus.SHIPPING]: 'Đang giao hàng',
+        [OrderStatus.DELIVERED]: 'Đã giao hàng'
       }
       const statusName = statusNames[newStatus] || newStatus
       return {
@@ -164,10 +180,6 @@ export const canUpdateStatus = (
 
 /**
  * Kiểm tra tính nhất quán giữa status và paymentStatus
- * @param {OrderStatus} status - Trạng thái đơn hàng
- * @param {PaymentStatus} paymentStatus - Trạng thái thanh toán
- * @param {string} paymentMethod - Phương thức thanh toán
- * @returns {boolean} Có nhất quán hay không
  */
 export const isConsistentStatusPayment = (
   status: OrderStatus,
@@ -176,44 +188,32 @@ export const isConsistentStatusPayment = (
 ): boolean => {
   // Các quy tắc nhất quán
   const rules: Array<() => boolean> = [
-    // Rule 1: COMPLETED phải đã PAID
-    () => (status === 'COMPLETED' ? paymentStatus === 'PAID' : true),
-
-    // Rule 2: Nếu đã PAID thì status phải >= CONFIRMED
-    () => (paymentStatus === 'PAID' ? !['PENDING'].includes(status) : true),
-
-    // Rule 3: REFUNDED logic
+    // Rule 1: Nếu đã PAID thì status phải >= CONFIRMED
     () =>
-      paymentStatus === 'REFUNDED'
-        ? ['CANCELLED', 'REFUNDED'].includes(status)
+      paymentStatus === PaymentStatus.PAID
+        ? !([OrderStatus.PENDING] as OrderStatus[]).includes(status)
         : true,
-    () => (status === 'REFUNDED' ? paymentStatus === 'REFUNDED' : true),
 
-    // Rule 4: Online Payment logic - Phải PAID trước khi PROCESSING/PACKED/SHIPPED/DELIVERED
+    // Rule 2: REFUNDED logic
+    () =>
+      paymentStatus === PaymentStatus.REFUNDED
+        ? [OrderStatus.CANCELLED as OrderStatus].includes(status)
+        : true,
+
+    // Rule 3: Online Payment logic - Phải PAID trước khi PROCESSING/SHIPPING/DELIVERED
     () => {
       if (isOnlinePayment(paymentMethod)) {
         const requiresPaymentStatuses: readonly OrderStatus[] = [
-          'PROCESSING',
-          'PACKED',
-          'SHIPPED',
-          'DELIVERED',
-          'COMPLETED'
+          OrderStatus.PROCESSING,
+          OrderStatus.SHIPPING,
+          OrderStatus.DELIVERED
         ]
         if (
-          requiresPaymentStatuses.includes(status) &&
-          paymentStatus === 'PENDING'
+          (requiresPaymentStatuses as OrderStatus[]).includes(status) &&
+          paymentStatus === PaymentStatus.PENDING
         ) {
           return false
         }
-      }
-      return true
-    },
-
-    // Rule 5: COD logic - Cho phép DELIVERED + PENDING
-    () => {
-      if (isCODPayment(paymentMethod)) {
-        // COD có thể có status cao mà chưa thanh toán
-        return true
       }
       return true
     }
@@ -224,10 +224,6 @@ export const isConsistentStatusPayment = (
 
 /**
  * Tính tổng tiền theo line item
- * @param {number | string} price - Đơn giá
- * @param {number | string} discount - Phần trăm giảm giá
- * @param {number | string} quantity - Số lượng
- * @returns {number} Tổng tiền
  */
 export const calcLineTotal = (
   price: number | string,
@@ -248,9 +244,6 @@ interface VoucherApplyResult {
 
 /**
  * Áp dụng voucher vào đơn hàng
- * @param {Voucher | null} voucher - Voucher cần áp dụng
- * @param {number | string} subtotal - Tổng tiền trước giảm
- * @returns {VoucherApplyResult} Kết quả áp dụng
  */
 export const applyVoucher = (
   voucher: Voucher | null | undefined,
@@ -261,7 +254,7 @@ export const applyVoucher = (
   let discount = 0
   const subtotalNum = Number(subtotal)
 
-  if (voucher.type === 'percent') {
+  if (voucher.type === VoucherType.percent) {
     discount = (subtotalNum * Number(voucher.amount)) / 100
     if (voucher.maxDiscount && discount > Number(voucher.maxDiscount)) {
       discount = Number(voucher.maxDiscount)
@@ -276,7 +269,6 @@ export const applyVoucher = (
 
 /**
  * Tạo mã đơn hàng ngẫu nhiên
- * @returns {string} Mã đơn hàng (format: ORD + 6 số + 6 ký tự random)
  */
 export const generateOrderCode = (): string => {
   const timestamp = Date.now().toString().slice(-6) // Lấy 6 số cuối của timestamp
@@ -286,9 +278,6 @@ export const generateOrderCode = (): string => {
 
 /**
  * Kiểm tra có thể đánh dấu đã thanh toán hay không
- * @param {Order | null} order - Đơn hàng
- * @param {boolean} isAdmin - Có phải admin không
- * @returns {StatusUpdateResult} Kết quả kiểm tra
  */
 export const canMarkPaid = (
   order: Order | null,
@@ -296,7 +285,10 @@ export const canMarkPaid = (
 ): StatusUpdateResult => {
   if (!order) return { allowed: false, reason: 'Đơn hàng không tồn tại' }
 
-  const { status, paymentStatus, paymentMethod = '' } = order
+  const latestPayment = order.payments?.[0]
+  const status = order.status
+  const paymentStatus = latestPayment?.status || PaymentStatus.PENDING
+  const paymentMethod = latestPayment?.paymentMethod || ''
 
   // Chỉ admin mới có thể mark paid
   if (!isAdmin) {
@@ -306,21 +298,20 @@ export const canMarkPaid = (
     }
   }
 
-  // Không thể mark paid nếu đã cancelled/refunded
-  if (['CANCELLED', 'REFUNDED'].includes(status)) {
-    const statusNames: Record<string, string> = {
-      CANCELLED: 'đã hủy',
-      REFUNDED: 'đã hoàn tiền'
-    }
-    const statusName = statusNames[status] || status
+  // Không thể mark paid nếu đã cancelled
+  if (status === OrderStatus.CANCELLED) {
     return {
       allowed: false,
-      reason: `Không thể xác nhận thanh toán cho đơn hàng ${statusName}`
+      reason: `Không thể xác nhận thanh toán cho đơn hàng đã hủy`
     }
   }
 
   // Không thể mark paid nếu payment đã refunded/cancelled
-  if (['REFUNDED', 'CANCELLED'].includes(paymentStatus)) {
+  if (
+    (
+      [PaymentStatus.REFUNDED, PaymentStatus.CANCELLED] as PaymentStatus[]
+    ).includes(paymentStatus)
+  ) {
     const paymentStatusNames: Record<string, string> = {
       REFUNDED: 'đã hoàn tiền',
       CANCELLED: 'đã hủy thanh toán'
@@ -333,7 +324,7 @@ export const canMarkPaid = (
   }
 
   // Đã thanh toán rồi
-  if (paymentStatus === 'PAID') {
+  if (paymentStatus === PaymentStatus.PAID) {
     return {
       allowed: false,
       reason: 'Đơn hàng đã được thanh toán rồi'
@@ -341,7 +332,7 @@ export const canMarkPaid = (
   }
 
   // Logic đặc biệt cho COD: Có thể mark paid ngay cả khi DELIVERED
-  if (isCODPayment(paymentMethod) && status === 'DELIVERED') {
+  if (isCODPayment(paymentMethod) && status === OrderStatus.DELIVERED) {
     return {
       allowed: true,
       reason: null,
@@ -349,24 +340,8 @@ export const canMarkPaid = (
     }
   }
 
-  // Logic đặc biệt cho COD: Có thể mark paid khi COMPLETED (trường hợp đã giao nhưng admin chưa kịp mark paid)
-  if (
-    isCODPayment(paymentMethod) &&
-    status === 'COMPLETED' &&
-    paymentStatus === 'PENDING'
-  ) {
-    return {
-      allowed: true,
-      reason: null,
-      note: 'COD - Bổ sung xác nhận thanh toán'
-    }
-  }
-
-  // Với Online Payment: Không được mark paid nếu đã DELIVERED/COMPLETED (phải thanh toán trước)
-  if (
-    isOnlinePayment(paymentMethod) &&
-    ['DELIVERED', 'COMPLETED'].includes(status)
-  ) {
+  // Với Online Payment: Không được mark paid nếu đã DELIVERED (phải thanh toán trước)
+  if (isOnlinePayment(paymentMethod) && status === OrderStatus.DELIVERED) {
     return {
       allowed: false,
       reason:

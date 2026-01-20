@@ -7,10 +7,7 @@ import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import {
-  OBJECT_ID_RULE,
-  OBJECT_ID_RULE_MESSAGE
-} from '~/utils/zodValidators.js'
+import { ID_RULE, ID_RULE_MESSAGE } from '~/utils/zodValidators.js'
 
 /** Helper để xử lý date nullable - chấp nhận string từ FE */
 const nullableDateSchema = z.preprocess((val) => {
@@ -87,7 +84,7 @@ const updateVoucherSchema = z
 const deleteVoucherSchema = z.object({
   id: z
     .string({ required_error: 'ID voucher là bắt buộc' })
-    .regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE)
+    .regex(ID_RULE, ID_RULE_MESSAGE)
 })
 
 /** Schema xác minh voucher */
@@ -103,7 +100,7 @@ const verifyVoucherSchema = z.object({
 /** Schema xóa nhiều vouchers */
 const deleteMultipleSchema = z.object({
   voucherIds: z
-    .array(z.string().regex(OBJECT_ID_RULE, OBJECT_ID_RULE_MESSAGE), {
+    .array(z.string().regex(ID_RULE, ID_RULE_MESSAGE), {
       required_error: 'Danh sách ID voucher là bắt buộc'
     })
     .min(1, 'Phải chọn ít nhất 1 voucher để xóa')

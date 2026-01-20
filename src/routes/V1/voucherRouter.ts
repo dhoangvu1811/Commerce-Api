@@ -21,8 +21,11 @@ RouterInstance.post(
 // Public - danh sách voucher đang hoạt động
 RouterInstance.get('/active', voucherController.getActivePublic)
 
-// Admin management - yêu cầu xác thực và quyền admin
-RouterInstance.use(authMiddleware.verifyToken, authMiddleware.verifyAdmin)
+// Admin management - requires manage_vouchers permission
+RouterInstance.use(
+  authMiddleware.verifyToken,
+  authMiddleware.requirePermission('manage_vouchers')
+)
 
 RouterInstance.get('/all', voucherController.getVouchers)
 RouterInstance.get('/details/:id', voucherController.getDetails)

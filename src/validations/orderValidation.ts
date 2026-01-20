@@ -7,15 +7,18 @@ import { z } from 'zod'
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import { OBJECT_ID_RULE } from '~/utils/zodValidators.js'
-import { orderModel } from '~/models/orderModel.js'
-import { ALLOWED_PAYMENT_METHODS } from '~/utils/constants.js'
+import { ID_RULE, ID_RULE_MESSAGE } from '~/utils/zodValidators.js'
+import {
+  ALLOWED_PAYMENT_METHODS,
+  ORDER_STATUS,
+  PAYMENT_STATUS
+} from '~/utils/constants.js'
 
 /** Schema cho order item */
 const orderItemSchema = z.object({
   productId: z
     .string({ required_error: 'Vui lòng chọn sản phẩm' })
-    .regex(OBJECT_ID_RULE, 'Sản phẩm không hợp lệ. Vui lòng thử lại.'),
+    .regex(ID_RULE, ID_RULE_MESSAGE),
   quantity: z
     .number({ required_error: 'Vui lòng nhập số lượng' })
     .int()
@@ -67,23 +70,20 @@ const createOrderSchema = z.object({
 const orderIdSchema = z.object({
   id: z
     .string({ required_error: 'Vui lòng chọn đơn hàng' })
-    .regex(OBJECT_ID_RULE, 'Đơn hàng không hợp lệ. Vui lòng thử lại.')
+    .regex(ID_RULE, 'Đơn hàng không hợp lệ. Vui lòng thử lại.')
 })
 
 /** Schema update order status */
 const updateStatusSchema = z.object({
-  status: z.enum(
-    orderModel.ORDER_STATUS as unknown as readonly [string, ...string[]],
-    {
-      required_error: 'Vui lòng chọn trạng thái đơn hàng'
-    }
-  )
+  status: z.enum(ORDER_STATUS as unknown as readonly [string, ...string[]], {
+    required_error: 'Vui lòng chọn trạng thái đơn hàng'
+  })
 })
 
 /** Schema update payment status */
 const updatePaymentStatusSchema = z.object({
   paymentStatus: z.enum(
-    orderModel.PAYMENT_STATUS as unknown as readonly [string, ...string[]],
+    PAYMENT_STATUS as unknown as readonly [string, ...string[]],
     {
       required_error: 'Vui lòng chọn trạng thái thanh toán'
     }

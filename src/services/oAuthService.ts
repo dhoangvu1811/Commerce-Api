@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-non-null-assertion */
 /* eslint-disable indent */
 /**
- * OAuth Service
+ * OAuth Service - Prisma Version
  * Generic OAuth Service cho tất cả providers (Google, Facebook, v.v.)
  *
  * QUAN TRỌNG:
@@ -9,7 +9,12 @@
  * - Local registration users cần admin kích hoạt (isActive = false)
  */
 
-import { userModel } from '~/models/userModel.js'
+import {
+  userModel,
+  type User,
+  UserStatus,
+  AccountType
+} from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
 import { JwtProvider } from '~/providers/JwtProvider.js'
 import ApiError from '~/utils/ApiError.js'
@@ -17,7 +22,7 @@ import { StatusCodes } from 'http-status-codes'
 import { v4 as uuidv4 } from 'uuid'
 import ms from 'ms'
 import { env } from '~/config/environment.js'
-import type { User, UserResponse } from '~/types/user.types.js'
+import type { UserResponse, UserRole } from '~/types/user.types.js'
 
 /** OAuth provider types */
 type OAuthProviderType = 'GOOGLE' | 'FACEBOOK'
@@ -63,6 +68,9 @@ interface AuthTokensResponse {
   sessionId: string
   user: Partial<UserResponse>
 }
+
+// Default role ID for regular users
+const DEFAULT_USER_ROLE_ID = 2
 
 /**
  * Mapping các OAuth providers
@@ -157,46 +165,36 @@ const handleOAuth = async (
 
     if (existingUser) {
       // User đã tồn tại, cập nhật thông tin và đảm bảo active
-      const updateData: Partial<User> = {
+      const updateData: Record<string, unknown> = {
         name: normalizedProfile.displayName,
         avatar: normalizedProfile.avatar,
         emailVerified: true,
-        isActive: true, // OAuth users luôn được kích hoạt
-        lastLogin: new Date(),
-        updatedAt: new Date()
+        status: UserStatus.active, // OAuth users luôn được kích hoạt
+        lastLogin: new Date()
       }
 
       // Chỉ set typeAccount = provider nếu user chưa có password riêng
       if (existingUser.password === providerConfig.passwordPlaceholder) {
-        updateData.typeAccount = provider
+        updateData.typeAccount = provider as AccountType
       }
 
-      const updatedUser = await userModel.update(
-        existingUser._id!.toString(),
-        updateData
-      )
-      return updatedUser as User
+      const updatedUser = await userModel.update(existingUser.id, updateData)
+      if (!updatedUser) {
+        throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
+      }
+      return updatedUser
     } else {
       // Tạo user mới từ OAuth profile - luôn active
-      const newUserData: Partial<User> = {
+      const newUser = await userModel.createNew({
         name: normalizedProfile.displayName,
         email: normalizedProfile.email,
         password: providerConfig.passwordPlaceholder,
+        roleId: DEFAULT_USER_ROLE_ID,
         avatar: normalizedProfile.avatar,
         emailVerified: true,
-        role: 'user',
-        isActive: true, // OAuth users luôn được kích hoạt ngay
-        typeAccount: provider,
-        lastLogin: new Date(),
-        phone: '',
-        address: '',
-        dateOfBirth: null,
-        gender: '',
-        createdAt: new Date(),
-        updatedAt: new Date()
-      }
-
-      const newUser = await userModel.createNew(newUserData as User)
+        status: UserStatus.active, // OAuth users luôn được kích hoạt ngay
+        typeAccount: provider as AccountType
+      })
       return newUser as User
     }
   } catch (error) {
@@ -216,13 +214,23 @@ const generateAuthTokens = async (
     // Tạo sessionId unique
     const sessionId = uuidv4()
 
+    // Get role name from included relation (no separate query needed)
+    const roleName =
+      (user as unknown as { role: { name: string } }).role?.name || 'user'
+
     // Tạo tokens với sessionId
+    const tokenUserData = {
+      _id: String(user.id), // Convert to string for backward compatibility
+      email: user.email,
+      role: roleName as UserRole
+    }
+
     const accessToken = JwtProvider.generateAccessToken(
-      { _id: user._id!.toString(), email: user.email, role: user.role },
+      tokenUserData,
       sessionId
     )
     const refreshToken = JwtProvider.generateRefreshToken(
-      { _id: user._id!.toString(), email: user.email, role: user.role },
+      tokenUserData,
       sessionId
     )
 
@@ -232,13 +240,13 @@ const generateAuthTokens = async (
     const refreshTokenExpiresIn = ms(refreshExpiresInStr)
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
-    // Lưu session vào DB
+    // Lưu session vào DB - userId is now number
     await sessionModel.createNew({
       sessionId,
-      userId: user._id!.toString(),
+      userId: user.id, // Now number
       refreshToken,
-      deviceInfo: deviceInfo || 'OAuth Login',
-      ipAddress: ipAddress || '',
+      deviceInfo: deviceInfo || null,
+      ipAddress: ipAddress || null,
       expiresAt
     })
 
@@ -247,13 +255,14 @@ const generateAuthTokens = async (
       refreshToken,
       sessionId,
       user: {
-        _id: user._id,
+        _id: user.id, // Map id to _id for backward compatibility
         name: user.name,
         email: user.email,
-        avatar: user.avatar,
-        role: user.role,
-        typeAccount: user.typeAccount,
-        emailVerified: user.emailVerified
+        avatar: user.avatar || undefined,
+        role: roleName as UserRole,
+        typeAccount: user.typeAccount as AccountType,
+        emailVerified: user.emailVerified,
+        status: user.status as UserStatus
       }
     }
   } catch (error) {

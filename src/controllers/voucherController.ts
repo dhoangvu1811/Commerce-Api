@@ -32,7 +32,7 @@ const getDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const voucher = await voucherService.getDetails(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -50,7 +50,7 @@ const update = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const updated = await voucherService.update(id, req.body)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -68,7 +68,7 @@ const deleteVoucher = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const id = req.params.id!
+    const id = String(req.params.id)
     const result = await voucherService.deleteVoucher(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,

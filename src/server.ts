@@ -11,7 +11,7 @@ import express from 'express'
 import errorHandlingMiddleware from './middlewares/errorHandlingMiddleware.js'
 import { env } from './config/environment.js'
 import { APIs_V1 } from './routes/V1/index.js'
-import { CLOSE_DB, CONNECT_DB } from './config/mongodb.js'
+import { connectDB, disconnectDB } from './config/prisma.js'
 import cors from 'cors'
 import { corsOptions } from './config/cors.js'
 import '~/providers/passport.js'
@@ -67,8 +67,8 @@ const START_SERVER = (): void => {
   const gracefulShutdown = async (signal: string): Promise<void> => {
     console.log(`4. Server is shutting down... (${signal})`)
     try {
-      await CLOSE_DB()
-      console.log('5. Disconnected from MongoDB Cloud Atlas!')
+      await disconnectDB()
+      console.log('5. Disconnected from PostgreSQL!')
       process.exit(0)
     } catch (error) {
       console.error('Error closing database:', error)
@@ -88,9 +88,9 @@ const START_SERVER = (): void => {
  */
 ;(async (): Promise<void> => {
   try {
-    console.log('1. Connecting to MongoDB Cloud Atlas...')
-    await CONNECT_DB()
-    console.log('2. Connected to MongoDB Cloud Atlas!')
+    console.log('1. Connecting to PostgreSQL...')
+    await connectDB()
+    console.log('2. Connected to PostgreSQL!')
     START_SERVER()
   } catch (error) {
     console.error(error)

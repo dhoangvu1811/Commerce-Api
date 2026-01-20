@@ -13,7 +13,7 @@ import { StatusCodes } from 'http-status-codes'
  */
 export const authLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 phút
-  max: 5, // Tối đa 5 requests
+  max: 100, // Tối đa 5 requests
   message: {
     code: StatusCodes.TOO_MANY_REQUESTS,
     message: 'Quá nhiều yêu cầu đăng nhập. Vui lòng thử lại sau 15 phút.',

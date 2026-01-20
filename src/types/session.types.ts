@@ -2,14 +2,14 @@
  * Session type definitions
  */
 
-import type { ObjectId } from 'mongodb'
 import type { Timestamps } from './common.types.js'
 
 /**
- * Session document trong MongoDB
+ * Session entity (PostgreSQL/Prisma)
+ * Note: _id is string for backward compatibility with API responses
  */
 export interface Session extends Timestamps {
-  _id?: ObjectId
+  _id?: string | number
   sessionId: string
   userId: string
   refreshToken: string

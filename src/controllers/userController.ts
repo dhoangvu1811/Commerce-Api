@@ -15,7 +15,7 @@ import { WEBSITE_DOMAIN } from '~/utils/constants.js'
 import { env } from '~/config/environment.js'
 import { sessionModel } from '~/models/sessionModel.js'
 import ms from 'ms'
-import type { User, UserRole } from '~/types/user.types.js'
+import type { User, UserRole, UserStatus } from '~/types/user.types.js'
 
 // Request type đã được mở rộng trong ~/types/express.d.ts với jwtDecoded và file
 
@@ -120,7 +120,7 @@ const getDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -139,7 +139,7 @@ const getCurrentUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.jwtDecoded!._id
+    const userId = String(req.jwtDecoded!._id)
     const user = await userService.getDetails(userId)
 
     res.status(StatusCodes.OK).json({
@@ -158,7 +158,7 @@ const updateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const updatedUser = await userService.updateUser(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -207,7 +207,7 @@ const updateUserByAdmin = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
+    const userId = String(req.params.id)
     const updateData = { ...req.body }
 
     const updatedUser = await userService.updateUserByAdmin(userId, updateData)
@@ -228,7 +228,7 @@ const updatePassword = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.jwtDecoded!._id
+    const userId = String(req.jwtDecoded!._id)
     const updatedUser = await userService.updatePassword(userId, req.body)
 
     res.status(StatusCodes.OK).json({
@@ -247,8 +247,8 @@ const deleteUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.id!
-    const result = await userService.deleteUser(userId)
+    const userId = String(req.params.id)
+    const result = await userService.deleteUser(userId, req.jwtDecoded!._id)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -267,7 +267,10 @@ const deleteMultipleUsers = async (
 ): Promise<void> => {
   try {
     const { userIds } = req.body || {}
-    const result = await userService.deleteMultipleUsers(userIds)
+    const result = await userService.deleteMultipleUsers(
+      userIds,
+      req.jwtDecoded!._id
+    )
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -285,11 +288,11 @@ const getUsers = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
+    const { page, itemsPerPage, search, role, status, sort } = req.query || {}
     const queryFilter = {
       search: search as string | undefined,
       role: role as UserRole | undefined,
-      isActive: isActive as string | undefined,
+      status: status as UserStatus | undefined,
       sort: sort as string | undefined
     }
 
@@ -316,11 +319,11 @@ const getUsersWithSessionSummary = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, role, isActive, sort } = req.query || {}
+    const { page, itemsPerPage, search, role, status, sort } = req.query || {}
     const queryFilter = {
       search: search as string | undefined,
       role: role as UserRole | undefined,
-      isActive: isActive as string | undefined,
+      status: status as UserStatus | undefined,
       sort: sort as string | undefined
     }
 
@@ -453,7 +456,7 @@ const googleOAuthSuccess = async (
 
     // Sử dụng service để tạo JWT tokens với session tracking
     const authResult = await oAuthService.generateAuthTokens(
-      user,
+      user as unknown as Parameters<typeof oAuthService.generateAuthTokens>[0],
       deviceInfo,
       ipAddress
     )
@@ -530,7 +533,7 @@ const facebookOAuthSuccess = async (
 
     // Sử dụng service để tạo JWT tokens với session tracking
     const authResult = await oAuthService.generateAuthTokens(
-      user,
+      user as unknown as Parameters<typeof oAuthService.generateAuthTokens>[0],
       deviceInfo,
       ipAddress
     )
@@ -592,7 +595,7 @@ const activateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
 
     const activatedUser = await userService.activateUser(userId)
 
@@ -612,7 +615,7 @@ const deactivateUser = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
 
     const deactivatedUser = await userService.deactivateUser(userId)
 
@@ -699,7 +702,7 @@ const revokeAllUserSessions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
     const result = await sessionService.revokeAllUserSessions(userId)
 
     res.status(StatusCodes.OK).json({
@@ -719,7 +722,7 @@ const getUserSessions = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const userId = req.params.userId!
+    const userId = String(req.params.userId)
     const result = await sessionService.getUserSessions(userId)
 
     res.status(StatusCodes.OK).json({
@@ -777,6 +780,31 @@ const revokeMySession = async (
   }
 }
 
+/**
+ * Change user role (Admin only)
+ */
+const changeUserRole = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const id = req.params.id as string
+    const { roleId } = req.body
+    const currentUserId = req.jwtDecoded!._id
+
+    const result = await userService.changeUserRole(id, roleId, currentUserId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: `Đã thay đổi role thành "${result.newRole.name}" thành công`,
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const userController = {
   register,
   login,
@@ -806,5 +834,6 @@ export const userController = {
   revokeAllUserSessions,
   getUserSessions,
   getCurrentUserSessions,
-  revokeMySession
+  revokeMySession,
+  changeUserRole
 }

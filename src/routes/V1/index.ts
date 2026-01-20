@@ -10,7 +10,15 @@ import { productRoute } from './productRouter.js'
 import { userRoute } from './userRouter.js'
 import { voucherRoute } from './voucherRouter.js'
 import { orderRoute } from './orderRouter.js'
-import { GET_DB } from '~/config/mongodb.js'
+import { shippingAddressRouter } from './shippingAddressRouter.js'
+import { cartRouter } from './cartRouter.js'
+import { wishlistRouter } from './wishlistRouter.js'
+import { reviewRouter } from './reviewRouter.js'
+import { contactRouter } from './contactRouter.js'
+import { notificationRouter } from './notificationRouter.js'
+import { roleRoute } from './roleRouter.js'
+import { permissionRoute } from './permissionRouter.js'
+import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
 
@@ -22,8 +30,8 @@ RouterInstance.get('/status', (_req: Request, res: Response) => {
 /* Health check endpoint với database ping */
 RouterInstance.get('/health', async (_req: Request, res: Response) => {
   try {
-    // Kiểm tra kết nối database bằng ping command
-    await GET_DB().command({ ping: 1 })
+    // Kiểm tra kết nối PostgreSQL bằng query đơn giản
+    await prisma.$queryRaw`SELECT 1`
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       status: 'healthy',
@@ -51,5 +59,29 @@ RouterInstance.use('/vouchers', voucherRoute)
 
 /* Order APIs */
 RouterInstance.use('/orders', orderRoute)
+
+/* Shipping Address APIs */
+RouterInstance.use('/shipping-addresses', shippingAddressRouter)
+
+/* Cart APIs */
+RouterInstance.use('/cart', cartRouter)
+
+/* Wishlist APIs */
+RouterInstance.use('/wishlist', wishlistRouter)
+
+/* Reviews APIs */
+RouterInstance.use('/reviews', reviewRouter)
+
+/* Contact APIs */
+RouterInstance.use('/contacts', contactRouter)
+
+/* Notification APIs */
+RouterInstance.use('/notifications', notificationRouter)
+
+/* Role APIs (Admin Only) */
+RouterInstance.use('/roles', roleRoute)
+
+/* Permission APIs (Admin Only) */
+RouterInstance.use('/permissions', permissionRoute)
 
 export const APIs_V1 = RouterInstance

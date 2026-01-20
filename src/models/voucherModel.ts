@@ -1,160 +1,158 @@
 /**
- * Voucher Model
- * Quản lý dữ liệu voucher/mã giảm giá trong MongoDB
+ * Voucher Model - Prisma Version
+ * Quản lý dữ liệu voucher/mã giảm giá
  */
 
-import { z } from 'zod'
-import { coerceDateNullable } from '~/utils/zodValidators.js'
-import { ObjectId } from 'mongodb'
-import type {
-  WithId,
-  Document,
-  Filter,
-  Sort,
-  DeleteResult,
-  UpdateResult,
-  ClientSession
-} from 'mongodb'
-import { GET_DB } from '~/config/mongodb.js'
+import { prisma } from '~/config/prisma.js'
 import type {
   Voucher,
-  CreateVoucherInput,
-  UpdateVoucherInput,
-  PaginatedVouchersModelResult
-} from '~/types/voucher.types.js'
+  Prisma,
+  DecimalType as Decimal
+} from '~/generated/prisma/index.js'
+import { VoucherType } from '~/generated/prisma/index.js'
 
-/** Tên collection trong MongoDB */
-const VOUCHER_COLLECTION_NAME = 'vouchers'
+/** Voucher type export từ Prisma */
+export type { Voucher }
 
-/** Schema validation với Zod */
-const VOUCHER_COLLECTION_SCHEMA = z.object({
-  code: z
-    .string()
-    .min(3)
-    .max(50)
-    .regex(/^[A-Z0-9-_]+$/),
-  type: z.enum(['percent', 'fixed']),
-  amount: z.number().positive(),
-  maxDiscount: z.number().min(0).default(0),
-  minOrderValue: z.number().min(0).default(0),
-  usageLimit: z.number().int().min(0).default(0), // 0 = không giới hạn
-  usedCount: z.number().int().min(0).default(0),
-  startDate: coerceDateNullable.default(null),
-  endDate: coerceDateNullable.default(null),
-  isActive: z.boolean().default(true),
-  createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date())
-})
-
-/** Voucher document từ MongoDB */
-export type VoucherDocument = WithId<Document> & Voucher
-
-/** Kết quả phân trang (alias từ types) */
-export type PaginatedVouchersResult =
-  PaginatedVouchersModelResult<VoucherDocument>
-
-/** MongoDB session options */
-interface SessionOptions {
-  session?: ClientSession
+/** Paginated result cho vouchers */
+export interface PaginatedVouchersResult {
+  vouchers: Voucher[]
+  pagination: {
+    page: number
+    itemsPerPage: number
+    totalVouchers: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
 }
 
-/**
- * Validate dữ liệu trước khi tạo voucher
- */
-const validateBeforeCreate = (data: CreateVoucherInput): CreateVoucherInput => {
-  const validData = VOUCHER_COLLECTION_SCHEMA.parse(data)
-  return validData as CreateVoucherInput
+/** Input tạo voucher mới */
+export interface CreateVoucherInput {
+  code: string
+  type: VoucherType
+  amount: number | Decimal
+  maxDiscount?: number | Decimal | null
+  minOrderValue?: number | Decimal | null
+  usageLimit?: number | null
+  usedCount?: number
+  startDate?: Date | null
+  endDate?: Date | null
+  isActive?: boolean
+  description?: string | null
+}
+
+/** Input cập nhật voucher */
+export interface UpdateVoucherInput {
+  code?: string
+  type?: VoucherType
+  amount?: number | Decimal
+  maxDiscount?: number | Decimal | null
+  minOrderValue?: number | Decimal | null
+  usageLimit?: number | null
+  startDate?: Date | null
+  endDate?: Date | null
+  isActive?: boolean
+  description?: string | null
+}
+
+/** Filter cho getMany */
+export interface VoucherFilter {
+  search?: string
+  type?: VoucherType
+  isActive?: boolean
 }
 
 /**
  * Tạo voucher mới
  */
-const createNew = async (
-  data: CreateVoucherInput
-): Promise<VoucherDocument | null> => {
-  try {
-    const validData = validateBeforeCreate(data)
-    const created = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .insertOne(validData)
-
-    return (await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOne({ _id: created.insertedId })) as VoucherDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const createNew = async (data: CreateVoucherInput): Promise<Voucher> => {
+  const voucher = await prisma.voucher.create({
+    data: {
+      code: data.code.toUpperCase().trim(),
+      type: data.type,
+      amount: data.amount,
+      maxDiscount: data.maxDiscount ?? null,
+      minOrderValue: data.minOrderValue ?? null,
+      usageLimit: data.usageLimit ?? null,
+      usedCount: data.usedCount ?? 0,
+      startDate: data.startDate ?? null,
+      endDate: data.endDate ?? null,
+      isActive: data.isActive ?? true,
+      description: data.description ?? null
+    }
+  })
+  return voucher
 }
 
 /**
  * Tìm voucher theo ID
  */
-const findOneById = async (
-  voucherId: string
-): Promise<VoucherDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOne({ _id: new ObjectId(voucherId) })
-    return result as VoucherDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findOneById = async (voucherId: number): Promise<Voucher | null> => {
+  const voucher = await prisma.voucher.findUnique({
+    where: { id: voucherId }
+  })
+  return voucher
 }
 
 /**
  * Tìm voucher theo code (case-insensitive)
  */
-const findOneByCode = async (code: string): Promise<VoucherDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOne({ code: { $regex: new RegExp(`^${code}$`, 'i') } })
-    return result as VoucherDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findOneByCode = async (code: string): Promise<Voucher | null> => {
+  const voucher = await prisma.voucher.findFirst({
+    where: {
+      code: { equals: code.toUpperCase().trim(), mode: 'insensitive' }
+    }
+  })
+  return voucher
 }
 
 /**
  * Lấy danh sách vouchers với phân trang
  */
 const getMany = async (
-  filter: Filter<Document> = {},
+  filter: VoucherFilter = {},
   page: number = 1,
   itemsPerPage: number = 10,
-  sortOptions: Sort = { createdAt: -1 }
+  orderBy: Prisma.VoucherOrderByWithRelationInput = { createdAt: 'desc' }
 ): Promise<PaginatedVouchersResult> => {
-  try {
-    const skip = (page - 1) * itemsPerPage
+  const skip = (page - 1) * itemsPerPage
 
-    const vouchers = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .find(filter)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(itemsPerPage)
-      .toArray()
+  // Build where clause
+  const where: Prisma.VoucherWhereInput = {}
 
-    const totalVouchers = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .countDocuments(filter)
+  if (filter.search) {
+    where.code = { contains: filter.search, mode: 'insensitive' }
+  }
+  if (filter.type) {
+    where.type = filter.type
+  }
+  if (filter.isActive !== undefined) {
+    where.isActive = filter.isActive
+  }
 
-    const totalPages = Math.ceil(totalVouchers / itemsPerPage)
+  const [vouchers, totalVouchers] = await Promise.all([
+    prisma.voucher.findMany({
+      where,
+      orderBy,
+      skip,
+      take: itemsPerPage
+    }),
+    prisma.voucher.count({ where })
+  ])
 
-    return {
-      vouchers: vouchers as VoucherDocument[],
-      pagination: {
-        page: parseInt(String(page)),
-        itemsPerPage: parseInt(String(itemsPerPage)),
-        totalVouchers,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+  const totalPages = Math.ceil(totalVouchers / itemsPerPage)
+
+  return {
+    vouchers,
+    pagination: {
+      page,
+      itemsPerPage,
+      totalVouchers,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
     }
-  } catch (error) {
-    throw new Error(String(error))
   }
 }
 
@@ -162,40 +160,41 @@ const getMany = async (
  * Cập nhật thông tin voucher
  */
 const update = async (
-  voucherId: string,
+  voucherId: number,
   updateData: UpdateVoucherInput
-): Promise<VoucherDocument | null> => {
+): Promise<Voucher | null> => {
   try {
-    const dataToUpdate = {
-      ...updateData,
-      updatedAt: new Date()
-    }
-
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOneAndUpdate(
-        { _id: new ObjectId(voucherId) },
-        { $set: dataToUpdate },
-        { returnDocument: 'after' }
-      )
-
-    return result as VoucherDocument | null
+    const voucher = await prisma.voucher.update({
+      where: { id: voucherId },
+      data: updateData
+    })
+    return voucher
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Voucher không tồn tại
+    }
+    // Re-throw other errors (validation, constraint violations, etc.)
+    throw error
   }
 }
 
 /**
  * Xóa voucher theo ID
  */
-const deleteOneById = async (voucherId: string): Promise<DeleteResult> => {
+const deleteOneById = async (voucherId: number): Promise<Voucher | null> => {
   try {
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .deleteOne({ _id: new ObjectId(voucherId) })
-    return result
+    const voucher = await prisma.voucher.delete({
+      where: { id: voucherId }
+    })
+    return voucher
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Voucher không tồn tại
+    }
+    // Re-throw other errors (constraint violations, etc.)
+    throw error
   }
 }
 
@@ -203,129 +202,97 @@ const deleteOneById = async (voucherId: string): Promise<DeleteResult> => {
  * Tăng số lần sử dụng voucher
  */
 const incrementUsedCount = async (
-  voucherId: string,
-  step: number = 1,
-  options: SessionOptions = {}
-): Promise<VoucherDocument | null> => {
+  voucherId: number,
+  step: number = 1
+): Promise<Voucher | null> => {
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOneAndUpdate(
-        { _id: new ObjectId(voucherId) },
-        { $inc: { usedCount: step }, $set: { updatedAt: new Date() } },
-        { returnDocument: 'after', ...updateOptions }
-      )
-    return result as VoucherDocument | null
-  } catch (error) {
-    throw new Error(String(error))
+    const voucher = await prisma.voucher.update({
+      where: { id: voucherId },
+      data: { usedCount: { increment: step } }
+    })
+    return voucher
+  } catch {
+    return null
   }
 }
 
 /**
  * Atomic increment với check usageLimit - Giải quyết race condition
- * Chỉ tăng usedCount nếu chưa đạt limit hoặc không có limit (usageLimit = 0)
+ * Chỉ tăng usedCount nếu chưa đạt limit hoặc không có limit
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const incrementUsedCountWithLimit = async (
-  voucherId: string,
+  voucherId: number,
   step: number = 1,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
+  tx?: Prisma.TransactionClient
+): Promise<{ success: boolean; modifiedCount: number }> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    // Atomic operation: Chỉ increment nếu:
-    // - usageLimit = 0 (không giới hạn) HOẶC
-    // - usedCount + step <= usageLimit
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .updateOne(
-        {
-          _id: new ObjectId(voucherId),
-          $or: [
-            { usageLimit: 0 },
-            { $expr: { $lte: [{ $add: ['$usedCount', step] }, '$usageLimit'] } }
-          ]
-        },
-        { $inc: { usedCount: step }, $set: { updatedAt: new Date() } },
-        updateOptions
-      )
-    return result
+    // Sử dụng raw SQL cho atomic operation với condition
+    const result = await client.$executeRaw`
+      UPDATE vouchers 
+      SET used_count = used_count + ${step}, updated_at = NOW()
+      WHERE id = ${voucherId} 
+      AND (usage_limit IS NULL OR usage_limit = 0 OR used_count + ${step} <= usage_limit)
+    `
+    return { success: result > 0, modifiedCount: result }
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in incrementUsedCountWithLimit:', error)
+    return { success: false, modifiedCount: 0 }
   }
 }
 
 /**
- * Giảm số lần đã sử dụng voucher (dùng khi hủy đơn đã thanh toán)
- * Sử dụng atomic operation với condition usedCount >= step để tránh negative value
+ * Giảm số lần đã sử dụng voucher (dùng khi hủy đơn)
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const decrementUsedCount = async (
-  voucherId: string,
+  voucherId: number,
   step: number = 1,
-  options: SessionOptions = {}
-): Promise<VoucherDocument | null> => {
+  tx?: Prisma.TransactionClient
+): Promise<Voucher | null> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    // Atomic operation: Chỉ decrement nếu usedCount >= step
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .findOneAndUpdate(
-        { _id: new ObjectId(voucherId), usedCount: { $gte: step } },
-        { $inc: { usedCount: -step }, $set: { updatedAt: new Date() } },
-        { returnDocument: 'after', ...updateOptions }
-      )
+    // Giảm usedCount nhưng không để âm
+    const result = await client.$executeRaw`
+      UPDATE vouchers 
+      SET used_count = GREATEST(0, used_count - ${step}), updated_at = NOW()
+      WHERE id = ${voucherId}
+    `
 
-    // Nếu không match (usedCount < step), set usedCount = 0 thay vì để negative
-    if (!result) {
-      const fallbackResult = await GET_DB()
-        .collection(VOUCHER_COLLECTION_NAME)
-        .findOneAndUpdate(
-          { _id: new ObjectId(voucherId) },
-          { $set: { usedCount: 0, updatedAt: new Date() } },
-          { returnDocument: 'after', ...updateOptions }
-        )
-      return fallbackResult as VoucherDocument | null
+    if (result > 0) {
+      return await client.voucher.findUnique({ where: { id: voucherId } })
     }
-
-    return result as VoucherDocument | null
+    return null
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in decrementUsedCount:', error)
+    return null
   }
 }
 
 /**
  * Tìm nhiều vouchers theo danh sách IDs
  */
-const findByIds = async (ids: ObjectId[]): Promise<VoucherDocument[]> => {
-  try {
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .find({ _id: { $in: ids } })
-      .toArray()
-    return result as VoucherDocument[]
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findByIds = async (ids: number[]): Promise<Voucher[]> => {
+  const vouchers = await prisma.voucher.findMany({
+    where: { id: { in: ids } }
+  })
+  return vouchers
 }
 
 /**
  * Xóa nhiều vouchers theo danh sách IDs
  */
-const deleteManyByIds = async (idStrings: string[]): Promise<DeleteResult> => {
-  try {
-    const objectIds = idStrings.map((id) => new ObjectId(id))
-    const result = await GET_DB()
-      .collection(VOUCHER_COLLECTION_NAME)
-      .deleteMany({ _id: { $in: objectIds } })
-    return result
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const deleteManyByIds = async (ids: number[]): Promise<{ count: number }> => {
+  const result = await prisma.voucher.deleteMany({
+    where: { id: { in: ids } }
+  })
+  return { count: result.count }
 }
 
 export const voucherModel = {
-  VOUCHER_COLLECTION_NAME,
-  VOUCHER_COLLECTION_SCHEMA,
   createNew,
   findOneById,
   findOneByCode,

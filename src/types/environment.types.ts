@@ -12,9 +12,8 @@ export type BuildMode = 'dev' | 'production'
  * @alias EnvironmentVariables
  */
 export interface EnvironmentConfig {
-  // MongoDB
-  MONGODB_URI: string
-  DATABASE_NAME: string
+  // PostgreSQL
+  DATABASE_URL: string
 
   // App
   LOCAL_DEV_APP_HOST: string

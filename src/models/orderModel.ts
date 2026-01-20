@@ -1,247 +1,353 @@
 /**
- * Order Model
- * Quản lý dữ liệu đơn hàng trong MongoDB
+ * Order Model - Prisma Version
+ * Quản lý dữ liệu đơn hàng với relations: OrderItem, OrderLog, OrderVoucher
  */
 
-import { z } from 'zod'
-import { ObjectId } from 'mongodb'
-import type {
-  WithId,
-  Document,
-  Filter,
-  Sort,
-  DeleteResult,
-  UpdateResult,
-  ClientSession
-} from 'mongodb'
-import { GET_DB } from '~/config/mongodb.js'
-import { ORDER_STATUS, PAYMENT_STATUS } from '~/utils/constants.js'
-import type {
-  Order,
+import { prisma } from '~/config/prisma.js'
+import {
+  type Order,
+  type OrderItem,
+  type OrderLog,
+  type OrderVoucher,
+  type ShippingAddress,
+  type Payment,
   OrderStatus,
   PaymentStatus,
-  OrderItem,
-  LogEntry,
-  ShippingAddress,
-  OrderVoucher,
-  OrderTotals,
-  PaginatedOrdersModelResult,
-  UpdateOrderInput
-} from '~/types/order.types.js'
+  PaymentMethod,
+  VoucherType,
+  Prisma
+} from '../generated/prisma/index.js'
+import type { DecimalType as Decimal } from '../generated/prisma/index.js'
 
-/** Tên collection trong MongoDB */
-const ORDER_COLLECTION_NAME = 'orders'
+/** Export types từ Prisma */
+export type { Order, OrderItem, OrderLog, OrderVoucher, ShippingAddress }
 
-/** Schema cho order item */
-const ORDER_ITEM_SCHEMA = z.object({
-  productId: z.string(),
-  name: z.string(),
-  image: z.string().url(),
-  unitPrice: z.number().positive(),
-  discount: z.number().min(0).max(100).default(0),
-  quantity: z.number().int().min(1),
-  lineTotal: z.number().min(0)
-})
-
-/** Schema cho log entry */
-const LOG_ENTRY_SCHEMA = z.object({
-  action: z.string(),
-  by: z.string().nullable().default(null),
-  byRole: z.enum(['user', 'admin', 'system']).default('system'),
-  at: z.date().default(() => new Date()),
-  note: z.string().default(''),
-  fromStatus: z
-    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
-    .nullable()
-    .default(null),
-  toStatus: z
-    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
-    .nullable()
-    .default(null),
-  meta: z.record(z.string(), z.unknown()).default({})
-})
-
-/** Shipping address schema */
-const SHIPPING_ADDRESS_SCHEMA = z.object({
-  id: z.string().optional().default(''),
-  name: z.string(),
-  phone: z.string(),
-  address: z.string(),
-  city: z.string(),
-  province: z.string(),
-  postalCode: z.string().optional().default(''),
-  isDefault: z.boolean().optional(),
-  fullAddress: z.string().optional().default('')
-})
-
-/** Voucher schema */
-const ORDER_VOUCHER_SCHEMA = z
-  .object({
-    voucherId: z.string().optional(),
-    code: z.string(),
-    type: z.enum(['percent', 'fixed']),
-    amount: z.number(),
-    maxDiscount: z.number().min(0).default(0),
-    discountApplied: z.number().min(0)
-  })
-  .nullable()
-  .default(null)
-
-/** Totals schema */
-const ORDER_TOTALS_SCHEMA = z.object({
-  subtotal: z.number().min(0),
-  discount: z.number().min(0),
-  shippingFee: z.number().min(0),
-  payable: z.number().min(0)
-})
-
-/** Schema validation với Zod */
-const ORDER_COLLECTION_SCHEMA = z.object({
-  userId: z.string(),
-  orderCode: z.string(),
-  items: z.array(ORDER_ITEM_SCHEMA).min(1),
-  shippingAddress: SHIPPING_ADDRESS_SCHEMA,
-  voucher: ORDER_VOUCHER_SCHEMA,
-  totals: ORDER_TOTALS_SCHEMA,
-  status: z
-    .enum(ORDER_STATUS as unknown as readonly [string, ...string[]])
-    .default('PENDING'),
-  paymentStatus: z
-    .enum(PAYMENT_STATUS as unknown as readonly [string, ...string[]])
-    .default('PENDING'),
-  paymentMethod: z.string().default(''),
-  logs: z.array(LOG_ENTRY_SCHEMA).default([]),
-  deliveredAt: z.date().nullable().default(null),
-  createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date())
-})
-
-/** Order document từ MongoDB */
-export type OrderDocument = WithId<Document> & Order
-
-/** Input data để tạo order mới (internal - đầy đủ) */
-interface CreateOrderModelInput {
-  userId: string
-  orderCode: string
+/** Order với relations */
+export type OrderWithRelations = Order & {
   items: OrderItem[]
-  shippingAddress: ShippingAddress
-  voucher?: OrderVoucher | null
-  totals: OrderTotals
+  logs: OrderLog[]
+  orderVouchers: OrderVoucher[]
+  shippingAddress?: ShippingAddress
+  payments: Payment[]
+  user?: {
+    id: number
+    name: string
+    email: string
+    role: { id: number; name: string }
+  }
+}
+
+/** Paginated result cho orders */
+export interface PaginatedOrdersResult {
+  orders: OrderWithRelations[]
+  pagination: {
+    page: number
+    itemsPerPage: number
+    totalOrders: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
+}
+
+/** Input cho OrderItem khi tạo order */
+export interface CreateOrderItemInput {
+  productId: number
+  name: string
+  image?: string
+  unitPrice: number | Decimal
+  discount?: number | Decimal
+  quantity: number
+  lineTotal: number | Decimal
+}
+
+/** Input cho OrderVoucher snapshot */
+export interface CreateOrderVoucherInput {
+  voucherId: number
+  code: string
+  type: VoucherType
+  amount: number | Decimal
+  maxDiscount?: number | Decimal | null
+  discountValue: number | Decimal
+}
+
+/** Input cho OrderLog */
+export interface CreateOrderLogInput {
+  action: string
+  performedById?: number | null
+  performedByRole?: string | null
+  fromStatus?: OrderStatus | null
+  toStatus?: OrderStatus | null
+  fromPaymentStatus?: PaymentStatus | null
+  toPaymentStatus?: PaymentStatus | null
+  note?: string | null
+  meta?: Prisma.InputJsonValue
+}
+
+/** Input tạo order mới */
+export interface CreateOrderInput {
+  userId: number
+  orderCode: string
+  shippingAddressId: number
+  status?: OrderStatus
+  paymentMethod: PaymentMethod
+  subtotal: number | Decimal
+  discountAmount?: number | Decimal
+  shippingFee?: number | Decimal
+  totalPrice: number | Decimal
+  items: CreateOrderItemInput[]
+  voucher?: CreateOrderVoucherInput | null
+}
+
+/** Input cập nhật order */
+export interface UpdateOrderInput {
+  status?: OrderStatus
+  deliveredAt?: Date | null
+  subtotal?: number | Decimal
+  discountAmount?: number | Decimal
+  shippingFee?: number | Decimal
+  totalPrice?: number | Decimal
+}
+
+/** Filter cho getMany */
+export interface OrderFilter {
+  userId?: number
   status?: OrderStatus
   paymentStatus?: PaymentStatus
-  paymentMethod?: string
-  logs?: LogEntry[]
-  createdAt?: Date
-  updatedAt?: Date
+  search?: string
 }
 
-/** Kết quả phân trang (alias từ types) */
-export type PaginatedOrdersResult = PaginatedOrdersModelResult<OrderDocument>
-
-/** MongoDB session options */
-interface SessionOptions {
-  session?: ClientSession
-}
-
-/** Order logs projection result */
-interface OrderLogsResult {
-  _id: ObjectId
+/** Order logs result */
+export interface OrderLogsResult {
+  id: number
   orderCode: string
   status: OrderStatus
-  paymentStatus: PaymentStatus
-  logs: LogEntry[]
+  logs: OrderLog[]
 }
 
 /**
- * Validate dữ liệu trước khi tạo order
- */
-const validateBeforeCreate = (
-  data: CreateOrderModelInput
-): CreateOrderModelInput => {
-  const validData = ORDER_COLLECTION_SCHEMA.parse(data)
-  return validData as unknown as CreateOrderModelInput
-}
-
-/**
- * Tạo order mới
+ * Tạo order mới với tất cả relations (transaction)
  */
 const createNew = async (
-  data: CreateOrderModelInput,
-  options: SessionOptions = {}
-): Promise<OrderDocument | null> => {
-  try {
-    const validData = validateBeforeCreate(data)
-    const dataToInsert = {
-      ...validData,
-      userId: new ObjectId(validData.userId)
-    }
-    const insertOptions = options.session ? { session: options.session } : {}
-    const created = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .insertOne(dataToInsert, insertOptions)
+  data: CreateOrderInput
+): Promise<OrderWithRelations> => {
+  const order = await prisma.$transaction(
+    async (tx: Prisma.TransactionClient) => {
+      // 1. Tạo Order
+      const createdOrder = await tx.order.create({
+        data: {
+          userId: data.userId,
+          orderCode: data.orderCode,
+          shippingAddressId: data.shippingAddressId,
+          status: data.status || OrderStatus.PENDING,
+          subtotal: data.subtotal,
+          discountAmount: data.discountAmount ?? 0,
+          shippingFee: data.shippingFee ?? 0,
+          totalPrice: data.totalPrice
+        }
+      })
 
-    return (await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOne(
-        { _id: created.insertedId },
-        insertOptions
-      )) as OrderDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+      // 1.1 Tạo Payment record đầu tiên
+      await tx.payment.create({
+        data: {
+          orderId: createdOrder.id,
+          paymentMethod: data.paymentMethod,
+          value: data.totalPrice,
+          status: PaymentStatus.PENDING
+        }
+      })
+
+      // 2. Tạo OrderItems
+      await tx.orderItem.createMany({
+        data: data.items.map((item) => ({
+          orderId: createdOrder.id,
+          productId: item.productId,
+          name: item.name,
+          image: item.image || null,
+          unitPrice: item.unitPrice,
+          discount: item.discount ?? 0,
+          quantity: item.quantity,
+          lineTotal: item.lineTotal
+        }))
+      })
+
+      // 3. Tạo OrderVoucher nếu có
+      if (data.voucher) {
+        await tx.orderVoucher.create({
+          data: {
+            orderId: createdOrder.id,
+            voucherId: data.voucher.voucherId,
+            code: data.voucher.code,
+            type: data.voucher.type,
+            amount: data.voucher.amount,
+            maxDiscount: data.voucher.maxDiscount ?? null,
+            discountValue: data.voucher.discountValue
+          }
+        })
+      }
+
+      // 4. Tạo initial log
+      await tx.orderLog.create({
+        data: {
+          orderId: createdOrder.id,
+          action: 'create',
+          performedById: data.userId,
+          performedByRole: 'user',
+          toStatus: 'PENDING',
+          toPaymentStatus: 'PENDING',
+          note: 'Người dùng tạo đơn hàng'
+        }
+      })
+
+      // 5. Return với relations
+      return await tx.order.findUnique({
+        where: { id: createdOrder.id },
+        include: {
+          items: true,
+          logs: { orderBy: { createdAt: 'desc' } },
+          orderVouchers: true,
+          shippingAddress: true,
+          payments: { orderBy: { createdAt: 'desc' } }
+        }
+      })
+    }
+  )
+
+  return order as OrderWithRelations
 }
 
 /**
- * Tìm order theo ID
+ * Tìm order theo ID với relations
  */
-const findOneById = async (orderId: string): Promise<OrderDocument | null> => {
-  try {
-    return (await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOne({ _id: new ObjectId(orderId) })) as OrderDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findOneById = async (
+  orderId: number
+): Promise<OrderWithRelations | null> => {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      items: true,
+      logs: { orderBy: { createdAt: 'desc' } },
+      orderVouchers: true,
+      shippingAddress: true,
+      payments: { orderBy: { createdAt: 'desc' } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
+  })
+  return order as OrderWithRelations | null
+}
+
+/**
+ * Tìm order theo orderCode
+ */
+const findByOrderCode = async (
+  orderCode: string
+): Promise<OrderWithRelations | null> => {
+  const order = await prisma.order.findUnique({
+    where: { orderCode },
+    include: {
+      items: true,
+      logs: { orderBy: { createdAt: 'desc' } },
+      orderVouchers: true,
+      shippingAddress: true,
+      payments: { orderBy: { createdAt: 'desc' } },
+      user: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
+  })
+  return order as OrderWithRelations | null
 }
 
 /**
  * Lấy danh sách orders với phân trang
  */
 const getMany = async (
-  filter: Filter<Document> = {},
+  filter: OrderFilter = {},
   page: number = 1,
   itemsPerPage: number = 10,
-  sortOptions: Sort = { createdAt: -1 }
+  orderBy: Prisma.OrderOrderByWithRelationInput = { createdAt: 'desc' }
 ): Promise<PaginatedOrdersResult> => {
-  try {
-    const skip = (page - 1) * itemsPerPage
-    const orders = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .find(filter)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(itemsPerPage)
-      .toArray()
+  const skip = (page - 1) * itemsPerPage
 
-    const totalOrders = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .countDocuments(filter)
+  // Build where clause
+  const where: Prisma.OrderWhereInput = {}
 
-    const totalPages = Math.ceil(totalOrders / itemsPerPage)
-
-    return {
-      orders: orders as OrderDocument[],
-      pagination: {
-        page: parseInt(String(page)),
-        itemsPerPage: parseInt(String(itemsPerPage)),
-        totalOrders,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+  if (filter.userId !== undefined) {
+    where.userId = filter.userId
+  }
+  if (filter.status) {
+    where.status = filter.status
+  }
+  if (filter.paymentStatus) {
+    where.payments = {
+      some: { status: filter.paymentStatus }
     }
-  } catch (error) {
-    throw new Error(String(error))
+  }
+  if (filter.search) {
+    where.OR = [
+      { orderCode: { contains: filter.search, mode: 'insensitive' } },
+      {
+        orderVouchers: {
+          some: { code: { contains: filter.search, mode: 'insensitive' } }
+        }
+      },
+      {
+        shippingAddress: {
+          fullName: { contains: filter.search, mode: 'insensitive' }
+        }
+      }
+    ]
+  }
+
+  const [orders, totalOrders] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      orderBy,
+      skip,
+      take: itemsPerPage,
+      include: {
+        items: true,
+        logs: { orderBy: { createdAt: 'desc' }, take: 5 },
+        orderVouchers: true,
+        shippingAddress: true,
+        payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            role: true
+          }
+        }
+      }
+    }),
+    prisma.order.count({ where })
+  ])
+
+  const totalPages = Math.ceil(totalOrders / itemsPerPage)
+
+  return {
+    orders: orders as OrderWithRelations[],
+    pagination: {
+      page,
+      itemsPerPage,
+      totalOrders,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    }
   }
 }
 
@@ -249,71 +355,65 @@ const getMany = async (
  * Cập nhật thông tin order
  */
 const update = async (
-  orderId: string,
-  updateData: UpdateOrderInput,
-  options: SessionOptions = {}
-): Promise<OrderDocument | null> => {
+  orderId: number,
+  updateData: UpdateOrderInput
+): Promise<Order | null> => {
   try {
-    const dataToUpdate = { ...updateData, updatedAt: new Date() }
-    const updateOptions = options.session
-      ? { returnDocument: 'after' as const, session: options.session }
-      : { returnDocument: 'after' as const }
-
-    const result = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOneAndUpdate(
-        { _id: new ObjectId(orderId) },
-        { $set: dataToUpdate },
-        updateOptions
-      )
-
-    return result as OrderDocument | null
+    const order = await prisma.order.update({
+      where: { id: orderId },
+      data: updateData
+    })
+    return order
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Order không tồn tại
+    }
+    // Re-throw other errors (validation, constraint violations, etc.)
+    throw error
   }
 }
 
 /**
- * Thêm log entry vào order
+ * Thêm log entry vào order (thay thế embedded logs)
  */
 const appendLog = async (
-  orderId: string,
-  logEntry: LogEntry,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
-  try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .updateOne(
-        { _id: new ObjectId(orderId) },
-        {
-          $push: { logs: logEntry as unknown },
-          $set: { updatedAt: new Date() }
-        } as Document,
-        updateOptions
-      )
-    return result
-  } catch (error) {
-    throw new Error(String(error))
-  }
+  orderId: number,
+  logEntry: CreateOrderLogInput
+): Promise<OrderLog> => {
+  const log = await prisma.orderLog.create({
+    data: {
+      orderId,
+      action: logEntry.action,
+      performedById: logEntry.performedById ?? null,
+      performedByRole: logEntry.performedByRole ?? null,
+      fromStatus: logEntry.fromStatus ?? null,
+      toStatus: logEntry.toStatus ?? null,
+      fromPaymentStatus: logEntry.fromPaymentStatus ?? null,
+      toPaymentStatus: logEntry.toPaymentStatus ?? null,
+      note: logEntry.note ?? null,
+      meta: logEntry.meta ?? undefined
+    }
+  })
+  return log
 }
 
 /**
- * Xóa order theo ID
+ * Xóa order theo ID (cascade sẽ xóa items, logs, vouchers)
  */
-const deleteOneById = async (
-  orderId: string,
-  options: SessionOptions = {}
-): Promise<DeleteResult> => {
+const deleteOneById = async (orderId: number): Promise<Order | null> => {
   try {
-    const deleteOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .deleteOne({ _id: new ObjectId(orderId) }, deleteOptions)
-    return result
+    const order = await prisma.order.delete({
+      where: { id: orderId }
+    })
+    return order
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Order không tồn tại
+    }
+    // Re-throw other errors (constraint violations, etc.)
+    throw error
   }
 }
 
@@ -321,28 +421,25 @@ const deleteOneById = async (
  * Lấy logs của order theo ID
  */
 const getLogsByOrderId = async (
-  orderId: string
+  orderId: number
 ): Promise<OrderLogsResult | null> => {
-  try {
-    const order = await GET_DB()
-      .collection(ORDER_COLLECTION_NAME)
-      .findOne(
-        { _id: new ObjectId(orderId) },
-        { projection: { logs: 1, orderCode: 1, status: 1, paymentStatus: 1 } }
-      )
-    return order as OrderLogsResult | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    select: {
+      id: true,
+      orderCode: true,
+      status: true,
+      payments: { orderBy: { createdAt: 'desc' }, take: 1 },
+      logs: { orderBy: { createdAt: 'desc' } }
+    }
+  })
+  return order as OrderLogsResult | null
 }
 
 export const orderModel = {
-  ORDER_COLLECTION_NAME,
-  ORDER_COLLECTION_SCHEMA,
-  ORDER_STATUS,
-  PAYMENT_STATUS,
   createNew,
   findOneById,
+  findByOrderCode,
   getMany,
   update,
   appendLog,

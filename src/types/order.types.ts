@@ -2,47 +2,33 @@
  * Order type definitions
  */
 
-import type { ObjectId } from 'mongodb'
 import type { Timestamps, PaginationInfo } from './common.types.js'
+import {
+  OrderStatus as PrismaOrderStatus,
+  PaymentStatus as PrismaPaymentStatus,
+  PaymentMethod as PrismaPaymentMethod,
+  VoucherType as PrismaVoucherType
+} from '../generated/prisma/index.js'
 
 /**
- * Trạng thái đơn hàng
+ * Trạng thái đơn hàng (re-export from Prisma)
  */
-export type OrderStatus =
-  | 'PENDING'
-  | 'CONFIRMED'
-  | 'PROCESSING'
-  | 'PACKED'
-  | 'SHIPPED'
-  | 'DELIVERED'
-  | 'COMPLETED'
-  | 'CANCELLED'
-  | 'RETURNED'
-  | 'REFUNDED'
+export type OrderStatus = PrismaOrderStatus
 
 /**
- * Trạng thái thanh toán
+ * Trạng thái thanh toán (re-export from Prisma)
  */
-export type PaymentStatus =
-  | 'PENDING'
-  | 'PROCESSING'
-  | 'PAID'
-  | 'FAILED'
-  | 'CANCELLED'
-  | 'REFUNDED'
-  | 'EXPIRED'
+export type PaymentStatus = PrismaPaymentStatus
 
 /**
- * Phương thức thanh toán được phép
+ * Phương thức thanh toán (re-export from Prisma)
  */
-export type PaymentMethod =
-  | 'COD'
-  | 'CARD'
-  | 'EWALLET'
-  | 'BANK'
-  | 'MOMO'
-  | 'ZALOPAY'
-  | ''
+export type PaymentMethod = PrismaPaymentMethod
+
+/**
+ * Loại Voucher (re-export from Prisma)
+ */
+export type VoucherType = PrismaVoucherType
 
 /**
  * Sản phẩm trong đơn hàng
@@ -61,7 +47,7 @@ export interface OrderItem {
  * Địa chỉ giao hàng
  */
 export interface ShippingAddress {
-  id?: string
+  id?: string | number
   name: string
   phone: string
   address: string
@@ -69,16 +55,15 @@ export interface ShippingAddress {
   province: string
   postalCode?: string
   isDefault?: boolean
-  fullAddress?: string
 }
 
 /**
  * Thông tin voucher áp dụng cho đơn hàng
  */
 export interface OrderVoucher {
-  voucherId?: string
+  voucherId?: string | number
   code: string
-  type: 'percent' | 'fixed'
+  type: VoucherType
   amount: number
   maxDiscount?: number
   discountApplied: number
@@ -103,32 +88,54 @@ export interface OrderTotals {
  * Log entry cho đơn hàng
  */
 export interface LogEntry {
+  id?: number
   action: string
-  by: string | null
-  byRole: 'user' | 'admin' | 'system'
+  performedById?: number | null
+  performedByRole?: 'user' | 'admin' | 'system' | null
   at: Date
-  note?: string
+  note?: string | null
   fromStatus?: OrderStatus | null
   toStatus?: OrderStatus | null
-  fromPaymentStatus?: PaymentStatus
-  toPaymentStatus?: PaymentStatus
-  meta?: Record<string, unknown>
+  fromPaymentStatus?: PaymentStatus | null
+  toPaymentStatus?: PaymentStatus | null
+  meta?: any
 }
 
 /**
- * Order document trong MongoDB
+ * Payment entity (PostgreSQL/Prisma)
+ */
+export interface Payment {
+  id: number
+  orderId: number
+  paymentMethod: PaymentMethod
+  transactionId?: string | null
+  value: number
+  status: PaymentStatus
+  paidAt?: Date | null
+  createdAt: Date
+}
+
+/**
+ * Order entity (PostgreSQL/Prisma)
  */
 export interface Order extends Timestamps {
-  _id?: ObjectId
-  userId: string | ObjectId
+  id: number
+  _id?: string | number // Alias for id
+  userId: number
   orderCode: string
   items: OrderItem[]
   shippingAddress: ShippingAddress
-  voucher: OrderVoucher | null
+  user?: {
+    id: number
+    name: string
+    email: string
+    role: { id: number; name: string }
+  }
+  vouchers?: OrderVoucher[] // Changed to array if multiple allowed, or keep as snapshot
   totals: OrderTotals
   status: OrderStatus
-  paymentStatus: PaymentStatus
-  paymentMethod: string
+  paymentStatus?: PaymentStatus // Derived from latest payment
+  payments: Payment[] // Relation to Payment table
   logs: LogEntry[]
   deliveredAt: Date | null
 }
@@ -192,15 +199,7 @@ export interface AdminOrderQueryFilter {
   search?: string
 }
 
-/**
- * MongoDB filter for orders
- */
-export interface OrderMongoFilter {
-  userId?: ObjectId
-  status?: OrderStatus
-  paymentStatus?: PaymentStatus
-  $or?: Array<{ [key: string]: { $regex: string; $options: string } }>
-}
+// Note: OrderMongoFilter removed - no longer needed with Prisma
 
 /**
  * Paginated orders result for model
@@ -230,7 +229,7 @@ export interface UpdatePaymentStatusData {
  * User info for logs
  */
 export interface LogUserInfo {
-  _id: ObjectId
+  _id: string | number
   email: string
   displayName: string
   role: string
@@ -249,7 +248,6 @@ export interface LogWithUserInfo extends LogEntry {
 export interface OrderLogsResponse {
   orderCode: string
   status: OrderStatus
-  paymentStatus: PaymentStatus
   logs: LogWithUserInfo[]
 }
 
@@ -258,7 +256,6 @@ export interface OrderLogsResponse {
  */
 export interface UpdateOrderInput {
   status?: OrderStatus
-  paymentStatus?: PaymentStatus
   deliveredAt?: Date | null
   updatedAt?: Date
 }

@@ -1,0 +1,511 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Prisma 7: URL is configured in prisma.config.ts, not here
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================
+// ENUMS
+// ============================================================
+
+enum UserStatus {
+  active
+  inactive
+  banned
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PROCESSING
+  SHIPPING
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  BANK_TRANSFER
+  MOMO
+  VNPAY
+  ZALOPAY
+}
+
+enum VoucherType {
+  percent
+  fixed
+}
+
+enum Gender {
+  male
+  female
+  other
+}
+
+enum AccountType {
+  LOCAL
+  GOOGLE
+  FACEBOOK
+}
+
+// ============================================================
+// USERS & AUTHENTICATION
+// ============================================================
+
+/// Roles table - quản lý vai trò người dùng (admin, user, etc.)
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  users           User[]
+  rolePermissions RolePermission[]
+
+  @@map("roles")
+}
+
+/// Permissions table - quyền hạn trong hệ thống
+model Permission {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+/// Role_Permissions - bảng trung gian nhiều-nhiều
+model RolePermission {
+  roleId       Int @map("role_id")
+  permissionId Int @map("permission_id")
+
+  // Relations
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@id([roleId, permissionId])
+  @@map("role_permissions")
+}
+
+/// Users table - thông tin người dùng (Merged: MongoDB + ERD)
+model User {
+  id Int @id @default(autoincrement())
+
+  // ===== Từ MongoDB hiện tại =====
+  name          String      @db.VarChar(100)
+  email         String      @unique @db.VarChar(255)
+  password      String      @db.VarChar(255)
+  phoneNumber   String?     @map("phone_number") @db.VarChar(15)
+  address       String?     @db.VarChar(500)
+  avatar        String?     @db.VarChar(500)
+  dateOfBirth   DateTime?   @map("date_of_birth")
+  gender        Gender?     @default(other)
+  emailVerified Boolean     @default(false) @map("email_verified")
+  typeAccount   AccountType @default(LOCAL) @map("type_account")
+  lastLogin     DateTime?   @map("last_login")
+
+  // ===== Từ ERD (normalize) =====
+  roleId          Int         @map("role_id")
+  activationToken String?     @map("activation_token") @db.VarChar(255)
+  googleId        String?     @map("google_id") @db.VarChar(255)
+  status          UserStatus? @default(inactive)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  role              Role              @relation(fields: [roleId], references: [id])
+  sessions          Session[]
+  reviews           Review[]
+  cartItems         CartItem[]
+  orders            Order[]
+  wishlist          Wishlist[]
+  notifications     Notification[]
+  shippingAddresses ShippingAddress[]
+  orderLogs         OrderLog[]
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+/// Sessions table - quản lý phiên đăng nhập (Merged)
+model Session {
+  id Int @id @default(autoincrement())
+
+  // ===== Từ MongoDB hiện tại =====
+  sessionId    String    @unique @map("session_id") @db.VarChar(100)
+  userId       Int       @map("user_id")
+  refreshToken String    @map("refresh_token") @db.VarChar(500)
+  deviceInfo   String?   @map("device_info") @db.VarChar(255)
+  ipAddress    String?   @map("ip_address") @db.VarChar(45)
+  isActive     Boolean   @default(true) @map("is_active")
+  logoutAt     DateTime? @map("logout_at")
+  expiresAt    DateTime  @map("expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([sessionId])
+  @@map("sessions")
+}
+
+// ============================================================
+// PRODUCTS & CATEGORIES
+// ============================================================
+
+/// Categories table - danh mục sản phẩm
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  slug        String   @unique @db.VarChar(100)
+  description String?  @db.Text
+  image       String?  @db.VarChar(500)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  products Product[]
+
+  @@map("categories")
+}
+
+/// Products table - thông tin sản phẩm (Merged: MongoDB + ERD)
+model Product {
+  id Int @id @default(autoincrement())
+
+  // ===== Từ MongoDB hiện tại =====
+  name        String  @db.VarChar(255)
+  image       String? @db.VarChar(500) // Main image
+  description String? @db.Text
+  price       Decimal @db.Decimal(15, 2)
+  stock       Int     @default(0) // countInStock → stock
+  rating      Decimal @default(0) @db.Decimal(3, 2) // 0.00 - 5.00
+  selled      Int     @default(0) // Số lượng đã bán
+  discount    Decimal @default(0) @db.Decimal(5, 2) // % giảm giá
+
+  // ===== Từ ERD (normalize) =====
+  slug       String @unique @db.VarChar(255)
+  categoryId Int    @map("category_id")
+  status     String @default("active") @db.VarChar(20)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  category   Category       @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  images     ProductImage[] // Additional images
+  reviews    Review[]
+  cartItems  CartItem[]
+  orderItems OrderItem[]
+  wishlist   Wishlist[]
+
+  @@index([categoryId])
+  @@index([slug])
+  @@map("products")
+}
+
+/// Product_Images table - ảnh sản phẩm phụ (1 sản phẩm có nhiều ảnh)
+model ProductImage {
+  id        Int      @id @default(autoincrement())
+  productId Int      @map("product_id")
+  image     String   @db.VarChar(500)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([productId])
+  @@map("product_images")
+}
+
+/// Reviews table - đánh giá sản phẩm
+model Review {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  rating    Int // 1-5
+  comment   String?  @db.Text
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([productId])
+  @@map("reviews")
+}
+
+// ============================================================
+// CART & WISHLIST
+// ============================================================
+
+/// Cart_Items table - giỏ hàng
+model CartItem {
+  id        Int @id @default(autoincrement())
+  userId    Int @map("user_id")
+  productId Int @map("product_id")
+  quantity  Int @default(1)
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("cart_items")
+}
+
+/// Wishlist table - danh sách yêu thích
+model Wishlist {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  productId Int      @map("product_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, productId])
+  @@index([userId])
+  @@map("wishlist")
+}
+
+// ============================================================
+// ORDERS & PAYMENTS
+// ============================================================
+
+/// Orders table - đơn hàng (Merged: MongoDB + ERD)
+model Order {
+  id Int @id @default(autoincrement())
+
+  // ===== Từ MongoDB hiện tại =====
+  userId      Int         @map("user_id")
+  orderCode   String      @unique @map("order_code") @db.VarChar(50)
+  status      OrderStatus @default(PENDING)
+  deliveredAt DateTime?   @map("delivered_at")
+
+  // ===== Totals (flatten từ embedded) =====
+  subtotal       Decimal @db.Decimal(15, 2)
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(15, 2)
+  shippingFee    Decimal @default(0) @map("shipping_fee") @db.Decimal(15, 2)
+  totalPrice     Decimal @map("total_price") @db.Decimal(15, 2)
+
+  // ===== Từ ERD (normalize) =====
+  shippingAddressId Int @map("shipping_address_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user            User            @relation(fields: [userId], references: [id], onDelete: Restrict)
+  shippingAddress ShippingAddress @relation(fields: [shippingAddressId], references: [id], onDelete: Restrict)
+  items           OrderItem[]
+  logs            OrderLog[]
+  payments        Payment[]
+  orderVouchers   OrderVoucher[]
+
+  @@index([userId])
+  @@index([orderCode])
+  @@index([status])
+  @@map("orders")
+}
+
+/// Order_Items table - chi tiết sản phẩm trong đơn hàng (Merged with snapshot)
+model OrderItem {
+  id        Int @id @default(autoincrement())
+  orderId   Int @map("order_id")
+  productId Int @map("product_id")
+
+  // ===== Snapshot data (từ MongoDB embedded) =====
+  name      String  @db.VarChar(255) // Product name snapshot
+  image     String? @db.VarChar(500) // Product image snapshot
+  unitPrice Decimal @map("unit_price") @db.Decimal(15, 2)
+  discount  Decimal @default(0) @db.Decimal(5, 2)
+  quantity  Int
+  lineTotal Decimal @map("line_total") @db.Decimal(15, 2)
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_items")
+}
+
+/// Order_Log table - lịch sử đầy đủ của đơn hàng (thay thế embedded logs)
+model OrderLog {
+  id                Int            @id @default(autoincrement())
+  orderId           Int            @map("order_id")
+  action            String         @db.VarChar(50) // 'create', 'updateStatus', 'markPaid', 'cancel', etc.
+  performedById     Int?           @map("performed_by_id")
+  performedByRole   String?        @map("performed_by_role") @db.VarChar(20) // 'user' | 'admin' | 'system'
+  fromStatus        OrderStatus?   @map("from_status")
+  toStatus          OrderStatus?   @map("to_status")
+  fromPaymentStatus PaymentStatus? @map("from_payment_status")
+  toPaymentStatus   PaymentStatus? @map("to_payment_status")
+  note              String?        @db.Text
+  meta              Json? // flexible metadata
+  createdAt         DateTime       @default(now()) @map("created_at")
+
+  // Relations
+  order       Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  performedBy User? @relation(fields: [performedById], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([performedById])
+  @@map("order_logs")
+}
+
+/// Order_Vouchers table - voucher áp dụng cho đơn hàng (với snapshot)
+model OrderVoucher {
+  id        Int @id @default(autoincrement())
+  orderId   Int @map("order_id")
+  voucherId Int @map("voucher_id")
+
+  // ===== Snapshot data (từ MongoDB embedded) =====
+  code          String      @db.VarChar(50)
+  type          VoucherType
+  amount        Decimal     @db.Decimal(15, 2) // giá trị gốc của voucher
+  maxDiscount   Decimal?    @map("max_discount") @db.Decimal(15, 2)
+  discountValue Decimal     @map("discount_value") @db.Decimal(15, 2) // số tiền thực tế được giảm
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  voucher Voucher @relation(fields: [voucherId], references: [id], onDelete: Restrict)
+
+  @@index([orderId])
+  @@map("order_vouchers")
+}
+
+/// Payments table - thông tin thanh toán
+model Payment {
+  id            Int           @id @default(autoincrement())
+  orderId       Int           @map("order_id")
+  paymentMethod PaymentMethod @map("payment_method")
+  transactionId String?       @map("transaction_id") @db.VarChar(100)
+  value         Decimal       @db.Decimal(15, 2)
+  status        PaymentStatus @default(PENDING)
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+
+  // Relations
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+// ============================================================
+// VOUCHERS
+// ============================================================
+
+/// Vouchers table - mã giảm giá (Merged)
+model Voucher {
+  id Int @id @default(autoincrement())
+
+  // ===== Từ MongoDB hiện tại =====
+  code          String      @unique @db.VarChar(50)
+  type          VoucherType @default(fixed)
+  amount        Decimal     @db.Decimal(15, 2) // Giá trị giảm giá (value → amount)
+  maxDiscount   Decimal?    @map("max_discount") @db.Decimal(15, 2)
+  minOrderValue Decimal?    @map("min_order_value") @db.Decimal(15, 2)
+  startDate     DateTime?   @map("start_date")
+  endDate       DateTime?   @map("end_date")
+  usageLimit    Int?        @map("usage_limit")
+  usedCount     Int         @default(0) @map("used_count")
+  isActive      Boolean     @default(true) @map("is_active")
+  description   String?     @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  orderVouchers OrderVoucher[]
+
+  @@index([code])
+  @@map("vouchers")
+}
+
+// ============================================================
+// CONTACTS & NOTIFICATIONS
+// ============================================================
+
+/// Contacts table - form liên hệ
+model Contact {
+  id          Int      @id @default(autoincrement())
+  fullName    String   @map("full_name") @db.VarChar(100)
+  phoneNumber String   @map("phone_number") @db.VarChar(15)
+  email       String   @db.VarChar(255)
+  message     String   @db.Text
+  isReply     Boolean  @default(false) @map("is_reply")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@map("contacts")
+}
+
+/// Notifications table - thông báo cho user
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  type      String   @db.VarChar(50)
+  message   String   @db.Text
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("notifications")
+}
+
+/// Shipping_Addresses table - địa chỉ giao hàng (với đầy đủ fields từ MongoDB)
+model ShippingAddress {
+  id         Int      @id @default(autoincrement())
+  userId     Int      @map("user_id")
+  fullName   String   @map("full_name") @db.VarChar(100)
+  phone      String   @db.VarChar(15)
+  address    String   @db.VarChar(500)
+  city       String   @db.VarChar(100)
+  province   String   @db.VarChar(100) // Thêm từ MongoDB
+  postalCode String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
+  isDefault  Boolean  @default(false) @map("is_default")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orders Order[]
+
+  @@index([userId])
+  @@map("shipping_addresses")
+}

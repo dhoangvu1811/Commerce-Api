@@ -1,180 +1,191 @@
 /**
- * Product Model
- * Quản lý dữ liệu sản phẩm trong MongoDB
+ * Product Model - Prisma Version
+ * Quản lý dữ liệu sản phẩm
  */
 
-import { z } from 'zod'
-import { ObjectId } from 'mongodb'
-import type {
-  WithId,
-  Document,
-  Filter,
-  Sort,
-  DeleteResult,
-  UpdateResult,
-  ClientSession
-} from 'mongodb'
-import { GET_DB } from '~/config/mongodb.js'
+import { prisma } from '~/config/prisma.js'
 import type {
   Product,
-  CreateProductInput,
-  UpdateProductInput,
-  PaginatedProductsModelResult
-} from '~/types/product.types.js'
+  Prisma,
+  DecimalType as Decimal
+} from '~/generated/prisma/index.js'
 
-/** Tên collection trong MongoDB */
-const PRODUCT_COLLECTION_NAME = 'products'
+/** Product type export từ Prisma */
+export type { Product }
 
-/** Schema validation với Zod */
-const PRODUCT_COLLECTION_SCHEMA = z.object({
-  name: z.string().min(2).max(255),
-  image: z.string().url(),
-  type: z.string().min(2).max(100),
-  countInStock: z.number().int().min(0),
-  price: z.number().positive(),
-  rating: z.number().min(0).max(5).default(0),
-  description: z.string().max(1000).default(''),
-  selled: z.number().int().min(0).default(0),
-  discount: z.number().min(0).max(100).default(0),
-  createdAt: z.date().default(() => new Date()),
-  updatedAt: z.date().default(() => new Date())
-})
-
-/** Product document từ MongoDB */
-export type ProductDocument = WithId<Document> & Product
-
-/** Kết quả phân trang (alias từ types) */
-export type PaginatedProductsResult =
-  PaginatedProductsModelResult<ProductDocument>
-
-/** MongoDB session options */
-interface SessionOptions {
-  session?: ClientSession
+/** Paginated result cho products */
+export interface PaginatedProductsResult {
+  products: Product[]
+  pagination: {
+    page: number
+    itemsPerPage: number
+    totalProducts: number
+    totalPages: number
+    hasNextPage: boolean
+    hasPrevPage: boolean
+  }
 }
 
-/**
- * Validate dữ liệu trước khi tạo product
- */
-const validateBeforeCreate = (data: CreateProductInput): CreateProductInput => {
-  const validData = PRODUCT_COLLECTION_SCHEMA.parse(data)
-  return validData as CreateProductInput
+/** Input tạo product mới */
+export interface CreateProductInput {
+  name: string
+  slug: string
+  categoryId: number
+  image?: string
+  description?: string
+  price: number | Decimal
+  stock?: number
+  rating?: number | Decimal
+  selled?: number
+  discount?: number | Decimal
+  status?: string
+}
+
+/** Input cập nhật product */
+export interface UpdateProductInput {
+  name?: string
+  slug?: string
+  categoryId?: number
+  image?: string
+  description?: string
+  price?: number | Decimal
+  stock?: number
+  rating?: number | Decimal
+  selled?: number
+  discount?: number | Decimal
+  status?: string
+}
+
+/** Filter cho getMany */
+export interface ProductFilter {
+  search?: string
+  categoryId?: number
+  status?: string
 }
 
 /**
  * Tạo product mới
  */
-const createNew = async (
-  data: CreateProductInput
-): Promise<ProductDocument | null> => {
-  try {
-    const validData = validateBeforeCreate(data)
-    const createdProduct = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .insertOne(validData)
-
-    return (await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .findOne({ _id: createdProduct.insertedId })) as ProductDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const createNew = async (data: CreateProductInput): Promise<Product> => {
+  const product = await prisma.product.create({
+    data: {
+      name: data.name,
+      slug: data.slug,
+      categoryId: data.categoryId,
+      image: data.image || null,
+      description: data.description || null,
+      price: data.price,
+      stock: data.stock ?? 0,
+      rating: data.rating ?? 0,
+      selled: data.selled ?? 0,
+      discount: data.discount ?? 0,
+      status: data.status || 'active'
+    },
+    include: { category: true, images: true }
+  })
+  return product
 }
 
 /**
  * Tìm product theo ID
  */
-const findOneById = async (
-  productId: string
-): Promise<ProductDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .findOne({ _id: new ObjectId(productId) })
-
-    return result as ProductDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findOneById = async (productId: number): Promise<Product | null> => {
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: { category: true, images: true }
+  })
+  return product
 }
 
 /**
- * Tìm product theo tên và type (case-insensitive)
+ * Tìm product theo slug
  */
-const findByNameAndType = async (
-  name: string,
-  type: string
-): Promise<ProductDocument | null> => {
-  try {
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .findOne({
-        name: { $regex: new RegExp(`^${name}$`, 'i') },
-        type: { $regex: new RegExp(`^${type}$`, 'i') }
-      })
+const findBySlug = async (slug: string): Promise<Product | null> => {
+  const product = await prisma.product.findUnique({
+    where: { slug },
+    include: { category: true, images: true }
+  })
+  return product
+}
 
-    return result as ProductDocument | null
-  } catch (error) {
-    throw new Error(String(error))
-  }
+/**
+ * Tìm product theo tên và categoryId (để check duplicate)
+ */
+const findByNameAndCategory = async (
+  name: string,
+  categoryId: number
+): Promise<Product | null> => {
+  const product = await prisma.product.findFirst({
+    where: {
+      name: { equals: name, mode: 'insensitive' },
+      categoryId
+    },
+    include: { category: true, images: true }
+  })
+  return product
 }
 
 /**
  * Tìm nhiều products theo danh sách IDs
  */
-const findByIds = async (
-  productIds: ObjectId[]
-): Promise<ProductDocument[]> => {
-  try {
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .find({ _id: { $in: productIds } })
-      .toArray()
-
-    return result as ProductDocument[]
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const findByIds = async (productIds: number[]): Promise<Product[]> => {
+  const products = await prisma.product.findMany({
+    where: { id: { in: productIds } },
+    include: { category: true, images: true }
+  })
+  return products
 }
 
 /**
  * Lấy danh sách products với phân trang
  */
 const getMany = async (
-  filter: Filter<Document> = {},
+  filter: ProductFilter = {},
   page: number = 1,
   itemsPerPage: number = 10,
-  sortOptions: Sort = {}
+  orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' }
 ): Promise<PaginatedProductsResult> => {
-  try {
-    const skip = (page - 1) * itemsPerPage
+  const skip = (page - 1) * itemsPerPage
 
-    const products = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .find(filter)
-      .sort(sortOptions)
-      .skip(skip)
-      .limit(itemsPerPage)
-      .toArray()
+  // Build where clause
+  const where: Prisma.ProductWhereInput = {}
 
-    const totalProducts = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .countDocuments(filter)
+  if (filter.search) {
+    where.OR = [
+      { name: { contains: filter.search, mode: 'insensitive' } },
+      { description: { contains: filter.search, mode: 'insensitive' } }
+    ]
+  }
+  if (filter.categoryId !== undefined) {
+    where.categoryId = filter.categoryId
+  }
+  if (filter.status) {
+    where.status = filter.status
+  }
 
-    const totalPages = Math.ceil(totalProducts / itemsPerPage)
+  const [products, totalProducts] = await Promise.all([
+    prisma.product.findMany({
+      where,
+      orderBy,
+      skip,
+      take: itemsPerPage,
+      include: { category: true, images: true }
+    }),
+    prisma.product.count({ where })
+  ])
 
-    return {
-      products: products as ProductDocument[],
-      pagination: {
-        page: parseInt(String(page)),
-        itemsPerPage: parseInt(String(itemsPerPage)),
-        totalProducts,
-        totalPages,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1
-      }
+  const totalPages = Math.ceil(totalProducts / itemsPerPage)
+
+  return {
+    products,
+    pagination: {
+      page,
+      itemsPerPage,
+      totalProducts,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
     }
-  } catch (error) {
-    throw new Error(String(error))
   }
 }
 
@@ -182,186 +193,191 @@ const getMany = async (
  * Cập nhật thông tin product
  */
 const update = async (
-  productId: string,
+  productId: number,
   updateData: UpdateProductInput
-): Promise<ProductDocument | null> => {
+): Promise<Product | null> => {
   try {
-    const dataToUpdate = {
-      ...updateData,
-      updatedAt: new Date()
-    }
-
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .findOneAndUpdate(
-        { _id: new ObjectId(productId) },
-        { $set: dataToUpdate },
-        { returnDocument: 'after' }
-      )
-
-    return result as ProductDocument | null
+    const product = await prisma.product.update({
+      where: { id: productId },
+      data: updateData,
+      include: { category: true, images: true }
+    })
+    return product
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Product không tồn tại
+    }
+    // Re-throw other errors (validation, constraint violations, etc.)
+    throw error
   }
 }
 
 /**
  * Xóa product theo ID
  */
-const deleteOneById = async (productId: string): Promise<DeleteResult> => {
+const deleteOneById = async (productId: number): Promise<Product | null> => {
   try {
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .deleteOne({ _id: new ObjectId(productId) })
-
-    return result
+    const product = await prisma.product.delete({
+      where: { id: productId },
+      include: { category: true, images: true }
+    })
+    return product
   } catch (error) {
-    throw new Error(String(error))
+    // P2025 = Record not found (Prisma error code)
+    if ((error as { code?: string }).code === 'P2025') {
+      return null // Product không tồn tại
+    }
+    // Re-throw other errors (constraint violations, etc.)
+    throw error
   }
 }
 
 /**
  * Xóa nhiều products theo filter
+ * Safety: Yêu cầu ít nhất một điều kiện để tránh xóa nhầm tất cả products
  */
 const deleteMany = async (
-  filter: Filter<Document> = {}
-): Promise<DeleteResult> => {
-  try {
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .deleteMany(filter)
+  where: Prisma.ProductWhereInput = {}
+): Promise<{ count: number }> => {
+  // Safety check: Không cho phép xóa tất cả products nếu filter rỗng hoặc không có điều kiện thực sự
+  const whereKeys = Object.keys(where)
+  const hasCondition =
+    whereKeys.length > 0 &&
+    (where.id !== undefined ||
+      where.slug !== undefined ||
+      where.categoryId !== undefined ||
+      where.status !== undefined ||
+      where.OR !== undefined ||
+      where.AND !== undefined ||
+      where.NOT !== undefined)
 
-    return result
-  } catch (error) {
-    throw new Error(String(error))
+  if (!hasCondition) {
+    throw new Error(
+      'Không thể xóa tất cả products. Vui lòng cung cấp ít nhất một điều kiện filter (id, slug, categoryId, status, OR, AND, hoặc NOT).'
+    )
   }
+
+  const result = await prisma.product.deleteMany({ where })
+  return { count: result.count }
 }
 
 /**
  * Giảm tồn kho atomically nếu đủ hàng
+ * Sử dụng atomic update với condition stock >= qty
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const decrementStock = async (
-  productId: string,
+  productId: number,
   qty: number,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
+  tx?: Prisma.TransactionClient
+): Promise<{ success: boolean; modifiedCount: number }> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .updateOne(
-        { _id: new ObjectId(productId), countInStock: { $gte: qty } },
-        { $inc: { countInStock: -qty }, $set: { updatedAt: new Date() } },
-        updateOptions
-      )
-    return result
+    // Prisma không hỗ trợ conditional atomic update trực tiếp
+    // Sử dụng raw query hoặc transaction
+    const result = await client.$executeRaw`
+      UPDATE products 
+      SET stock = stock - ${qty}, updated_at = NOW()
+      WHERE id = ${productId} AND stock >= ${qty}
+    `
+    return { success: result > 0, modifiedCount: result }
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in decrementStock:', error)
+    return { success: false, modifiedCount: 0 }
   }
 }
 
 /**
  * Tăng tồn kho (dùng cho rollback khi thất bại)
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const incrementStock = async (
-  productId: string,
+  productId: number,
   qty: number,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
+  tx?: Prisma.TransactionClient
+): Promise<{ success: boolean; modifiedCount: number }> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .updateOne(
-        { _id: new ObjectId(productId) },
-        { $inc: { countInStock: qty }, $set: { updatedAt: new Date() } },
-        updateOptions
-      )
-    return result
+    const result = await client.$executeRaw`
+      UPDATE products 
+      SET stock = stock + ${qty}, updated_at = NOW()
+      WHERE id = ${productId}
+    `
+    return { success: result > 0, modifiedCount: result }
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in incrementStock:', error)
+    return { success: false, modifiedCount: 0 }
   }
 }
 
 /**
  * Tăng số lượng đã bán
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const incrementSelled = async (
-  productId: string,
+  productId: number,
   qty: number,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
+  tx?: Prisma.TransactionClient
+): Promise<{ success: boolean; modifiedCount: number }> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .updateOne(
-        { _id: new ObjectId(productId) },
-        { $inc: { selled: qty }, $set: { updatedAt: new Date() } },
-        updateOptions
-      )
-    return result
+    const result = await client.$executeRaw`
+      UPDATE products 
+      SET selled = selled + ${qty}, updated_at = NOW()
+      WHERE id = ${productId}
+    `
+    return { success: result > 0, modifiedCount: result }
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in incrementSelled:', error)
+    return { success: false, modifiedCount: 0 }
   }
 }
 
 /**
  * Giảm số lượng đã bán (dùng khi hủy đơn đã thanh toán)
- * Sử dụng atomic operation với condition selled >= qty để tránh negative value
+ * @param tx Optional transaction client để sử dụng trong transaction
  */
 const decrementSelled = async (
-  productId: string,
+  productId: number,
   qty: number,
-  options: SessionOptions = {}
-): Promise<UpdateResult> => {
+  tx?: Prisma.TransactionClient
+): Promise<{ success: boolean; modifiedCount: number }> => {
+  const client = tx || prisma
   try {
-    const updateOptions = options.session ? { session: options.session } : {}
-    const result = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .updateOne(
-        { _id: new ObjectId(productId), selled: { $gte: qty } },
-        { $inc: { selled: -qty }, $set: { updatedAt: new Date() } },
-        updateOptions
-      )
-    // Nếu không match (selled < qty), set selled = 0 thay vì để negative
-    if (result.matchedCount === 0) {
-      await GET_DB()
-        .collection(PRODUCT_COLLECTION_NAME)
-        .updateOne(
-          { _id: new ObjectId(productId) },
-          { $set: { selled: 0, updatedAt: new Date() } },
-          updateOptions
-        )
-    }
-    return result
+    // Giảm selled nhưng không để âm
+    const result = await client.$executeRaw`
+      UPDATE products 
+      SET selled = GREATEST(0, selled - ${qty}), updated_at = NOW()
+      WHERE id = ${productId}
+    `
+    return { success: result > 0, modifiedCount: result }
   } catch (error) {
-    throw new Error(String(error))
+    // Log error for debugging
+    console.error('Error in decrementSelled:', error)
+    return { success: false, modifiedCount: 0 }
   }
 }
 
 /**
- * Lấy tất cả các loại sản phẩm (distinct types)
+ * Lấy tất cả các categories (thay thế getAllTypes)
  */
-const getAllTypes = async (): Promise<string[]> => {
-  try {
-    const types = await GET_DB()
-      .collection(PRODUCT_COLLECTION_NAME)
-      .distinct('type')
-
-    // Filter out null/undefined/empty values and sort
-    return (types as string[]).filter((type) => type && type.trim()).sort()
-  } catch (error) {
-    throw new Error(String(error))
-  }
+const getAllCategories = async (): Promise<{ id: number; name: string }[]> => {
+  const categories = await prisma.category.findMany({
+    select: { id: true, name: true },
+    orderBy: { name: 'asc' }
+  })
+  return categories
 }
 
 export const productModel = {
-  PRODUCT_COLLECTION_NAME,
-  PRODUCT_COLLECTION_SCHEMA,
   createNew,
   findOneById,
-  findByNameAndType,
+  findBySlug,
+  findByNameAndCategory,
   findByIds,
   getMany,
   update,
@@ -371,5 +387,5 @@ export const productModel = {
   incrementStock,
   incrementSelled,
   decrementSelled,
-  getAllTypes
+  getAllCategories
 }

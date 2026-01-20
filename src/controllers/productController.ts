@@ -37,7 +37,7 @@ const getDetails = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const productId = req.params.id!
+    const productId = String(req.params.id)
 
     const product = await productService.getDetails(productId)
 
@@ -57,7 +57,7 @@ const update = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const productId = req.params.id!
+    const productId = String(req.params.id)
 
     const updatedProduct = await productService.update(productId, req.body)
 
@@ -77,7 +77,7 @@ const deleteProduct = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const productId = req.params.id!
+    const productId = String(req.params.id)
 
     const result = await productService.deleteProduct(productId)
 

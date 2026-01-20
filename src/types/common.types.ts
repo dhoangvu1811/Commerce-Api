@@ -32,28 +32,30 @@ export type PaginatedResult<T, K extends string = 'items'> = {
 }
 
 /**
- * Sort options cho MongoDB
+ * Sort options (legacy - kept for backward compatibility)
  */
 export type SortOrder = 1 | -1
 export type SortOptions = Record<string, SortOrder>
 
 /**
- * Filter options cho MongoDB queries
+ * Filter options (legacy - kept for backward compatibility)
+ * Note: Prisma uses different filter structure
  */
 export type FilterOptions = Record<string, unknown>
 
 /**
- * ObjectId string type helper
+ * ID string type helper (replaces ObjectIdString)
+ * Used for API responses where IDs are strings
  */
 export type ObjectIdString = string
+export type IdString = string | number
 
 /**
- * MongoDB document with _id
- * Sử dụng ObjectIdString thay vì ObjectId để tránh import mongodb
- * Trong thực tế, _id có thể là ObjectId hoặc string tùy context
+ * Document with _id (legacy - kept for backward compatibility)
+ * Note: In Prisma, IDs are numbers, but API responses use strings
  */
 export interface MongoDocument {
-  _id?: ObjectIdString
+  _id?: IdString
   createdAt?: Date
   updatedAt?: Date
 }
