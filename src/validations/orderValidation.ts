@@ -16,9 +16,12 @@ import {
 
 /** Schema cho order item */
 const orderItemSchema = z.object({
-  productId: z
-    .string({ required_error: 'Vui lòng chọn sản phẩm' })
-    .regex(ID_RULE, ID_RULE_MESSAGE),
+  productId: z.union([
+    z
+      .string({ required_error: 'Vui lòng chọn sản phẩm' })
+      .regex(ID_RULE, ID_RULE_MESSAGE),
+    z.number({ required_error: 'Vui lòng chọn sản phẩm' }).int().positive()
+  ]),
   quantity: z
     .number({ required_error: 'Vui lòng nhập số lượng' })
     .int()
