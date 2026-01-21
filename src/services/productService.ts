@@ -58,6 +58,7 @@ const createNew = async (productData: {
   name: string
   categoryId: number
   image?: string
+  images?: string[] // Gallery images
   description?: string
   price: number
   stock?: number
@@ -89,13 +90,23 @@ const createNew = async (productData: {
     // Generate slug
     const slug = generateSlug(productData.name) + '-' + Date.now()
 
+    // Extract images array before creating product
+    const { images, ...productDataWithoutImages } = productData
+
     // Tạo sản phẩm mới
     const createdProduct = await productModel.createNew({
-      ...productData,
+      ...productDataWithoutImages,
       slug
     })
 
-    return createdProduct
+    // Thêm gallery images nếu có
+    if (images && images.length > 0) {
+      await productModel.addImages(createdProduct.id, images)
+    }
+
+    // Lấy lại product với images đã được thêm
+    const productWithImages = await productModel.findOneById(createdProduct.id)
+    return productWithImages || createdProduct
   } catch (error) {
     throw error
   }
@@ -128,6 +139,7 @@ const update = async (
     name: string
     categoryId: number
     image: string
+    images: string[] // Gallery images
     description: string
     price: number
     stock: number
@@ -169,8 +181,11 @@ const update = async (
       }
     }
 
+    // Extract images from updateData
+    const { images, ...dataWithoutImages } = updateData
+
     // Update slug if name changed
-    const dataToUpdate = { ...updateData }
+    const dataToUpdate = { ...dataWithoutImages }
     if (updateData.name) {
       ;(dataToUpdate as { slug?: string }).slug =
         generateSlug(updateData.name) + '-' + Date.now()
@@ -185,7 +200,14 @@ const update = async (
       )
     }
 
-    return updatedProduct
+    // Sync gallery images nếu có trong request
+    if (images !== undefined) {
+      await productModel.syncImages(productIdNum, images)
+    }
+
+    // Lấy lại product với images đã được cập nhật
+    const productWithImages = await productModel.findOneById(productIdNum)
+    return productWithImages || updatedProduct
   } catch (error) {
     throw error
   }
@@ -277,7 +299,7 @@ const getProducts = async (
   queryFilter: ProductQueryFilter = {}
 ): Promise<PaginatedProductsResult> => {
   try {
-    const { search, type, sort } = queryFilter
+    const { search, categoryId, sort } = queryFilter
 
     // Build Prisma filter
     const filter: ProductFilter = {}
@@ -286,14 +308,9 @@ const getProducts = async (
       filter.search = search
     }
 
-    // type → categoryId lookup
-    if (type) {
-      const category = await prisma.category.findFirst({
-        where: { name: { equals: type, mode: 'insensitive' } }
-      })
-      if (category) {
-        filter.categoryId = category.id
-      }
+    // Filter by categoryId directly
+    if (categoryId) {
+      filter.categoryId = categoryId
     }
 
     // Build orderBy
@@ -397,12 +414,12 @@ const getProductsByType = async (
 }
 
 /**
- * Lấy tất cả categories (thay thế getAllTypes)
+ * Lấy tất cả categories
  */
-const getAllTypes = async (): Promise<string[]> => {
+const getAllCategories = async (): Promise<{ id: number; name: string }[]> => {
   try {
     const categories = await productModel.getAllCategories()
-    return categories.map((c) => c.name)
+    return categories
   } catch (error) {
     throw error
   }
@@ -438,6 +455,6 @@ export const productService = {
   deleteSelectedProducts,
   getProducts,
   getProductsByType,
-  getAllTypes,
+  getAllCategories,
   uploadImage
 }

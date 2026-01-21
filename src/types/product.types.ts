@@ -12,13 +12,14 @@ export interface Product extends Timestamps {
   _id?: string | number
   name: string
   image: string
-  type: string
-  countInStock: number
+  categoryId: number
+  stock: number
   price: number
   rating: number
   description: string
   selled: number
   discount: number
+  status?: string
 }
 
 /**
@@ -27,11 +28,12 @@ export interface Product extends Timestamps {
 export interface CreateProductInput {
   name: string
   image: string
-  type: string
-  countInStock: number
+  categoryId: number
+  stock: number
   price: number
   description?: string
   discount?: number
+  status?: string
 }
 
 /**
@@ -40,13 +42,14 @@ export interface CreateProductInput {
 export interface UpdateProductInput {
   name?: string
   image?: string
-  type?: string
-  countInStock?: number
+  categoryId?: number
+  stock?: number
   price?: number
   description?: string
   discount?: number
   rating?: number
   selled?: number
+  status?: string
 }
 
 /**
@@ -63,11 +66,11 @@ export interface GetProductsResult {
  * Product filter options
  */
 export interface ProductFilter {
-  type?: string
+  categoryId?: number
   name?: { $regex: string | RegExp; $options?: string }
   price?: { $gte?: number; $lte?: number }
   rating?: { $gte?: number }
-  countInStock?: { $gt?: number }
+  stock?: { $gt?: number }
 }
 
 /**
@@ -75,7 +78,7 @@ export interface ProductFilter {
  */
 export interface ProductQueryFilter {
   search?: string
-  type?: string
+  categoryId?: number
   sort?: string
 }
 

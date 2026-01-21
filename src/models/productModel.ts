@@ -373,6 +373,88 @@ const getAllCategories = async (): Promise<{ id: number; name: string }[]> => {
   return categories
 }
 
+// ============================================================
+// PRODUCT IMAGES MANAGEMENT
+// ============================================================
+
+/**
+ * Thêm nhiều ảnh gallery cho product
+ */
+const addImages = async (
+  productId: number,
+  imageUrls: string[]
+): Promise<{ count: number }> => {
+  if (!imageUrls || imageUrls.length === 0) {
+    return { count: 0 }
+  }
+
+  const result = await prisma.productImage.createMany({
+    data: imageUrls.map((url) => ({
+      productId,
+      image: url
+    }))
+  })
+
+  return { count: result.count }
+}
+
+/**
+ * Sync (thay thế toàn bộ) ảnh gallery cho product
+ * Strategy: Xóa tất cả ảnh cũ và thêm ảnh mới
+ */
+const syncImages = async (
+  productId: number,
+  imageUrls: string[]
+): Promise<{ deletedCount: number; addedCount: number }> => {
+  // Xóa tất cả ảnh cũ
+  const deleteResult = await prisma.productImage.deleteMany({
+    where: { productId }
+  })
+
+  // Thêm ảnh mới (nếu có)
+  let addedCount = 0
+  if (imageUrls && imageUrls.length > 0) {
+    const addResult = await prisma.productImage.createMany({
+      data: imageUrls.map((url) => ({
+        productId,
+        image: url
+      }))
+    })
+    addedCount = addResult.count
+  }
+
+  return {
+    deletedCount: deleteResult.count,
+    addedCount
+  }
+}
+
+/**
+ * Xóa tất cả ảnh gallery của product
+ */
+const deleteImagesByProductId = async (
+  productId: number
+): Promise<{ count: number }> => {
+  const result = await prisma.productImage.deleteMany({
+    where: { productId }
+  })
+  return { count: result.count }
+}
+
+/**
+ * Xóa một ảnh gallery cụ thể
+ */
+const deleteImageById = async (imageId: number): Promise<boolean> => {
+  try {
+    await prisma.productImage.delete({
+      where: { id: imageId }
+    })
+    return true
+  } catch {
+    return false
+  }
+}
+
 export const productModel = {
   createNew,
   findOneById,
@@ -387,5 +469,10 @@ export const productModel = {
   incrementStock,
   incrementSelled,
   decrementSelled,
-  getAllCategories
+  getAllCategories,
+  // Product Images
+  addImages,
+  syncImages,
+  deleteImagesByProductId,
+  deleteImageById
 }

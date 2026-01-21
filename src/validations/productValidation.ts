@@ -18,11 +18,11 @@ const createProductSchema = z.object({
   image: z
     .string({ required_error: 'Hình ảnh sản phẩm là bắt buộc' })
     .url('Hình ảnh phải là URL hợp lệ'),
-  type: z
-    .string({ required_error: 'Loại sản phẩm là bắt buộc' })
-    .min(2, 'Loại sản phẩm phải có ít nhất 2 ký tự')
-    .max(100, 'Loại sản phẩm không được vượt quá 100 ký tự'),
-  countInStock: z
+  categoryId: z
+    .number({ required_error: 'Danh mục sản phẩm là bắt buộc' })
+    .int('ID danh mục phải là số nguyên')
+    .positive('ID danh mục phải là số dương'),
+  stock: z
     .number({ required_error: 'Số lượng tồn kho là bắt buộc' })
     .int('Số lượng tồn kho phải là số nguyên')
     .min(0, 'Số lượng tồn kho không được âm'),
@@ -51,7 +51,18 @@ const createProductSchema = z.object({
     .min(0, 'Giảm giá không được âm')
     .max(100, 'Giảm giá không được vượt quá 100%')
     .optional()
-    .default(0)
+    .default(0),
+  images: z
+    .array(z.string().url('Mỗi ảnh gallery phải là URL hợp lệ'))
+    .max(10, 'Tối đa 10 ảnh gallery')
+    .optional()
+    .default([]),
+  status: z
+    .string()
+    .min(1, 'Trạng thái sản phẩm là bắt buộc')
+    .max(20, 'Trạng thái không được vượt quá 20 ký tự')
+    .optional()
+    .default('active')
 })
 
 /** Schema cập nhật product (tất cả optional, nhưng phải có ít nhất 1 field) */
@@ -63,12 +74,12 @@ const updateProductSchema = z
       .max(255, 'Tên sản phẩm không được vượt quá 255 ký tự')
       .optional(),
     image: z.string().url('Hình ảnh phải là URL hợp lệ').optional(),
-    type: z
-      .string()
-      .min(2, 'Loại sản phẩm phải có ít nhất 2 ký tự')
-      .max(100, 'Loại sản phẩm không được vượt quá 100 ký tự')
+    categoryId: z
+      .number()
+      .int('ID danh mục phải là số nguyên')
+      .positive('ID danh mục phải là số dương')
       .optional(),
-    countInStock: z
+    stock: z
       .number()
       .int('Số lượng tồn kho phải là số nguyên')
       .min(0, 'Số lượng tồn kho không được âm')
@@ -92,6 +103,16 @@ const updateProductSchema = z
       .number()
       .min(0, 'Giảm giá không được âm')
       .max(100, 'Giảm giá không được vượt quá 100%')
+      .optional(),
+    images: z
+      .array(z.string().url('Mỗi ảnh gallery phải là URL hợp lệ'))
+      .max(10, 'Tối đa 10 ảnh gallery')
+      .optional(),
+    // .default([]),
+    status: z
+      .string()
+      .min(1, 'Trạng thái sản phẩm là bắt buộc')
+      .max(20, 'Trạng thái không được vượt quá 20 ký tự')
       .optional()
   })
   .refine((data) => Object.keys(data).length > 0, {
@@ -108,9 +129,15 @@ const deleteProductSchema = z.object({
 /** Schema xóa nhiều products */
 const deleteSelectedSchema = z.object({
   productIds: z
-    .array(z.string().regex(ID_RULE, ID_RULE_MESSAGE), {
-      required_error: 'Danh sách ID sản phẩm là bắt buộc'
-    })
+    .array(
+      z.union([
+        z.string().regex(ID_RULE, ID_RULE_MESSAGE),
+        z.number().int().positive()
+      ]),
+      {
+        required_error: 'Danh sách ID sản phẩm là bắt buộc'
+      }
+    )
     .min(1, 'Phải chọn ít nhất một sản phẩm để xóa')
 })
 

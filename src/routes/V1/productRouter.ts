@@ -15,7 +15,7 @@ const RouterInstance: Router = express.Router()
 // Public routes - không cần xác thực (cho khách hàng xem sản phẩm)
 RouterInstance.get('/details/:id', productController.getDetails)
 RouterInstance.get('/getAll', productController.getProducts)
-RouterInstance.get('/getAllType', productController.getAllTypes)
+RouterInstance.get('/get-all-categories', productController.getAllCategories)
 
 // Protected routes - requires manage_products permission
 RouterInstance.use(

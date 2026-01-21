@@ -149,9 +149,15 @@ const deleteUserSchema = z.object({
 /** Schema xóa nhiều users */
 const deleteMultipleUsersSchema = z.object({
   userIds: z
-    .array(z.string().regex(ID_RULE, ID_RULE_MESSAGE), {
-      required_error: 'Danh sách ID người dùng là bắt buộc'
-    })
+    .array(
+      z.union([
+        z.string().regex(ID_RULE, ID_RULE_MESSAGE),
+        z.number().int().positive()
+      ]),
+      {
+        required_error: 'Danh sách ID người dùng là bắt buộc'
+      }
+    )
     .min(1, 'Phải chọn ít nhất 1 người dùng để xóa')
 })
 

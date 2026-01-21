@@ -117,10 +117,10 @@ const getProducts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, type, sort } = req.query || {}
+    const { page, itemsPerPage, search, categoryId, sort } = req.query || {}
     const queryFilter = {
       search: search as string | undefined,
-      type: type as string | undefined,
+      categoryId: categoryId ? parseInt(categoryId as string) : undefined,
       sort: sort as string | undefined
     }
 
@@ -140,17 +140,17 @@ const getProducts = async (
   }
 }
 
-const getAllTypes = async (
+const getAllCategories = async (
   _req: Request,
   res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    const result = await productService.getAllTypes()
+    const result = await productService.getAllCategories()
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
-      message: 'Lấy danh sách loại sản phẩm thành công',
+      message: 'Lấy danh sách danh mục sản phẩm thành công',
       data: result
     })
   } catch (error) {
@@ -200,6 +200,6 @@ export const productController = {
   deleteProduct,
   deleteSelectedProducts,
   getProducts,
-  getAllTypes,
+  getAllCategories,
   uploadImage
 }
