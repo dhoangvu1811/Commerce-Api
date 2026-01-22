@@ -11,12 +11,12 @@ import type { Timestamps, PaginationInfo } from './common.types.js'
 export interface Product extends Timestamps {
   _id?: string | number
   name: string
-  image: string
+  image: string | null
   categoryId: number
   stock: number
   price: number
   rating: number
-  description: string
+  description: string | null
   selled: number
   discount: number
   status?: string
