@@ -351,3 +351,16 @@ export const canMarkPaid = (
 
   return { allowed: true, reason: null }
 }
+
+import slugifyLib from 'slugify'
+
+/**
+ * Chuyển đổi string thành slug sử dụng thư viện slugify
+ */
+export const slugify = (text: string): string => {
+  return slugifyLib(text, {
+    lower: true, // convert to lower case
+    locale: 'vi', // language code of the locale to use
+    remove: /[*+~.()'"!:@]/g // remove characters that match regex, defaults to `undefined`
+  })
+}

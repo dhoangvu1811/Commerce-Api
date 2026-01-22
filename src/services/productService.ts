@@ -10,11 +10,14 @@ import ApiError from '~/utils/ApiError.js'
 import {
   productModel,
   type Product,
-  type ProductFilter
+  type ProductFilter,
+  type CreateProductInput,
+  type UpdateProductInput
 } from '~/models/productModel.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
 import { prisma } from '~/config/prisma.js'
-import type { ProductQueryFilter } from '~/types/product.types.js'
+import { ProductQueryFilter } from '~/types/product.types.js'
+import { slugify } from '~/utils/helper.js'
 import type {
   PaginationInfo,
   UploadResult,
@@ -39,34 +42,13 @@ const parseProductId = (productId: string): number => {
 }
 
 /**
- * Generate slug from product name
- */
-const generateSlug = (name: string): string => {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/đ/g, 'd')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)/g, '')
-}
-
-/**
  * Tạo product mới
  */
-const createNew = async (productData: {
-  name: string
-  categoryId: number
-  image?: string
-  images?: string[] // Gallery images
-  description?: string
-  price: number
-  stock?: number
-  rating?: number
-  selled?: number
-  discount?: number
-  status?: string
-}): Promise<Product> => {
+const createNew = async (
+  productData: Omit<CreateProductInput, 'slug'> & {
+    images?: string[]
+  }
+): Promise<Product> => {
   try {
     // Kiểm tra sản phẩm đã tồn tại chưa (theo tên và category)
     const existingProduct = await productModel.findByNameAndCategory(
@@ -88,7 +70,7 @@ const createNew = async (productData: {
     }
 
     // Generate slug
-    const slug = generateSlug(productData.name) + '-' + Date.now()
+    const slug = slugify(productData.name) + '-' + Date.now()
 
     // Extract images array before creating product
     const { images, ...productDataWithoutImages } = productData
@@ -135,19 +117,7 @@ const getDetails = async (productId: string): Promise<Product> => {
  */
 const update = async (
   productId: string,
-  updateData: Partial<{
-    name: string
-    categoryId: number
-    image: string
-    images: string[] // Gallery images
-    description: string
-    price: number
-    stock: number
-    rating: number
-    selled: number
-    discount: number
-    status: string
-  }>
+  updateData: UpdateProductInput & { images?: string[] }
 ): Promise<Product> => {
   try {
     const productIdNum = parseProductId(productId)
@@ -188,7 +158,7 @@ const update = async (
     const dataToUpdate = { ...dataWithoutImages }
     if (updateData.name) {
       ;(dataToUpdate as { slug?: string }).slug =
-        generateSlug(updateData.name) + '-' + Date.now()
+        slugify(updateData.name) + '-' + Date.now()
     }
 
     const updatedProduct = await productModel.update(productIdNum, dataToUpdate)

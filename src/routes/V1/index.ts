@@ -6,6 +6,7 @@
 import type { Request, Response, Router } from 'express'
 import express from 'express'
 import { StatusCodes } from 'http-status-codes'
+import { categoryRouter } from './categoryRouter.js'
 import { productRoute } from './productRouter.js'
 import { userRoute } from './userRouter.js'
 import { voucherRoute } from './voucherRouter.js'
@@ -47,6 +48,9 @@ RouterInstance.get('/health', async (_req: Request, res: Response) => {
     })
   }
 })
+
+/* Category APIs */
+RouterInstance.use('/categories', categoryRouter)
 
 /* Product APIs */
 RouterInstance.use('/products', productRoute)
