@@ -136,6 +136,7 @@ export interface UpdateUserInput {
 export interface UpdateUserByAdminInput extends UpdateUserInput {
   email?: string
   role?: UserRole
+  roleId?: number // Added for refactor
   status?: UserStatus
   emailVerified?: boolean
 }

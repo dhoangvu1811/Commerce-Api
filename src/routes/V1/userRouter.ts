@@ -12,6 +12,7 @@ import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
 import { authLimiter, emailLimiter } from '~/middlewares/rateLimitMiddleware.js'
 import { WEBSITE_DOMAIN } from '~/utils/constants.js'
 import passport from 'passport'
+import { PERMISSIONS } from '~/constants/rbac.js'
 
 const RouterInstance: Router = express.Router()
 
@@ -101,20 +102,20 @@ RouterInstance.get('/me', userController.getCurrentUser)
 // Admin routes - requires manage_users permission
 RouterInstance.get(
   '/all',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userController.getUsers
 )
 
 // Lấy users với session summary cho table overview
 RouterInstance.get(
   '/overview',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userController.getUsersWithSessionSummary
 )
 
 RouterInstance.post(
   '/create',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.createUserByAdmin,
   userController.createUserByAdmin
 )
@@ -127,21 +128,21 @@ RouterInstance.get(
 
 RouterInstance.put(
   '/update/:id',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.updateUserByAdmin,
   userController.updateUserByAdmin
 )
 
 RouterInstance.delete(
   '/delete/:id',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.deleteUser,
   userController.deleteUser
 )
 
 RouterInstance.post(
   '/delete-multiple',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.deleteMultipleUsers,
   userController.deleteMultipleUsers
 )
@@ -149,14 +150,14 @@ RouterInstance.post(
 // User activation/deactivation routes - requires manage_users permission
 RouterInstance.patch(
   '/activate/:userId',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.userActivation,
   userController.activateUser
 )
 
 RouterInstance.patch(
   '/deactivate/:userId',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.userActivation,
   userController.deactivateUser
 )
@@ -164,7 +165,7 @@ RouterInstance.patch(
 // Change user role route - requires manage_users permission
 RouterInstance.patch(
   '/:id/role',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.changeUserRole,
   userController.changeUserRole
 )
@@ -172,21 +173,21 @@ RouterInstance.patch(
 // Session management routes - requires manage_users permission
 RouterInstance.post(
   '/revoke-session',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.revokeSession,
   userController.revokeUserSession
 )
 
 RouterInstance.delete(
   '/revoke-all-sessions/:userId',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.revokeAllSessions,
   userController.revokeAllUserSessions
 )
 
 RouterInstance.get(
   '/sessions/:userId',
-  authMiddleware.requirePermission('manage_users'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
   userValidation.getUserSessions,
   userController.getUserSessions
 )
