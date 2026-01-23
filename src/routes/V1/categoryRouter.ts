@@ -8,6 +8,8 @@ import express from 'express'
 import { categoryController } from '~/controllers/categoryController.js'
 import { categoryValidation } from '~/validations/categoryValidation.js'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
+import { PERMISSIONS } from '~/constants/rbac.js'
+
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
 
 const router: Router = express.Router()
@@ -21,7 +23,7 @@ router
 // Protected Routes (Admin/Staff with manage_products permission)
 router.use(
   authMiddleware.verifyToken,
-  authMiddleware.requirePermission('manage_products')
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS)
 )
 
 // Bulk delete

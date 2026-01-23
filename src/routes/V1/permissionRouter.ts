@@ -11,8 +11,13 @@ import { authMiddleware } from '~/middlewares/authMiddleware.js'
 
 const RouterInstance: Router = express.Router()
 
-// All routes require authentication and admin role
+// All routes require authentication
 RouterInstance.use(authMiddleware.verifyToken)
+
+// Get my permissions (Authenticated users)
+RouterInstance.get('/me', permissionController.getMyPermissions)
+
+// Admin only for management
 RouterInstance.use(authMiddleware.verifyAdmin)
 
 // Permission CRUD
