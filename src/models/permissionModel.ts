@@ -38,19 +38,26 @@ const findByName = async (name: string): Promise<Permission | null> => {
 /**
  * Create new permission
  */
-const create = async (name: string): Promise<Permission> => {
+const create = async (
+  name: string,
+  displayName?: string
+): Promise<Permission> => {
   return await prisma.permission.create({
-    data: { name }
+    data: { name, displayName }
   })
 }
 
 /**
  * Update permission name
  */
-const update = async (id: number, name: string): Promise<Permission> => {
+const update = async (
+  id: number,
+  name: string,
+  displayName?: string
+): Promise<Permission> => {
   return await prisma.permission.update({
     where: { id },
-    data: { name }
+    data: { name, displayName }
   })
 }
 
@@ -147,6 +154,34 @@ const checkUserAllPermissions = async (
   return permissionNames.every((name) => userPermissionNames.includes(name))
 }
 
+/**
+ * Get all permissions of a user
+ */
+const findByUserId = async (userId: number): Promise<Permission[]> => {
+  // Find permissions via Role
+  // 1. Get user's role
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    select: { roleId: true }
+  })
+
+  if (!user || !user.roleId) return []
+
+  // 2. Get permissions of that role
+  const roleWithPermissions = await prisma.role.findUnique({
+    where: { id: user.roleId },
+    include: {
+      rolePermissions: {
+        include: {
+          permission: true
+        }
+      }
+    }
+  })
+
+  return roleWithPermissions?.rolePermissions.map((rp) => rp.permission) || []
+}
+
 export const permissionModel = {
   findAll,
   findById,
@@ -157,5 +192,6 @@ export const permissionModel = {
   deleteById,
   checkUserPermission,
   checkUserAnyPermission,
-  checkUserAllPermissions
+  checkUserAllPermissions,
+  findByUserId
 }

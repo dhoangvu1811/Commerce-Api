@@ -73,19 +73,26 @@ const findByName = async (name: string): Promise<Role | null> => {
 /**
  * Create new role
  */
-const create = async (name: string): Promise<Role> => {
+/**
+ * Create new role
+ */
+const create = async (name: string, displayName?: string): Promise<Role> => {
   return await prisma.role.create({
-    data: { name }
+    data: { name, displayName }
   })
 }
 
 /**
  * Update role
  */
-const update = async (id: number, name: string): Promise<Role> => {
+const update = async (
+  id: number,
+  name: string,
+  displayName?: string
+): Promise<Role> => {
   return await prisma.role.update({
     where: { id },
-    data: { name }
+    data: { name, displayName }
   })
 }
 

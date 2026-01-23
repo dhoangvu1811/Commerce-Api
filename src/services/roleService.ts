@@ -32,22 +32,30 @@ const getById = async (id: number): Promise<RoleWithPermissions> => {
   return role
 }
 
+import { ROLES } from '~/constants/rbac.js'
+
+// ...
+
 /**
  * Create new role
  */
-const create = async (name: string): Promise<Role> => {
+const create = async (name: string, displayName?: string): Promise<Role> => {
   // Check if role name already exists
   const existing = await roleModel.findByName(name)
   if (existing) {
     throw new ApiError(StatusCodes.CONFLICT, `Role "${name}" đã tồn tại`)
   }
-  return await roleModel.create(name)
+  return await roleModel.create(name, displayName)
 }
 
 /**
- * Update role name
+ * Update role
  */
-const update = async (id: number, name: string): Promise<Role> => {
+const update = async (
+  id: number,
+  name: string,
+  displayName?: string
+): Promise<Role> => {
   // Check if role exists
   const role = await roleModel.findById(id)
   if (!role) {
@@ -60,7 +68,17 @@ const update = async (id: number, name: string): Promise<Role> => {
     throw new ApiError(StatusCodes.CONFLICT, `Role "${name}" đã tồn tại`)
   }
 
-  return await roleModel.update(id, name)
+  // Prevent renaming system key of system roles if implementation allows key change.
+  // Actually, usually we lock system keys.
+  const systemRoles = Object.values(ROLES)
+  if (systemRoles.includes(role.name as any) && name !== role.name) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Không thể đổi ID hệ thống của role mặc định'
+    )
+  }
+
+  return await roleModel.update(id, name, displayName)
 }
 
 /**
@@ -74,7 +92,7 @@ const deleteById = async (id: number): Promise<Role> => {
   }
 
   // Prevent deleting system roles
-  const systemRoles = ['admin', 'staff', 'user']
+  const systemRoles = Object.values(ROLES) as string[]
   if (systemRoles.includes(role.name)) {
     throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể xóa role hệ thống')
   }

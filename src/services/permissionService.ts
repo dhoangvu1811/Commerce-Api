@@ -25,22 +25,33 @@ const getById = async (id: number): Promise<Permission> => {
   return permission
 }
 
+import { PERMISSIONS } from '~/constants/rbac.js'
+
+// ...
+
 /**
  * Create new permission
  */
-const create = async (name: string): Promise<Permission> => {
+const create = async (
+  name: string,
+  displayName?: string
+): Promise<Permission> => {
   // Check if permission name already exists
   const existing = await permissionModel.findByName(name)
   if (existing) {
     throw new ApiError(StatusCodes.CONFLICT, `Permission "${name}" đã tồn tại`)
   }
-  return await permissionModel.create(name)
+  return await permissionModel.create(name, displayName)
 }
 
 /**
- * Update permission name
+ * Update permission
  */
-const update = async (id: number, name: string): Promise<Permission> => {
+const update = async (
+  id: number,
+  name: string,
+  displayName?: string
+): Promise<Permission> => {
   // Check if permission exists
   const permission = await permissionModel.findById(id)
   if (!permission) {
@@ -53,7 +64,19 @@ const update = async (id: number, name: string): Promise<Permission> => {
     throw new ApiError(StatusCodes.CONFLICT, `Permission "${name}" đã tồn tại`)
   }
 
-  return await permissionModel.update(id, name)
+  // Prevent renaming system permissions if necessary
+  const systemPermissions = Object.values(PERMISSIONS)
+  if (
+    systemPermissions.includes(permission.name as any) &&
+    permission.name !== name
+  ) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Không thể đổi System Key của permission mặc định'
+    )
+  }
+
+  return await permissionModel.update(id, name, displayName)
 }
 
 /**
@@ -66,6 +89,15 @@ const deleteById = async (id: number): Promise<Permission> => {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy permission')
   }
 
+  // Prevent deleting system permissions
+  const systemPermissions = Object.values(PERMISSIONS) as string[]
+  if (systemPermissions.includes(permission.name)) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Không thể xóa permission mặc định của hệ thống'
+    )
+  }
+
   try {
     return await permissionModel.deleteById(id)
   } catch (error) {
@@ -76,10 +108,18 @@ const deleteById = async (id: number): Promise<Permission> => {
   }
 }
 
+/**
+ * Get permissions by user ID
+ */
+const getByUserId = async (userId: number): Promise<Permission[]> => {
+  return await permissionModel.findByUserId(userId)
+}
+
 export const permissionService = {
   getAll,
   getById,
   create,
   update,
-  deleteById
+  deleteById,
+  getByUserId
 }

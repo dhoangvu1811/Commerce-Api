@@ -14,12 +14,17 @@ const formatZodError = (error: z.ZodError): string => {
 }
 
 /** Schema for creating/updating role */
-const roleNameSchema = z.object({
+const roleSchema = z.object({
   name: z
     .string({ required_error: 'Tên role là bắt buộc' })
     .min(2, 'Tên role phải có ít nhất 2 ký tự')
     .max(50, 'Tên role không được vượt quá 50 ký tự')
-    .regex(/^[a-z_]+$/, 'Tên role chỉ được chứa chữ thường và dấu gạch dưới')
+    .regex(/^[a-z_]+$/, 'Tên role chỉ được chứa chữ thường và dấu gạch dưới'),
+  displayName: z
+    .string()
+    .min(2, 'Tên hiển thị phải có ít nhất 2 ký tự')
+    .max(100, 'Tên hiển thị không được vượt quá 100 ký tự')
+    .optional()
 })
 
 /** Schema for role ID param */
@@ -43,7 +48,7 @@ const assignPermissionSchema = z.object({
 /** Validate create role */
 const createRole = async (req: Request, _res: Response, next: NextFunction) => {
   try {
-    await roleNameSchema.parseAsync(req.body)
+    await roleSchema.parseAsync(req.body)
     next()
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -60,7 +65,7 @@ const createRole = async (req: Request, _res: Response, next: NextFunction) => {
 const updateRole = async (req: Request, _res: Response, next: NextFunction) => {
   try {
     await roleIdSchema.parseAsync(req.params)
-    await roleNameSchema.parseAsync(req.body)
+    await roleSchema.parseAsync(req.body)
     next()
   } catch (error) {
     if (error instanceof z.ZodError) {
