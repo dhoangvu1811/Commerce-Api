@@ -15,6 +15,7 @@ export const ROLES = {
 export const PERMISSIONS = {
   MANAGE_PRODUCTS: 'manage_products',
   MANAGE_USERS: 'manage_users',
+  MANAGE_ROLES: 'manage_roles',
   MANAGE_ORDERS: 'manage_orders',
   VIEW_ANALYTICS: 'view_analytics',
   MANAGE_SYSTEM: 'manage_system',
