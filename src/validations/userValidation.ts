@@ -181,7 +181,8 @@ const updateUserByAdminSchema = z
     avatar: z.string().url().or(z.literal('')).optional(),
     dateOfBirth: nullableDateSchema.optional(),
     gender: z.enum(['male', 'female', 'other', '']).optional(),
-    role: z.enum(['admin', 'user']).optional(),
+    roleId: z.number().int().positive().optional(),
+    role: z.string().optional(), // Legacy: support string name
     status: z.enum(['active', 'inactive']).optional(),
     emailVerified: z.boolean().optional()
   })
@@ -210,7 +211,8 @@ const createUserByAdminSchema = z.object({
   address: z.string().max(500).or(z.literal('')).optional(),
   dateOfBirth: nullableDateSchema.optional(),
   gender: z.enum(['male', 'female', 'other', '']).optional(),
-  role: z.enum(['admin', 'user', 'staff']).default('user').optional(),
+  roleId: z.number().int().positive().optional(),
+  role: z.string().optional(), // Legacy
   status: z.enum(['active', 'inactive']).default('active').optional(),
   emailVerified: z.boolean().default(false).optional()
 })

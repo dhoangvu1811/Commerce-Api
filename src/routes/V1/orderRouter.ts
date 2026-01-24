@@ -8,6 +8,7 @@ import express from 'express'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 import { orderValidation } from '~/validations/orderValidation.js'
 import { orderController } from '~/controllers/orderController.js'
+import { PERMISSIONS } from '~/constants/rbac.js'
 
 const RouterInstance: Router = express.Router()
 
@@ -42,42 +43,42 @@ RouterInstance.post(
 // Admin routes - requires manage_orders permission
 RouterInstance.get(
   '/all',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderController.adminGetOrders
 )
 RouterInstance.get(
   '/admin/details/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.validateOrderId,
   orderController.adminGetDetails
 )
 RouterInstance.put(
   '/admin/update/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.updateStatus,
   orderController.adminUpdateStatus
 )
 RouterInstance.put(
   '/admin/update-payment/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.updatePaymentStatus,
   orderController.adminUpdatePaymentStatus
 )
 RouterInstance.post(
   '/admin/mark-paid/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.validateOrderId,
   orderController.adminMarkPaid
 )
 RouterInstance.post(
   '/admin/cancel/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.validateOrderId,
   orderController.adminCancel
 )
 RouterInstance.get(
   '/admin/logs/:id',
-  authMiddleware.requirePermission('manage_orders'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.validateOrderId,
   orderController.adminGetOrderLogs
 )

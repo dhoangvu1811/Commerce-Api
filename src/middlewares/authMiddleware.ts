@@ -69,13 +69,17 @@ const verifyToken = async (
  * Middleware kiểm tra quyền admin
  * Yêu cầu đã qua verifyToken
  */
+import { ROLES } from '~/constants/rbac.js'
+
+// ...
+
 const verifyAdmin = async (
   req: Request,
   _res: Response,
   next: NextFunction
 ): Promise<void> => {
   try {
-    if (req.jwtDecoded?.role !== 'admin') {
+    if (req.jwtDecoded?.role !== ROLES.ADMIN) {
       throw new ApiError(
         StatusCodes.FORBIDDEN,
         'Bạn cần quyền quản trị viên để thực hiện chức năng này'
@@ -270,7 +274,7 @@ const requirePermission = (permissionName: string) => {
       }
 
       // Admin luôn có tất cả permissions
-      if (req.jwtDecoded?.role === 'admin') {
+      if (req.jwtDecoded?.role === ROLES.ADMIN) {
         next()
         return
       }
@@ -313,7 +317,7 @@ const requireAnyPermission = (permissionNames: string[]) => {
       }
 
       // Admin luôn có tất cả permissions
-      if (req.jwtDecoded?.role === 'admin') {
+      if (req.jwtDecoded?.role === ROLES.ADMIN) {
         next()
         return
       }

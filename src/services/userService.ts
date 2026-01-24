@@ -408,6 +408,9 @@ const updatePassword = async (
 
     await userModel.update(userIdNum, updateData)
 
+    // Revoke all sessions (force re-login with new password)
+    await sessionModel.revokeAllUserSessions(userIdNum)
+
     return { message: 'Cập nhật mật khẩu thành công' }
   } catch (error) {
     throw error
@@ -540,11 +543,16 @@ const updateUserByAdmin = async (
       }
     }
 
-    // Convert role name to roleId if provided
+    // Convert role/roleId
     const prismaUpdateData: Record<string, unknown> = { ...updateData }
 
-    // Handle role to roleId conversion
-    if ('role' in updateData && updateData.role) {
+    // Handle roleId (priority) or role name
+    if ('roleId' in updateData && updateData.roleId) {
+      prismaUpdateData.roleId = updateData.roleId
+      // If both are present, we removed 'role' implicitly by not renaming it to roleId.
+      // We should ensure 'role' key is removed if it exists in updateData so prisma doesn't error (User model doesn't have 'role' field).
+      delete prismaUpdateData.role
+    } else if ('role' in updateData && updateData.role) {
       const roleRecord = await prisma.role.findFirst({
         where: { name: updateData.role }
       })
@@ -561,6 +569,15 @@ const updateUserByAdmin = async (
 
     const updatedUser = await userModel.update(userIdNum, prismaUpdateData)
 
+    // Revoke all sessions if role or status changed to inactive
+    if (
+      (prismaUpdateData.roleId &&
+        prismaUpdateData.roleId !== existingUser.roleId) ||
+      (prismaUpdateData.status && prismaUpdateData.status !== UserStatus.active)
+    ) {
+      await sessionModel.revokeAllUserSessions(userIdNum)
+    }
+
     const { password: _password, ...userResponse } = updatedUser || {}
 
     return userResponse as unknown as UserResponseType
@@ -575,6 +592,7 @@ const updateUserByAdmin = async (
 const createUserByAdmin = async (
   userData: RegisterInput & {
     role?: UserRole
+    roleId?: number
     status?: UserStatus
     emailVerified?: boolean
     typeAccount?: AccountType
@@ -592,9 +610,11 @@ const createUserByAdmin = async (
 
     const hashedPassword = await hashPassword(userData.password)
 
-    // Get roleId from role name
+    // Get roleId (priority: roleId > role name > default)
     let roleId = DEFAULT_USER_ROLE_ID
-    if (userData.role) {
+    if (userData.roleId) {
+      roleId = userData.roleId
+    } else if (userData.role) {
       const roleRecord = await prisma.role.findFirst({
         where: { name: userData.role }
       })
@@ -790,6 +810,9 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
       )
     }
 
+    // Revoke all sessions immediately
+    await sessionModel.revokeAllUserSessions(userIdNum)
+
     const { password: _password, ...userResponse } = deactivatedUser
 
     return userResponse as unknown as UserResponseType
@@ -967,6 +990,9 @@ const changeUserRole = async (
   const updatedUser = await userModel.update(targetId, {
     roleId: newRoleId
   })
+
+  // Revoke all sessions to enforce new role immediately
+  await sessionModel.revokeAllUserSessions(targetId)
 
   return {
     user: updatedUser as UserResponseType,

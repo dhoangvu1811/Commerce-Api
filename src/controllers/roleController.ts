@@ -43,8 +43,8 @@ const getById = async (req: Request, res: Response, next: NextFunction) => {
  */
 const create = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name } = req.body
-    const role = await roleService.create(name)
+    const { name, displayName } = req.body
+    const role = await roleService.create(name, displayName)
     res.status(StatusCodes.CREATED).json({
       code: StatusCodes.CREATED,
       message: 'Tạo role thành công',
@@ -61,8 +61,8 @@ const create = async (req: Request, res: Response, next: NextFunction) => {
 const update = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = parseInt(req.params.id as string, 10)
-    const { name } = req.body
-    const role = await roleService.update(id, name)
+    const { name, displayName } = req.body
+    const role = await roleService.update(id, name, displayName)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Cập nhật role thành công',

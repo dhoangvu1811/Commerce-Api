@@ -10,6 +10,8 @@ import { productValidation } from '~/validations/productValidation.js'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 
+import { PERMISSIONS } from '~/constants/rbac.js'
+
 const RouterInstance: Router = express.Router()
 
 // Public routes - không cần xác thực (cho khách hàng xem sản phẩm)
@@ -20,7 +22,7 @@ RouterInstance.get('/get-all-categories', productController.getAllCategories)
 // Protected routes - requires manage_products permission
 RouterInstance.use(
   authMiddleware.verifyToken,
-  authMiddleware.requirePermission('manage_products')
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS)
 )
 
 // Admin-only routes - quản lý sản phẩm

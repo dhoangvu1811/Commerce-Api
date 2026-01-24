@@ -14,7 +14,7 @@ const formatZodError = (error: z.ZodError): string => {
 }
 
 /** Schema for creating/updating permission */
-const permissionNameSchema = z.object({
+const permissionSchema = z.object({
   name: z
     .string({ required_error: 'Tên permission là bắt buộc' })
     .min(2, 'Tên permission phải có ít nhất 2 ký tự')
@@ -22,7 +22,12 @@ const permissionNameSchema = z.object({
     .regex(
       /^[a-z_]+$/,
       'Tên permission chỉ được chứa chữ thường và dấu gạch dưới'
-    )
+    ),
+  displayName: z
+    .string()
+    .min(2, 'Tên hiển thị phải có ít nhất 2 ký tự')
+    .max(100, 'Tên hiển thị không được vượt quá 100 ký tự')
+    .optional()
 })
 
 /** Schema for permission ID param */
@@ -37,7 +42,7 @@ const createPermission = async (
   next: NextFunction
 ) => {
   try {
-    await permissionNameSchema.parseAsync(req.body)
+    await permissionSchema.parseAsync(req.body)
     next()
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -58,7 +63,7 @@ const updatePermission = async (
 ) => {
   try {
     await permissionIdSchema.parseAsync(req.params)
-    await permissionNameSchema.parseAsync(req.body)
+    await permissionSchema.parseAsync(req.body)
     next()
   } catch (error) {
     if (error instanceof z.ZodError) {

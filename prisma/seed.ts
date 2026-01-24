@@ -29,91 +29,63 @@ async function main() {
   console.log('📝 Đang tạo Roles...')
   const adminRole = await prisma.role.upsert({
     where: { name: 'admin' },
-    update: {},
-    create: { name: 'admin' }
+    update: { displayName: 'Quản trị viên' },
+    create: { name: 'admin', displayName: 'Quản trị viên' }
   })
 
   const userRole = await prisma.role.upsert({
     where: { name: 'user' },
-    update: {},
-    create: { name: 'user' }
+    update: { displayName: 'Người dùng' },
+    create: { name: 'user', displayName: 'Người dùng' }
   })
 
   const staffRole = await prisma.role.upsert({
     where: { name: 'staff' },
-    update: {},
-    create: { name: 'staff' }
+    update: { displayName: 'Nhân viên' },
+    create: { name: 'staff', displayName: 'Nhân viên' }
   })
 
   // 2. Tạo Permissions
   console.log('🔐 Đang tạo Permissions...')
-  const permissions = await Promise.all([
-    prisma.permission.upsert({
-      where: { name: 'manage_users' },
-      update: {},
-      create: { name: 'manage_users' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'manage_roles' },
-      update: {},
-      create: { name: 'manage_roles' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'manage_products' },
-      update: {},
-      create: { name: 'manage_products' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'manage_orders' },
-      update: {},
-      create: { name: 'manage_orders' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'manage_vouchers' },
-      update: {},
-      create: { name: 'manage_vouchers' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'view_analytics' },
-      update: {},
-      create: { name: 'view_analytics' }
-    }),
-    prisma.permission.upsert({
-      where: { name: 'manage_contacts' },
-      update: {},
-      create: { name: 'manage_contacts' }
-    })
-  ])
+  const permissionsData = [
+    { name: 'manage_users', displayName: 'Quản lý người dùng' },
+    { name: 'manage_roles', displayName: 'Quản lý vai trò & quyền' },
+    { name: 'manage_products', displayName: 'Quản lý sản phẩm' },
+    { name: 'manage_orders', displayName: 'Quản lý đơn hàng' },
+    { name: 'manage_vouchers', displayName: 'Quản lý mã giảm giá' },
+    { name: 'view_analytics', displayName: 'Xem báo cáo thống kê' },
+    { name: 'manage_contacts', displayName: 'Quản lý liên hệ' },
+    { name: 'manage_system', displayName: 'Quản lý hệ thống' }
+  ]
+
+  const permissions = await Promise.all(
+    permissionsData.map((p) =>
+      prisma.permission.upsert({
+        where: { name: p.name },
+        update: { displayName: p.displayName },
+        create: { name: p.name, displayName: p.displayName }
+      })
+    )
+  )
 
   // 3. Gán Permissions cho Roles
   console.log('🔗 Đang gán Permissions cho Roles...')
-  // Admin có tất cả permissions
-  for (const permission of permissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: adminRole.id,
-          permissionId: permission.id
-        }
-      },
-      update: {},
-      create: {
-        roleId: adminRole.id,
-        permissionId: permission.id
-      }
-    })
-  }
 
-  // Staff có các permissions liên quan đến quản lý sản phẩm, đơn hàng, voucher
+  // NOTE: Admin mặc định có full quyền (bypass check), không cần gán permission vào DB.
+
+  // Staff có các permissions liên quan đến vận hành
+  const staffPermissionNames = [
+    'manage_products',
+    'manage_orders',
+    'manage_vouchers',
+    'view_analytics',
+    'manage_contacts'
+  ]
+
   const staffPermissions = permissions.filter((p) =>
-    [
-      'manage_products',
-      'manage_orders',
-      'manage_vouchers',
-      'view_analytics',
-      'manage_contacts'
-    ].includes(p.name)
+    staffPermissionNames.includes(p.name)
   )
+
   for (const permission of staffPermissions) {
     await prisma.rolePermission.upsert({
       where: {
@@ -138,7 +110,7 @@ async function main() {
     where: { email: 'admin@commerce.vn' },
     update: {},
     create: {
-      name: 'Admin Commerce',
+      name: 'Đinh Hoàng Vũ',
       email: 'admin@commerce.vn',
       password: hashedPassword,
       phoneNumber: '0901234567',
@@ -156,8 +128,8 @@ async function main() {
     where: { email: 'user@example.com' },
     update: {},
     create: {
-      name: 'Nguyễn Văn A',
-      email: 'user@example.com',
+      name: 'Đinh Duy Hoàng',
+      email: 'hoang@gmail.com',
       password: hashedPassword,
       phoneNumber: '0912345678',
       address: '456 Lê Lợi, Q.1, TP.HCM',
@@ -192,7 +164,7 @@ async function main() {
     where: { email: 'staff@commerce.vn' },
     update: {},
     create: {
-      name: 'Staff Commerce',
+      name: 'Đinh Vũ Hoàng',
       email: 'staff@commerce.vn',
       password: hashedPassword,
       phoneNumber: '0934567890',

@@ -9,6 +9,8 @@ import { voucherController } from '~/controllers/voucherController.js'
 import { voucherValidation } from '~/validations/voucherValidation.js'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 
+import { PERMISSIONS } from '~/constants/rbac.js'
+
 const RouterInstance: Router = express.Router()
 
 // Public - verify voucher cho khách hàng (không bắt buộc đăng nhập)
@@ -24,7 +26,7 @@ RouterInstance.get('/active', voucherController.getActivePublic)
 // Admin management - requires manage_vouchers permission
 RouterInstance.use(
   authMiddleware.verifyToken,
-  authMiddleware.requirePermission('manage_vouchers')
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_VOUCHERS)
 )
 
 RouterInstance.get('/all', voucherController.getVouchers)

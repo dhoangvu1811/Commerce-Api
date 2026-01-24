@@ -8,6 +8,8 @@ import { contactController } from '~/controllers/contactController.js'
 import { contactValidation } from '~/validations/contactValidation.js'
 import { authMiddleware } from '~/middlewares/authMiddleware.js'
 
+import { PERMISSIONS } from '~/constants/rbac.js'
+
 const router: Router = express.Router()
 
 // Public: Gửi liên hệ
@@ -17,7 +19,7 @@ router.post('/', contactValidation.createContact, contactController.sendContact)
 router.get(
   '/',
   authMiddleware.verifyToken,
-  authMiddleware.requirePermission('manage_contacts'),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_CONTACTS),
   contactController.getContacts
 )
 
