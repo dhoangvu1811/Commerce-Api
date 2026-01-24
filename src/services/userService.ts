@@ -408,6 +408,9 @@ const updatePassword = async (
 
     await userModel.update(userIdNum, updateData)
 
+    // Revoke all sessions (force re-login with new password)
+    await sessionModel.revokeAllUserSessions(userIdNum)
+
     return { message: 'Cập nhật mật khẩu thành công' }
   } catch (error) {
     throw error
@@ -806,6 +809,9 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
         'Không thể vô hiệu hóa tài khoản'
       )
     }
+
+    // Revoke all sessions immediately
+    await sessionModel.revokeAllUserSessions(userIdNum)
 
     const { password: _password, ...userResponse } = deactivatedUser
 
