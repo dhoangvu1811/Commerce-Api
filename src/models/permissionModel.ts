@@ -5,16 +5,59 @@
 
 import { prisma } from '~/config/prisma.js'
 import type { Permission } from '~/generated/prisma/index.js'
+import {
+  PaginatedPermissionsResult,
+  PermissionFilter
+} from '~/types/rbac.types.js'
 
 export type { Permission }
 
 /**
- * Find all permissions
+ * Find all permissions with pagination
  */
-const findAll = async (): Promise<Permission[]> => {
-  return await prisma.permission.findMany({
-    orderBy: { name: 'asc' }
-  })
+const findAll = async (
+  page: number = 1,
+  limit: number = 10,
+  filter?: PermissionFilter
+): Promise<PaginatedPermissionsResult> => {
+  const skip = (page - 1) * limit
+  const where = filter?.search
+    ? {
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
+          }
+        ]
+      }
+    : {}
+
+  const [permissions, totalItems] = await Promise.all([
+    prisma.permission.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { name: 'asc' }
+    }),
+    prisma.permission.count({ where })
+  ])
+
+  const totalPages = Math.ceil(totalItems / limit)
+
+  return {
+    permissions,
+    pagination: {
+      page,
+      itemsPerPage: limit,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    }
+  }
 }
 
 /**

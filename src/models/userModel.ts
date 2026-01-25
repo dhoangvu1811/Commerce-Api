@@ -17,7 +17,7 @@ export interface PaginatedUsersResult {
   pagination: {
     page: number
     itemsPerPage: number
-    totalUsers: number
+    totalItems: number
     totalPages: number
     hasNextPage: boolean
     hasPrevPage: boolean
@@ -172,7 +172,7 @@ const getMany = async (
     pagination: {
       page,
       itemsPerPage,
-      totalUsers,
+      totalItems: totalUsers,
       totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1

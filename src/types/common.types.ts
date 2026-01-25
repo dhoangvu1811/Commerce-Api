@@ -17,6 +17,7 @@ export interface ApiResponse<T = unknown> {
 export interface PaginationInfo {
   page: number
   itemsPerPage: number
+  totalItems: number
   totalPages: number
   hasNextPage: boolean
   hasPrevPage: boolean

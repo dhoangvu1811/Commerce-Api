@@ -19,7 +19,7 @@ export interface PaginatedProductsResult {
   pagination: {
     page: number
     itemsPerPage: number
-    totalProducts: number
+    totalItems: number
     totalPages: number
     hasNextPage: boolean
     hasPrevPage: boolean
@@ -181,7 +181,7 @@ const getMany = async (
     pagination: {
       page,
       itemsPerPage,
-      totalProducts,
+      totalItems: totalProducts,
       totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1
@@ -362,18 +362,6 @@ const decrementSelled = async (
   }
 }
 
-/**
- * Lấy tất cả các categories (thay thế getAllTypes)
- */
-const getAllCategories = async (): Promise<{ id: number; name: string }[]> => {
-  const categories = await prisma.category.findMany({
-    select: { id: true, name: true },
-    orderBy: { name: 'asc' }
-  })
-  return categories
-}
-
-// ============================================================
 // PRODUCT IMAGES MANAGEMENT
 // ============================================================
 
@@ -469,7 +457,6 @@ export const productModel = {
   incrementStock,
   incrementSelled,
   decrementSelled,
-  getAllCategories,
   // Product Images
   addImages,
   syncImages,
