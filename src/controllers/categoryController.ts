@@ -33,7 +33,11 @@ const createNew = async (
       image: imageUrl
     })
 
-    res.status(StatusCodes.CREATED).json(category)
+    res.status(StatusCodes.CREATED).json({
+      code: StatusCodes.CREATED,
+      message: 'Tạo danh mục thành công',
+      data: category
+    })
   } catch (error) {
     next(error)
   }
@@ -48,11 +52,23 @@ const getAll = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const categories = await categoryService.getAll({
-      search: req.query.search as string
-    })
+    const page = Number(req.query.page) || 1
+    const limit =
+      Number(req.query.limit) || Number(req.query.itemsPerPage) || 20
 
-    res.status(StatusCodes.OK).json(categories)
+    const result = await categoryService.getAll(
+      {
+        search: req.query.search as string
+      },
+      page,
+      limit
+    )
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách danh mục thành công',
+      data: result
+    })
   } catch (error) {
     next(error)
   }
@@ -70,7 +86,11 @@ const getDetail = async (
     const { id } = req.params
     const category = await categoryService.getDetail(Number(id))
 
-    res.status(StatusCodes.OK).json(category)
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy thông tin danh mục thành công',
+      data: category
+    })
   } catch (error) {
     next(error)
   }
@@ -102,7 +122,11 @@ const update = async (
       image: imageUrl
     })
 
-    res.status(StatusCodes.OK).json(updatedCategory)
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Cập nhật danh mục thành công',
+      data: updatedCategory
+    })
   } catch (error) {
     next(error)
   }
@@ -121,6 +145,7 @@ const deleteCategory = async (
     await categoryService.deleteCategory(Number(id))
 
     res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
       message: 'Xóa danh mục thành công'
     })
   } catch (error) {
@@ -143,7 +168,9 @@ const deleteMany = async (
     const result = await categoryService.deleteMany(numericIds)
 
     res.status(StatusCodes.OK).json({
-      message: `Đã xóa thành công ${result.count} danh mục`
+      code: StatusCodes.OK,
+      message: `Đã xóa thành công ${result.count} danh mục`,
+      data: result
     })
   } catch (error) {
     next(error)

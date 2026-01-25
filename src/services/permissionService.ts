@@ -6,12 +6,21 @@
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { permissionModel, type Permission } from '~/models/permissionModel.js'
+import {
+  PaginatedPermissionsResult,
+  PermissionFilter
+} from '~/types/rbac.types.js'
 
 /**
- * Get all permissions
+ * Get all permissions with pagination
  */
-const getAll = async (): Promise<Permission[]> => {
-  return await permissionModel.findAll()
+const getAll = async (
+  page?: number,
+  limit?: number,
+  search?: string
+): Promise<PaginatedPermissionsResult> => {
+  const filter: PermissionFilter = { search }
+  return await permissionModel.findAll(page, limit, filter)
 }
 
 /**

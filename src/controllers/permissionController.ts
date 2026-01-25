@@ -11,12 +11,18 @@ import { permissionService } from '~/services/permissionService.js'
 /**
  * Get all permissions
  */
-const getAll = async (_req: Request, res: Response, next: NextFunction) => {
+const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const permissions = await permissionService.getAll()
+    const page = parseInt(req.query.page as string) || 1
+    const limit = parseInt(req.query.limit as string) || 10
+    const search = req.query.search as string
+
+    const result = await permissionService.getAll(page, limit, search)
+
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
-      data: permissions
+      message: 'Lấy danh sách permission thành công',
+      data: result
     })
   } catch (error) {
     next(error)
@@ -32,6 +38,7 @@ const getById = async (req: Request, res: Response, next: NextFunction) => {
     const permission = await permissionService.getById(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
+      message: 'Lấy chi tiết permission thành công',
       data: permission
     })
   } catch (error) {
@@ -107,6 +114,7 @@ const getMyPermissions = async (
     const permissions = await permissionService.getByUserId(userId)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
+      message: 'Lấy danh sách permission của bạn thành công',
       data: permissions
     })
   } catch (error) {
