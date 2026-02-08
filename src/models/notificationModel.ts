@@ -44,9 +44,11 @@ const getByUserId = async (
     notifications,
     pagination: {
       page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit)
+      itemsPerPage: limit,
+      totalItems: total,
+      totalPages: Math.ceil(total / limit),
+      hasNextPage: page < Math.ceil(total / limit),
+      hasPrevPage: page > 1
     }
   }
 }

@@ -384,18 +384,6 @@ const getProductsByType = async (
 }
 
 /**
- * Lấy tất cả categories
- */
-const getAllCategories = async (): Promise<{ id: number; name: string }[]> => {
-  try {
-    const categories = await productModel.getAllCategories()
-    return categories
-  } catch (error) {
-    throw error
-  }
-}
-
-/**
  * Upload ảnh lên Cloudinary
  */
 const uploadImage = async (
@@ -425,6 +413,5 @@ export const productService = {
   deleteSelectedProducts,
   getProducts,
   getProductsByType,
-  getAllCategories,
   uploadImage
 }

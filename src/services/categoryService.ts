@@ -3,7 +3,8 @@ import { categoryModel, type Category } from '~/models/categoryModel.js'
 import {
   CreateCategoryInput,
   UpdateCategoryInput,
-  CategoryFilter
+  CategoryFilter,
+  PaginatedCategoriesResult
 } from '~/types/category.types.js'
 import ApiError from '~/utils/ApiError.js'
 import { slugify } from '~/utils/helper.js'
@@ -34,9 +35,13 @@ const createNew = async (data: CreateCategoryInput): Promise<Category> => {
 /**
  * Get all categories
  */
-const getAll = async (filter: CategoryFilter = {}): Promise<Category[]> => {
-  const categories = await categoryModel.findAll(filter)
-  return categories
+const getAll = async (
+  filter: CategoryFilter = {},
+  page: number = 1,
+  limit: number = 20
+): Promise<PaginatedCategoriesResult> => {
+  const result = await categoryModel.findAll(filter, page, limit)
+  return result
 }
 
 /**

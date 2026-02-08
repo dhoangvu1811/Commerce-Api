@@ -140,24 +140,6 @@ const getProducts = async (
   }
 }
 
-const getAllCategories = async (
-  _req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
-  try {
-    const result = await productService.getAllCategories()
-
-    res.status(StatusCodes.OK).json({
-      code: StatusCodes.OK,
-      message: 'Lấy danh sách danh mục sản phẩm thành công',
-      data: result
-    })
-  } catch (error) {
-    next(error)
-  }
-}
-
 const uploadImage = async (
   req: MulterRequest,
   res: Response,
@@ -200,6 +182,5 @@ export const productController = {
   deleteProduct,
   deleteSelectedProducts,
   getProducts,
-  getAllCategories,
   uploadImage
 }

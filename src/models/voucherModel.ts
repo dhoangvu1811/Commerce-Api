@@ -20,7 +20,7 @@ export interface PaginatedVouchersResult {
   pagination: {
     page: number
     itemsPerPage: number
-    totalVouchers: number
+    totalItems: number
     totalPages: number
     hasNextPage: boolean
     hasPrevPage: boolean
@@ -148,7 +148,7 @@ const getMany = async (
     pagination: {
       page,
       itemsPerPage,
-      totalVouchers,
+      totalItems: totalVouchers,
       totalPages,
       hasNextPage: page < totalPages,
       hasPrevPage: page > 1

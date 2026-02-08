@@ -1,3 +1,5 @@
+import { PaginationInfo } from './common.types.js'
+
 export interface Category {
   id: number
   name: string
@@ -22,4 +24,9 @@ export interface UpdateCategoryInput {
 
 export interface CategoryFilter {
   search?: string
+}
+
+export interface PaginatedCategoriesResult {
+  categories: Category[]
+  pagination: PaginationInfo
 }

@@ -5,20 +5,24 @@
 
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import {
-  roleModel,
-  type Role,
-  type RoleWithPermissions,
-  type RoleWithUserCount,
-  type Permission
-} from '~/models/roleModel.js'
+import { roleModel, type Role, type Permission } from '~/models/roleModel.js'
 import { permissionModel } from '~/models/permissionModel.js'
+import {
+  PaginatedRolesWithUserCountResult,
+  RoleFilter,
+  RoleWithPermissions
+} from '~/types/rbac.types.js'
 
 /**
- * Get all roles with user count
+ * Get all roles with user count and pagination
  */
-const getAll = async (): Promise<RoleWithUserCount[]> => {
-  return await roleModel.findAllWithUserCount()
+const getAll = async (
+  page?: number,
+  limit?: number,
+  search?: string
+): Promise<PaginatedRolesWithUserCountResult> => {
+  const filter: RoleFilter = { search }
+  return await roleModel.findAllWithUserCount(page, limit, filter)
 }
 
 /**

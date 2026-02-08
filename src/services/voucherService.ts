@@ -74,6 +74,7 @@ const getActivePublic = async (
       pagination: {
         page: 1,
         itemsPerPage: limit,
+        totalItems: activeVouchers.length,
         totalPages: 1,
         hasNextPage: false,
         hasPrevPage: false

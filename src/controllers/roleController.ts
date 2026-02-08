@@ -10,12 +10,18 @@ import { roleService } from '~/services/roleService.js'
 /**
  * Get all roles
  */
-const getAll = async (_req: Request, res: Response, next: NextFunction) => {
+const getAll = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const roles = await roleService.getAll()
+    const page = parseInt(req.query.page as string) || 1
+    const limit = parseInt(req.query.limit as string) || 10
+    const search = req.query.search as string
+
+    const result = await roleService.getAll(page, limit, search)
+
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
-      data: roles
+      message: 'Lấy danh sách role thành công',
+      data: result
     })
   } catch (error) {
     next(error)
@@ -31,6 +37,7 @@ const getById = async (req: Request, res: Response, next: NextFunction) => {
     const role = await roleService.getById(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
+      message: 'Lấy chi tiết role thành công',
       data: role
     })
   } catch (error) {
@@ -102,6 +109,7 @@ const getPermissions = async (
     const permissions = await roleService.getPermissions(id)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
+      message: 'Lấy danh sách permission của role thành công',
       data: permissions
     })
   } catch (error) {

@@ -10,39 +10,114 @@ import type {
   RolePermission
 } from '~/generated/prisma/index.js'
 
+import {
+  PaginatedRolesResult,
+  RoleFilter,
+  RoleWithPermissions,
+  PaginatedRolesWithUserCountResult
+} from '~/types/rbac.types.js'
+
 export type { Role, Permission }
 
-/** Role with permissions type */
-export type RoleWithPermissions = Role & {
-  rolePermissions: (RolePermission & { permission: Permission })[]
-}
-
 /**
- * Find all roles
+ * Find all roles with pagination
  */
-const findAll = async (): Promise<Role[]> => {
-  return await prisma.role.findMany({
-    orderBy: { id: 'asc' }
-  })
-}
-
-/** Role with user count type */
-export type RoleWithUserCount = Role & {
-  _count: { users: number }
-}
-
-/**
- * Find all roles with user count
- */
-const findAllWithUserCount = async (): Promise<RoleWithUserCount[]> => {
-  return await prisma.role.findMany({
-    orderBy: { id: 'asc' },
-    include: {
-      _count: {
-        select: { users: true }
+const findAll = async (
+  page: number = 1,
+  limit: number = 10,
+  filter?: RoleFilter
+): Promise<PaginatedRolesResult> => {
+  const skip = (page - 1) * limit
+  const where = filter?.search
+    ? {
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
+          }
+        ]
       }
+    : {}
+
+  const [roles, totalItems] = await Promise.all([
+    prisma.role.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { id: 'asc' }
+    }),
+    prisma.role.count({ where })
+  ])
+
+  const totalPages = Math.ceil(totalItems / limit)
+
+  return {
+    roles,
+    pagination: {
+      page,
+      itemsPerPage: limit,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
     }
-  })
+  }
+}
+
+/**
+ * Find all roles with user count and pagination
+ */
+const findAllWithUserCount = async (
+  page: number = 1,
+  limit: number = 10,
+  filter?: RoleFilter
+): Promise<PaginatedRolesWithUserCountResult> => {
+  const skip = (page - 1) * limit
+  const where = filter?.search
+    ? {
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
+          }
+        ]
+      }
+    : {}
+
+  const [roles, totalItems] = await Promise.all([
+    prisma.role.findMany({
+      where,
+      skip,
+      take: limit,
+      orderBy: { id: 'asc' },
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      }
+    }),
+    prisma.role.count({ where })
+  ])
+
+  const totalPages = Math.ceil(totalItems / limit)
+
+  return {
+    roles,
+    pagination: {
+      page,
+      itemsPerPage: limit,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    }
+  }
 }
 
 /**

@@ -8,16 +8,23 @@ import type { Category } from '~/generated/prisma/index.js'
 import {
   CreateCategoryInput,
   UpdateCategoryInput,
-  CategoryFilter
+  CategoryFilter,
+  PaginatedCategoriesResult
 } from '~/types/category.types.js'
 
 /** Export type cho service sử dụng */
 export type { Category }
 
+/** Paginated result cho categories */
+
 /**
  * Tìm tất cả categories
  */
-const findAll = async (filter: CategoryFilter = {}): Promise<Category[]> => {
+const findAll = async (
+  filter: CategoryFilter = {},
+  page: number = 1,
+  itemsPerPage: number = 100 // Default high limit for backward compatibility if needed, or stick to standard 10
+): Promise<PaginatedCategoriesResult> => {
   const { search } = filter
   const where: any = {}
 
@@ -25,15 +32,36 @@ const findAll = async (filter: CategoryFilter = {}): Promise<Category[]> => {
     where.name = { contains: search, mode: 'insensitive' }
   }
 
-  return await prisma.category.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    include: {
-      _count: {
-        select: { products: true }
+  const skip = (page - 1) * itemsPerPage
+
+  const [categories, totalItems] = await Promise.all([
+    prisma.category.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      skip,
+      take: itemsPerPage,
+      include: {
+        _count: {
+          select: { products: true }
+        }
       }
+    }),
+    prisma.category.count({ where })
+  ])
+
+  const totalPages = Math.ceil(totalItems / itemsPerPage)
+
+  return {
+    categories,
+    pagination: {
+      page,
+      itemsPerPage,
+      totalItems,
+      totalPages,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
     }
-  })
+  }
 }
 
 /**
