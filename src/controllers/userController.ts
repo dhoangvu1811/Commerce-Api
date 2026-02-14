@@ -446,7 +446,11 @@ const googleOAuthSuccess = async (
     const user = req.user as User | undefined
 
     if (!user) {
-      res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      res.redirect(
+        `${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed&message=${encodeURIComponent(
+          'Đăng nhập Google thất bại. Vui lòng thử lại.'
+        )}`
+      )
       return
     }
 
@@ -523,7 +527,11 @@ const facebookOAuthSuccess = async (
     const user = req.user as User | undefined
 
     if (!user) {
-      res.redirect(`${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed`)
+      res.redirect(
+        `${WEBSITE_DOMAIN}/auth/failure?error=oauth_failed&message=${encodeURIComponent(
+          'Đăng nhập Facebook thất bại. Vui lòng thử lại.'
+        )}`
+      )
       return
     }
 
