@@ -56,7 +56,6 @@ export interface User extends Timestamps {
   // Backward compatibility aliases (for API responses)
   _id?: string | number // String for API, number for DB
   role?: UserRole // Resolved from roleId
-  phone?: string // Alias for phoneNumber
   isActive?: boolean // Derived from status === 'active'
 }
 
@@ -123,7 +122,7 @@ export interface LoginResult {
  */
 export interface UpdateUserInput {
   name?: string
-  phone?: string
+  phoneNumber?: string
   address?: string
   avatar?: string
   dateOfBirth?: Date | null
@@ -145,7 +144,7 @@ export interface UpdateUserByAdminInput extends UpdateUserInput {
  * Input đổi mật khẩu
  */
 export interface UpdatePasswordInput {
-  currentPassword: string
+  currentPassword?: string
   newPassword: string
   confirmNewPassword: string
 }
@@ -179,9 +178,7 @@ export interface UpdateUserInputExtended extends UpdateUserByAdminInput {
  */
 export interface PaginatedUsersResult<T = UserResponse> {
   users: T[]
-  pagination: PaginationInfo & {
-    totalUsers: number
-  }
+  pagination: PaginationInfo
 }
 
 /**

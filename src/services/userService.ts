@@ -375,6 +375,13 @@ const updatePassword = async (
       user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
 
     if (!isOAuthUser || (isOAuthUser && !hasOAuthPassword)) {
+      if (!passwordData.currentPassword) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'Vui lòng nhập mật khẩu hiện tại'
+        )
+      }
+
       const isCurrentPasswordValid = await comparePassword(
         passwordData.currentPassword,
         user.password
