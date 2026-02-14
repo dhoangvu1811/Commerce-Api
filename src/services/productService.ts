@@ -269,7 +269,7 @@ const getProducts = async (
   queryFilter: ProductQueryFilter = {}
 ): Promise<PaginatedProductsResult> => {
   try {
-    const { search, categoryId, sort } = queryFilter
+    const { search, categoryId, sort, minPrice, maxPrice } = queryFilter
 
     // Build Prisma filter
     const filter: ProductFilter = {}
@@ -281,6 +281,13 @@ const getProducts = async (
     // Filter by categoryId directly
     if (categoryId) {
       filter.categoryId = categoryId
+    }
+
+    if (minPrice !== undefined) {
+      filter.minPrice = minPrice
+    }
+    if (maxPrice !== undefined) {
+      filter.maxPrice = maxPrice
     }
 
     // Build orderBy
