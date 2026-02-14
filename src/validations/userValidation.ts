@@ -57,7 +57,7 @@ const registerSchema = z
     confirmPassword: z.string({
       required_error: 'Xác nhận mật khẩu là bắt buộc'
     }),
-    phone: z
+    phoneNumber: z
       .string()
       .regex(PHONE_RULE, 'Số điện thoại không đúng định dạng')
       .min(10, 'Số điện thoại phải có ít nhất 10 ký tự')
@@ -99,7 +99,7 @@ const updateUserSchema = z
       .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
       .transform((val) => val.toLowerCase().trim())
       .optional(),
-    phone: z
+    phoneNumber: z
       .string()
       .regex(PHONE_RULE, 'Số điện thoại không đúng định dạng')
       .min(10, 'Số điện thoại phải có ít nhất 10 ký tự')
