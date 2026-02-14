@@ -117,11 +117,14 @@ const getProducts = async (
   next: NextFunction
 ): Promise<void> => {
   try {
-    const { page, itemsPerPage, search, categoryId, sort } = req.query || {}
+    const { page, itemsPerPage, search, categoryId, sort, minPrice, maxPrice } =
+      req.query || {}
     const queryFilter = {
       search: search as string | undefined,
       categoryId: categoryId ? parseInt(categoryId as string) : undefined,
-      sort: sort as string | undefined
+      sort: sort as string | undefined,
+      minPrice: minPrice ? parseFloat(minPrice as string) : undefined,
+      maxPrice: maxPrice ? parseFloat(maxPrice as string) : undefined
     }
 
     const result = await productService.getProducts(

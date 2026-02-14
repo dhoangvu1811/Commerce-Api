@@ -80,6 +80,8 @@ export interface ProductQueryFilter {
   search?: string
   categoryId?: number
   sort?: string
+  minPrice?: number
+  maxPrice?: number
 }
 
 /**

@@ -61,6 +61,8 @@ export interface ProductFilter {
   search?: string
   categoryId?: number
   status?: string
+  minPrice?: number
+  maxPrice?: number
 }
 
 /**
@@ -161,6 +163,17 @@ const getMany = async (
   }
   if (filter.status) {
     where.status = filter.status
+  }
+  
+  // Filter by price range
+  if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
+    where.price = {}
+    if (filter.minPrice !== undefined) {
+      where.price.gte = filter.minPrice
+    }
+    if (filter.maxPrice !== undefined) {
+      where.price.lte = filter.maxPrice
+    }
   }
 
   const [products, totalProducts] = await Promise.all([
