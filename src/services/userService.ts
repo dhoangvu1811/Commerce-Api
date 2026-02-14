@@ -103,6 +103,14 @@ const register = async (userData: RegisterInput): Promise<UserResponseType> => {
       status: UserStatus.inactive
     })
 
+    // Gửi email xác minh ngay sau khi đăng ký thành công
+    try {
+      await sendVerificationEmail(createdUser.email)
+    } catch (error) {
+      // Log lỗi nhưng không chặn luồng đăng ký
+      console.error('❌ Gửi email xác minh thất bại:', (error as Error).message)
+    }
+
     // Loại bỏ password khỏi response
     const { password: _password, ...userResponse } = createdUser
 
@@ -331,7 +339,12 @@ const updateUser = async (
     }
 
     // Cập nhật user
-    const updatedUser = await userModel.update(userIdNum, updateData)
+    const sanitizedData = { ...updateData }
+    if ((sanitizedData as any).gender === '') {
+      (sanitizedData as any).gender = undefined
+    }
+
+    const updatedUser = await userModel.update(userIdNum, sanitizedData)
 
     if (!updatedUser) {
       throw new ApiError(
@@ -532,6 +545,11 @@ const updateUserByAdmin = async (
 ): Promise<UserResponseType> => {
   try {
     const userIdNum = parseUserId(userId)
+
+    // Sanitize gender
+    if ((updateData as any).gender === '') {
+      (updateData as any).gender = undefined
+    }
 
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userIdNum)
@@ -848,7 +866,7 @@ const sendVerificationEmail = async (
     }
 
     const verifyToken = JwtProvider.generateVerificationToken(email)
-    const verificationLink = `${WEBSITE_DOMAIN}/account/verification?email=${encodeURIComponent(
+    const verificationLink = `${WEBSITE_DOMAIN}/verify-account?email=${encodeURIComponent(
       email
     )}&token=${verifyToken}`
 
