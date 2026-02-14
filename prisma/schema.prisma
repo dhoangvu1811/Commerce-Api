@@ -119,7 +119,7 @@ model User {
   password      String      @db.VarChar(255)
   phoneNumber   String?     @map("phone_number") @db.VarChar(15)
   address       String?     @db.VarChar(500)
-  avatar        String?     @db.VarChar(500)
+  avatar        String?     @db.Text
   dateOfBirth   DateTime?   @map("date_of_birth")
   gender        Gender?     @default(other)
   emailVerified Boolean     @default(false) @map("email_verified")
