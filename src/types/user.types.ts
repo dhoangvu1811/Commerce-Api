@@ -4,10 +4,12 @@
 
 import type { Timestamps, PaginationInfo } from './common.types.js'
 
-import {
-  UserStatus,
+import type {
   Gender as PrismaGender,
   AccountType as PrismaAccountType
+} from '../generated/prisma/index.js'
+import {
+  UserStatus
 } from '../generated/prisma/index.js'
 
 /**

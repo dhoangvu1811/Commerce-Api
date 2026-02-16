@@ -12,12 +12,13 @@ import {
   type ShippingAddress,
   type Payment,
   OrderStatus,
-  PaymentStatus,
+  PaymentStatus
+} from '../generated/prisma/index.js'
+import type { DecimalType as Decimal ,
   PaymentMethod,
   VoucherType,
   Prisma
 } from '../generated/prisma/index.js'
-import type { DecimalType as Decimal } from '../generated/prisma/index.js'
 
 /** Export types từ Prisma */
 export type { Order, OrderItem, OrderLog, OrderVoucher, ShippingAddress }
@@ -240,6 +241,7 @@ const findOneById = async (
       }
     }
   })
+
   return order as OrderWithRelations | null
 }
 
@@ -267,6 +269,7 @@ const findByOrderCode = async (
       }
     }
   })
+
   return order as OrderWithRelations | null
 }
 
@@ -363,6 +366,7 @@ const update = async (
       where: { id: orderId },
       data: updateData
     })
+
     return order
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -395,6 +399,7 @@ const appendLog = async (
       meta: logEntry.meta ?? undefined
     }
   })
+
   return log
 }
 
@@ -406,6 +411,7 @@ const deleteOneById = async (orderId: number): Promise<Order | null> => {
     const order = await prisma.order.delete({
       where: { id: orderId }
     })
+
     return order
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -433,6 +439,7 @@ const getLogsByOrderId = async (
       logs: { orderBy: { createdAt: 'desc' } }
     }
   })
+
   return order as OrderLogsResult | null
 }
 

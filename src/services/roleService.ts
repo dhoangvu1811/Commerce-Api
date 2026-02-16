@@ -7,7 +7,7 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { roleModel, type Role, type Permission } from '~/models/roleModel.js'
 import { permissionModel } from '~/models/permissionModel.js'
-import {
+import type {
   PaginatedRolesWithUserCountResult,
   RoleFilter,
   RoleWithPermissions
@@ -22,6 +22,7 @@ const getAll = async (
   search?: string
 ): Promise<PaginatedRolesWithUserCountResult> => {
   const filter: RoleFilter = { search }
+
   return await roleModel.findAllWithUserCount(page, limit, filter)
 }
 
@@ -33,6 +34,7 @@ const getById = async (id: number): Promise<RoleWithPermissions> => {
   if (!role) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy role')
   }
+
   return role
 }
 
@@ -49,6 +51,7 @@ const create = async (name: string, displayName?: string): Promise<Role> => {
   if (existing) {
     throw new ApiError(StatusCodes.CONFLICT, `Role "${name}" đã tồn tại`)
   }
+
   return await roleModel.create(name, displayName)
 }
 
@@ -119,6 +122,7 @@ const getPermissions = async (roleId: number): Promise<Permission[]> => {
   if (!role) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy role')
   }
+
   return await roleModel.getPermissions(roleId)
 }
 

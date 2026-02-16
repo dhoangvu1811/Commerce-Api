@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable indent */
 /**
  * OAuth Service - Prisma Version
@@ -9,11 +9,13 @@
  * - Local registration users cần admin kích hoạt (isActive = false)
  */
 
+import type {
+  AccountType
+} from '~/models/userModel.js'
 import {
   userModel,
   type User,
-  UserStatus,
-  AccountType
+  UserStatus
 } from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
 import { JwtProvider } from '~/providers/JwtProvider.js'
@@ -182,7 +184,8 @@ const handleOAuth = async (
       if (!updatedUser) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
       }
-      return updatedUser
+
+return updatedUser
     } else {
       // Tạo user mới từ OAuth profile - luôn active
       const newUser = await userModel.createNew({
@@ -195,7 +198,8 @@ const handleOAuth = async (
         status: UserStatus.active, // OAuth users luôn được kích hoạt ngay
         typeAccount: provider as AccountType
       })
-      return newUser as User
+
+return newUser as User
     }
   } catch (error) {
     throw error

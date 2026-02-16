@@ -3,7 +3,7 @@
  * Xử lý request/response cho category
  */
 
-import { Request, Response, NextFunction } from 'express'
+import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { categoryService } from '~/services/categoryService.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'

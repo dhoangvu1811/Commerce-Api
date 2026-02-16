@@ -94,6 +94,7 @@ export const coerceDateNullable = z.preprocess((val) => {
   if (val === null || val === undefined || val === '') return null
   if (val instanceof Date) return val
   if (typeof val === 'string') return new Date(val)
+
   return val
 }, z.date().nullable())
 
@@ -103,5 +104,6 @@ export const coerceDateNullable = z.preprocess((val) => {
 export const coerceDate = z.preprocess((val) => {
   if (val instanceof Date) return val
   if (typeof val === 'string') return new Date(val)
+
   return val
 }, z.date())

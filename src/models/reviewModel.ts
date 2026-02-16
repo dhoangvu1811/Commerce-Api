@@ -49,6 +49,7 @@ const calculateAverageRating = async (productId: number): Promise<number> => {
       rating: true
     }
   })
+
   return aggregate._avg.rating || 0
 }
 
@@ -65,6 +66,7 @@ const checkUserReviewed = async (
       productId
     }
   })
+
   return count > 0
 }
 

@@ -1,4 +1,4 @@
-import { PaginationInfo } from './common.types.js'
+import type { PaginationInfo } from './common.types.js'
 
 export interface Category {
   id: number

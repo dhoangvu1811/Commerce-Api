@@ -6,7 +6,7 @@
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { permissionModel, type Permission } from '~/models/permissionModel.js'
-import {
+import type {
   PaginatedPermissionsResult,
   PermissionFilter
 } from '~/types/rbac.types.js'
@@ -20,6 +20,7 @@ const getAll = async (
   search?: string
 ): Promise<PaginatedPermissionsResult> => {
   const filter: PermissionFilter = { search }
+
   return await permissionModel.findAll(page, limit, filter)
 }
 
@@ -31,6 +32,7 @@ const getById = async (id: number): Promise<Permission> => {
   if (!permission) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy permission')
   }
+
   return permission
 }
 
@@ -50,6 +52,7 @@ const create = async (
   if (existing) {
     throw new ApiError(StatusCodes.CONFLICT, `Permission "${name}" đã tồn tại`)
   }
+
   return await permissionModel.create(name, displayName)
 }
 

@@ -40,6 +40,7 @@ const createNew = async (data: CreateSessionInput): Promise<Session> => {
       isActive: true
     }
   })
+
   return session
 }
 
@@ -54,6 +55,7 @@ const findBySessionId = async (sessionId: string): Promise<Session | null> => {
       expiresAt: { gt: new Date() }
     }
   })
+
   return session
 }
 
@@ -66,6 +68,7 @@ const findBySessionIdAny = async (
   const session = await prisma.session.findUnique({
     where: { sessionId: sessionId }
   })
+
   return session
 }
 
@@ -81,6 +84,7 @@ const findByUserId = async (userId: number): Promise<Session[]> => {
     },
     orderBy: { createdAt: 'desc' }
   })
+
   return sessions
 }
 
@@ -92,6 +96,7 @@ const findAllSessionsByUserId = async (userId: number): Promise<Session[]> => {
     where: { userId: userId },
     orderBy: { createdAt: 'desc' }
   })
+
   return sessions
 }
 
@@ -126,6 +131,7 @@ const revokeSession = async (sessionId: string): Promise<Session | null> => {
       where: { sessionId },
       data: { isActive: false }
     })
+
     return session
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -147,6 +153,7 @@ const revokeAllUserSessions = async (
     where: { userId, isActive: true },
     data: { isActive: false }
   })
+
   return { count: result.count }
 }
 
@@ -162,6 +169,7 @@ const logoutSession = async (sessionId: string): Promise<Session | null> => {
         logoutAt: new Date()
       }
     })
+
     return session
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -181,6 +189,7 @@ const deleteSession = async (sessionId: string): Promise<Session | null> => {
     const session = await prisma.session.delete({
       where: { sessionId }
     })
+
     return session
   } catch (error) {
     // P2025 = Record not found (Prisma error code)

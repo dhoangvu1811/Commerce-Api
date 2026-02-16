@@ -124,6 +124,7 @@ const countItems = async (userId: number): Promise<number> => {
     where: { userId },
     _sum: { quantity: true }
   })
+
   return result._sum.quantity || 0
 }
 

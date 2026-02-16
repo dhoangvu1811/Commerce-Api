@@ -30,11 +30,13 @@ const nullableDateSchema = z
     if (val === null || val === undefined || val === '') return null
     if (val instanceof Date) return val
     if (typeof val === 'string') return new Date(val)
+
     return val
   }, z.date().nullable())
   .refine(
     (date) => {
       if (date === null) return true
+
       return date <= new Date()
     },
     { message: 'Ngày sinh không được lớn hơn ngày hiện tại' }
