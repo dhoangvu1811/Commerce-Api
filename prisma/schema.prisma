@@ -501,6 +501,7 @@ model ShippingAddress {
   city       String   @db.VarChar(100)
   province   String   @db.VarChar(100) // Thêm từ MongoDB
   postalCode String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
+  isActive   Boolean  @default(true) @map("is_active")
   isDefault  Boolean  @default(false) @map("is_default")
   createdAt  DateTime @default(now()) @map("created_at")
 

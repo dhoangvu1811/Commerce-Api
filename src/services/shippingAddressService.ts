@@ -42,6 +42,7 @@ const createNew = async (
         where: { userId },
         data: { isDefault: false }
       })
+
       // Create new
       return await tx.shippingAddress.create({
         data: {
@@ -59,10 +60,13 @@ const createNew = async (
 }
 
 /**
- * Láy danh sách địa chỉ
+ * Lấy danh sách địa chỉ (chỉ lấy active)
  */
 const getMyAddresses = async (userId: number): Promise<ShippingAddress[]> => {
-  return await shippingAddressModel.getByUserId(userId)
+  return await prisma.shippingAddress.findMany({
+    where: { userId, isActive: true },
+    orderBy: { createdAt: 'desc' }
+  })
 }
 
 /**
@@ -83,11 +87,12 @@ const getAddressDetail = async (
       'Bạn không có quyền truy cập địa chỉ này'
     )
   }
+
   return address
 }
 
 /**
- * Cập nhật địa chỉ
+ * Cập nhật địa chỉ (Copy-on-Write if used in Orders)
  */
 const updateAddress = async (
   userId: number,
@@ -113,11 +118,53 @@ const updateAddress = async (
     )
   }
 
+  // Check usage in orders
+  const usedInOrders = await prisma.order.count({
+    where: { shippingAddressId: addressId }
+  })
+
+  // Nếu đã dùng trong đơn hàng -> Copy-on-Write
+  if (usedInOrders > 0) {
+    return await prisma.$transaction(async (tx) => {
+      // 1. Archive cũ
+      await tx.shippingAddress.update({
+        where: { id: addressId },
+        data: { isActive: false, isDefault: false } // Bỏ default của cái cũ
+      })
+
+      // 2. Reset others default if needed
+      if (data.isDefault) {
+        await tx.shippingAddress.updateMany({
+          where: { userId, isActive: true },
+          data: { isDefault: false }
+        })
+      }
+
+      // 3. Create new
+      const newAddress = await tx.shippingAddress.create({
+        data: {
+          userId,
+          fullName: data.fullName || address.fullName,
+          phone: data.phone || address.phone,
+          address: data.address || address.address,
+          city: data.city || address.city,
+          province: data.province || address.province,
+          postalCode: data.postalCode ?? address.postalCode,
+          isActive: true, // New logic: Active
+          isDefault: data.isDefault ?? address.isDefault
+        }
+      })
+
+      return newAddress
+    })
+  }
+
+  // Nếu chưa dùng -> Update trực tiếp
   if (data.isDefault) {
     return await prisma.$transaction(async (tx) => {
       // Reset others
       await tx.shippingAddress.updateMany({
-        where: { userId, id: { not: addressId } },
+        where: { userId, id: { not: addressId }, isActive: true },
         data: { isDefault: false }
       })
       // Update target
@@ -125,6 +172,7 @@ const updateAddress = async (
         where: { id: addressId },
         data: { ...data, isDefault: true }
       })
+
       return updated
     })
   }
@@ -134,6 +182,7 @@ const updateAddress = async (
   if (!updated) {
     throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Cập nhật thất bại')
   }
+
   return updated
 }
 
@@ -168,7 +217,38 @@ const deleteAddress = async (
     // Nếu chỉ còn 1 cái (là cái này) thì cho xóa -> User hết địa chỉ, ok.
   }
 
+  // Check if used in orders
+  const usedInOrders = await prisma.order.count({
+    where: { shippingAddressId: addressId }
+  })
+
+  // Nếu đã dùng trong đơn hàng -> Soft delete (isActive = false)
+  if (usedInOrders > 0) {
+    // Nếu xóa default address, vẫn phải check logic default
+    if (address.isDefault) {
+      // ... (Logic check default retained from original but applies to soft delete too)
+      // Check nếu còn địa chỉ khác active
+      const count = await prisma.shippingAddress.count({
+        where: { userId, isActive: true }
+      })
+      if (count > 1) {
+        throw new ApiError(
+          StatusCodes.BAD_REQUEST,
+          'Bạn không thể xóa địa chỉ mặc định. Vui lòng thiết lập địa chỉ khác làm mặc định trước.'
+        )
+      }
+    }
+
+    await prisma.shippingAddress.update({
+      where: { id: addressId },
+      data: { isActive: false, isDefault: false }
+    })
+
+    return true
+  }
+
   const result = await shippingAddressModel.deleteOne(addressId)
+
   return !!result
 }
 
