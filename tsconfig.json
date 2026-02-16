@@ -7,7 +7,7 @@
     /* Modules */
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
-    "ignoreDeprecations": "6.0",
+    "ignoreDeprecations": "5.0",
     "rootDir": "./src",
     "baseUrl": ".",
     "paths": {
