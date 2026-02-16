@@ -10,7 +10,7 @@ import type {
   RolePermission
 } from '~/generated/prisma/index.js'
 
-import {
+import type {
   PaginatedRolesResult,
   RoleFilter,
   RoleWithPermissions,
@@ -30,16 +30,16 @@ const findAll = async (
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-        OR: [
-          { name: { contains: filter.search, mode: 'insensitive' as const } },
-          {
-            displayName: {
-              contains: filter.search,
-              mode: 'insensitive' as const
-            }
+      OR: [
+        { name: { contains: filter.search, mode: 'insensitive' as const } },
+        {
+          displayName: {
+            contains: filter.search,
+            mode: 'insensitive' as const
           }
-        ]
-      }
+        }
+      ]
+    }
     : {}
 
   const [roles, totalItems] = await Promise.all([
@@ -78,16 +78,16 @@ const findAllWithUserCount = async (
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-        OR: [
-          { name: { contains: filter.search, mode: 'insensitive' as const } },
-          {
-            displayName: {
-              contains: filter.search,
-              mode: 'insensitive' as const
-            }
+      OR: [
+        { name: { contains: filter.search, mode: 'insensitive' as const } },
+        {
+          displayName: {
+            contains: filter.search,
+            mode: 'insensitive' as const
           }
-        ]
-      }
+        }
+      ]
+    }
     : {}
 
   const [roles, totalItems] = await Promise.all([
@@ -189,6 +189,7 @@ const deleteById = async (id: number): Promise<Role> => {
   if (userCount > 0) {
     throw new Error(`Không thể xóa role đang được ${userCount} user sử dụng`)
   }
+
   return await prisma.role.delete({
     where: { id }
   })
@@ -217,6 +218,7 @@ const bulkAssignPermissions = async (
     data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
     skipDuplicates: true
   })
+
   return result.count
 }
 
@@ -267,6 +269,7 @@ const hasPermission = async (
       }
     }
   })
+
   return count > 0
 }
 

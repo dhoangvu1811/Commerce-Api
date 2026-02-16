@@ -14,6 +14,7 @@ import type { User, PublicUser } from '~/types/user.types.js'
  */
 export const slugify = (val: string | undefined | null): string => {
   if (!val) return ''
+
   return String(val)
     .normalize('NFKD') // split accented characters into their base characters and diacritical marks
     .replace(/[\u0300-\u036f]/g, '') // remove all the accents
@@ -33,6 +34,7 @@ export const pickUser = (
   user: User | null | undefined
 ): PublicUser | Record<string, never> => {
   if (!user) return {}
+
   return pick(user, [
     '_id',
     'email',

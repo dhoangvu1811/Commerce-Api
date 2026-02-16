@@ -91,6 +91,7 @@ const createNew = async (data: CreateUserInput): Promise<User> => {
     },
     include: { role: true }
   })
+
   return user
 }
 
@@ -102,6 +103,7 @@ const findOneById = async (userId: number): Promise<User | null> => {
     where: { id: userId },
     include: { role: true }
   })
+
   return user
 }
 
@@ -113,6 +115,7 @@ const findOneByEmail = async (email: string): Promise<User | null> => {
     where: { email: email.toLowerCase().trim() },
     include: { role: true }
   })
+
   return user
 }
 
@@ -124,6 +127,7 @@ const findByIds = async (userIds: number[]): Promise<User[]> => {
     where: { id: { in: userIds } },
     include: { role: true }
   })
+
   return users
 }
 
@@ -193,6 +197,7 @@ const update = async (
       data: updateData,
       include: { role: true }
     })
+
     return user
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -214,6 +219,7 @@ const updateLastLogin = async (userId: number): Promise<User | null> => {
       data: { lastLogin: new Date() },
       include: { role: true }
     })
+
     return user
   } catch {
     return null
@@ -230,6 +236,7 @@ const activateUser = async (userId: number): Promise<User | null> => {
       data: { status: UserStatus.active },
       include: { role: true }
     })
+
     return user
   } catch {
     return null
@@ -246,6 +253,7 @@ const deactivateUser = async (userId: number): Promise<User | null> => {
       data: { status: UserStatus.inactive },
       include: { role: true }
     })
+
     return user
   } catch {
     return null
@@ -263,6 +271,7 @@ const findActiveUserById = async (userId: number): Promise<User | null> => {
     },
     include: { role: true }
   })
+
   return user
 }
 
@@ -277,6 +286,7 @@ const findActiveUserByEmail = async (email: string): Promise<User | null> => {
     },
     include: { role: true }
   })
+
   return user
 }
 
@@ -289,6 +299,7 @@ const deleteOneById = async (userId: number): Promise<User | null> => {
       where: { id: userId },
       include: { role: true }
     })
+
     return user
   } catch {
     return null
@@ -321,6 +332,7 @@ const deleteMany = async (
   }
 
   const result = await prisma.user.deleteMany({ where })
+
   return { count: result.count }
 }
 
@@ -333,6 +345,7 @@ const deleteManyByIds = async (
   const result = await prisma.user.deleteMany({
     where: { id: { in: userIds } }
   })
+
   return { count: result.count }
 }
 

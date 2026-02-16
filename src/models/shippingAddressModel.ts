@@ -51,6 +51,7 @@ const createNew = async (
       isDefault: data.isDefault ?? false
     }
   })
+
   return address
 }
 
@@ -59,12 +60,13 @@ const createNew = async (
  */
 const getByUserId = async (userId: number): Promise<ShippingAddress[]> => {
   const addresses = await prisma.shippingAddress.findMany({
-    where: { userId },
+    where: { userId, isActive: true },
     orderBy: [
       { isDefault: 'desc' }, // Default lên đầu
       { createdAt: 'desc' }
     ]
   })
+
   return addresses
 }
 
@@ -75,6 +77,7 @@ const getOneById = async (id: number): Promise<ShippingAddress | null> => {
   const address = await prisma.shippingAddress.findUnique({
     where: { id }
   })
+
   return address
 }
 
@@ -90,6 +93,7 @@ const update = async (
       where: { id },
       data
     })
+
     return address
   } catch {
     return null
@@ -104,6 +108,7 @@ const deleteOne = async (id: number): Promise<ShippingAddress | null> => {
     const address = await prisma.shippingAddress.delete({
       where: { id }
     })
+
     return address
   } catch {
     return null
@@ -121,6 +126,7 @@ const resetDefaultAddress = async (
   await prisma.shippingAddress.updateMany({
     where: {
       userId,
+      isActive: true, // Only active addresses
       id: excludeId ? { not: excludeId } : undefined
     },
     data: { isDefault: false }
@@ -132,7 +138,7 @@ const resetDefaultAddress = async (
  */
 const countByUserId = async (userId: number): Promise<number> => {
   return await prisma.shippingAddress.count({
-    where: { userId }
+    where: { userId, isActive: true }
   })
 }
 

@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * User Service - Prisma Version
  * Xử lý logic business cho user - bao gồm auth, profile, admin management
@@ -54,7 +54,8 @@ const parseUserId = (userId: string): number => {
   if (isNaN(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'User ID không hợp lệ')
   }
-  return id
+
+return id
 }
 
 /**
@@ -62,7 +63,8 @@ const parseUserId = (userId: string): number => {
  */
 const hashPassword = async (password: string): Promise<string> => {
   const saltRounds = 12
-  return await bcrypt.hash(password, saltRounds)
+
+return await bcrypt.hash(password, saltRounds)
 }
 
 /**
@@ -524,7 +526,8 @@ const getUsers = async (
     // Loại bỏ password khỏi tất cả user trong response
     const usersWithoutPassword = result.users.map((user) => {
       const { password: _password, ...userWithoutPassword } = user
-      return userWithoutPassword as unknown as UserResponseType
+
+return userWithoutPassword as unknown as UserResponseType
     })
 
     return {
@@ -738,7 +741,8 @@ const deleteMultipleUsers = async (
           'Bạn không thể xóa chính tài khoản của mình trong danh sách'
         )
       }
-      return num
+
+return num
     })
 
     // Kiểm tra các user có tồn tại không

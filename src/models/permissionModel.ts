@@ -5,7 +5,7 @@
 
 import { prisma } from '~/config/prisma.js'
 import type { Permission } from '~/generated/prisma/index.js'
-import {
+import type {
   PaginatedPermissionsResult,
   PermissionFilter
 } from '~/types/rbac.types.js'
@@ -23,16 +23,16 @@ const findAll = async (
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-        OR: [
-          { name: { contains: filter.search, mode: 'insensitive' as const } },
-          {
-            displayName: {
-              contains: filter.search,
-              mode: 'insensitive' as const
-            }
+      OR: [
+        { name: { contains: filter.search, mode: 'insensitive' as const } },
+        {
+          displayName: {
+            contains: filter.search,
+            mode: 'insensitive' as const
           }
-        ]
-      }
+        }
+      ]
+    }
     : {}
 
   const [permissions, totalItems] = await Promise.all([
@@ -124,6 +124,7 @@ const deleteById = async (id: number): Promise<Permission> => {
       `Không thể xóa permission đang được gán cho ${roleCount} role`
     )
   }
+
   return await prisma.permission.delete({
     where: { id }
   })
@@ -146,6 +147,7 @@ const checkUserPermission = async (
       }
     }
   })
+
   return count > 0
 }
 
@@ -166,6 +168,7 @@ const checkUserAnyPermission = async (
       }
     }
   })
+
   return count > 0
 }
 
@@ -194,6 +197,7 @@ const checkUserAllPermissions = async (
 
   // Check if user has all required permissions
   const userPermissionNames = userPermissions.map((p) => p.permission.name)
+
   return permissionNames.every((name) => userPermissionNames.includes(name))
 }
 

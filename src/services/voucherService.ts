@@ -1,5 +1,5 @@
 /* eslint-disable indent */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * Voucher Service - Prisma Version
  * Xử lý logic business cho voucher
@@ -16,7 +16,8 @@ import { VoucherType } from '~/generated/prisma/index.js'
 import { prisma } from '~/config/prisma.js'
 import type {
   VoucherQueryFilter,
-  VerifyVoucherResult
+  VerifyVoucherResult,
+  Voucher as VoucherInterface
 } from '~/types/voucher.types.js'
 import type { PaginationInfo, DeleteResultInfo } from '~/types/common.types.js'
 
@@ -34,7 +35,8 @@ const parseVoucherId = (voucherId: string): number => {
   if (isNaN(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'ID voucher không hợp lệ')
   }
-  return id
+
+return id
 }
 
 /**
@@ -65,7 +67,8 @@ const getActivePublic = async (
     const activeVouchers = vouchers.filter(
       (v: { usageLimit: number | null; usedCount: number }) => {
         if (!v.usageLimit || v.usageLimit === 0) return true
-        return v.usedCount < v.usageLimit
+
+return v.usedCount < v.usageLimit
       }
     )
 
@@ -315,7 +318,8 @@ const deleteMultiple = async (
           `ID voucher không hợp lệ: ${id}`
         )
       }
-      return num
+
+return num
     })
 
     // Check existing
@@ -469,7 +473,7 @@ const verifyVoucher = async (
     }
 
     return {
-      voucher: voucher as unknown as import('~/types/voucher.types.js').Voucher,
+      voucher: voucher as unknown as VoucherInterface,
       discount,
       payable: Number(orderTotal) - discount
     }

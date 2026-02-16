@@ -75,6 +75,7 @@ export const isValidPaymentStatusTransition = (
 export const isCODPayment = (paymentMethod: string = ''): boolean => {
   if (paymentMethod === PaymentMethod.COD) return true
   const method = paymentMethod.toLowerCase()
+
   return method === 'cod' || method.includes('cod') || method.includes('cash')
 }
 
@@ -96,6 +97,7 @@ export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
   }
 
   const method = paymentMethod.toLowerCase()
+
   return (
     [
       'card',
@@ -168,6 +170,7 @@ export const canUpdateStatus = (
         [OrderStatus.DELIVERED]: 'Đã giao hàng'
       }
       const statusName = statusNames[newStatus] || newStatus
+
       return {
         allowed: false,
         reason: `Đơn hàng thanh toán online cần được thanh toán trước khi chuyển sang trạng thái "${statusName}"`
@@ -215,6 +218,7 @@ export const isConsistentStatusPayment = (
           return false
         }
       }
+
       return true
     }
   ]
@@ -234,6 +238,7 @@ export const calcLineTotal = (
   const disc = Number(discount || 0)
   const qty = Number(quantity)
   const afterDiscount = disc > 0 ? unitPrice * (1 - disc / 100) : unitPrice
+
   return Math.max(0, Number((afterDiscount * qty).toFixed(2)))
 }
 
@@ -264,6 +269,7 @@ export const applyVoucher = (
   }
 
   if (discount > subtotalNum) discount = subtotalNum
+
   return { discount }
 }
 
@@ -273,6 +279,7 @@ export const applyVoucher = (
 export const generateOrderCode = (): string => {
   const timestamp = Date.now().toString().slice(-6) // Lấy 6 số cuối của timestamp
   const random = Math.random().toString(36).substring(2, 8).toUpperCase() // 6 ký tự random
+
   return `ORD${timestamp}${random}`
 }
 
@@ -302,7 +309,7 @@ export const canMarkPaid = (
   if (status === OrderStatus.CANCELLED) {
     return {
       allowed: false,
-      reason: `Không thể xác nhận thanh toán cho đơn hàng đã hủy`
+      reason: 'Không thể xác nhận thanh toán cho đơn hàng đã hủy'
     }
   }
 
@@ -317,6 +324,7 @@ export const canMarkPaid = (
       CANCELLED: 'đã hủy thanh toán'
     }
     const paymentStatusName = paymentStatusNames[paymentStatus] || paymentStatus
+
     return {
       allowed: false,
       reason: `Không thể xác nhận thanh toán khi đơn hàng ${paymentStatusName}`

@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * User Controller
  * Điều phối API requests cho users, auth, sessions
@@ -357,6 +357,7 @@ const refreshToken = async (
         message: 'Refresh token không tồn tại',
         data: null
       })
+
       return
     }
 
@@ -413,6 +414,7 @@ const uploadAvatar = async (
         message: 'Vui lòng chọn ảnh avatar để upload',
         data: null
       })
+
       return
     }
 
@@ -451,6 +453,7 @@ const googleOAuthSuccess = async (
           'Đăng nhập Google thất bại. Vui lòng thử lại.'
         )}`
       )
+
       return
     }
 
@@ -532,6 +535,7 @@ const facebookOAuthSuccess = async (
           'Đăng nhập Facebook thất bại. Vui lòng thử lại.'
         )}`
       )
+
       return
     }
 

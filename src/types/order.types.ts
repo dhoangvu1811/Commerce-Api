@@ -3,7 +3,7 @@
  */
 
 import type { Timestamps, PaginationInfo } from './common.types.js'
-import {
+import type {
   OrderStatus as PrismaOrderStatus,
   PaymentStatus as PrismaPaymentStatus,
   PaymentMethod as PrismaPaymentMethod,

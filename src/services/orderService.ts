@@ -1,5 +1,5 @@
 /* eslint-disable no-console */
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * Order Service - Prisma Version
  * Xử lý logic business cho order - sử dụng Prisma transactions
@@ -12,12 +12,14 @@ import { productModel } from '~/models/productModel.js'
 import { voucherModel } from '~/models/voucherModel.js'
 import { userModel } from '~/models/userModel.js'
 import { notificationService } from '~/services/notificationService.js'
+import type {
+  VoucherType,
+  Prisma
+} from '../generated/prisma/index.js'
 import {
   OrderStatus,
   PaymentStatus,
-  PaymentMethod,
-  VoucherType,
-  Prisma
+  PaymentMethod
 } from '../generated/prisma/index.js'
 import { prisma } from '~/config/prisma.js'
 import {
@@ -93,11 +95,11 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
     },
     user: order.user
       ? {
-          id: order.user.id,
-          name: order.user.name,
-          email: order.user.email,
-          role: order.user.role
-        }
+        id: order.user.id,
+        name: order.user.name,
+        email: order.user.email,
+        role: order.user.role
+      }
       : undefined,
     paymentStatus: order.payments[0]?.status || 'PENDING',
     vouchers: order.orderVouchers.map((ov) => ({
@@ -148,6 +150,7 @@ const parseId = (id: string, name: string = 'ID'): number => {
   if (isNaN(num)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, `${name} không hợp lệ`)
   }
+
   return num
 }
 
@@ -450,6 +453,7 @@ const create = async (
         'Lỗi khi tạo đơn hàng'
       )
     }
+
     return mapOrderToApi(fullOrder)
   } catch (error) {
     throw error
@@ -471,6 +475,7 @@ const getMyOrders = async (
       page,
       itemsPerPage
     )
+
     return {
       orders: result.orders.map(mapOrderToApi),
       pagination: result.pagination as any
@@ -490,7 +495,8 @@ const getDetails = async (
 ): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
-    const userIdNum = parseId(userId, 'User ID')
+
+    const userIdNum = userId ? parseId(userId, 'User ID') : 0
 
     const order = await orderModel.findOneById(orderIdNum)
     if (!order) {
@@ -532,6 +538,7 @@ const adminGetOrders = async (
     if (search) filter.search = search
 
     const result = await orderModel.getMany(filter, page, itemsPerPage)
+
     return {
       orders: result.orders.map(mapOrderToApi),
       pagination: result.pagination as any
@@ -645,6 +652,7 @@ const updateStatus = async (
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+
     return mapOrderToApi(refreshed!)
   } catch (error) {
     throw error
@@ -746,6 +754,7 @@ const updatePaymentStatus = async (
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+
     return mapOrderToApi(refreshed!)
   } catch (error) {
     throw error
@@ -861,6 +870,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+
     return mapOrderToApi(refreshed!)
   } catch (error) {
     throw error
@@ -1007,6 +1017,7 @@ const cancel = async (
     })
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+
     return mapOrderToApi(refreshed!)
   } catch (error) {
     throw error

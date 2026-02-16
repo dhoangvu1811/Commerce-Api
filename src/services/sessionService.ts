@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * Session Service - Prisma Version
  * Xử lý logic business cho session management
@@ -29,6 +29,7 @@ const parseUserId = (userId: string): number => {
   if (isNaN(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'User ID không hợp lệ')
   }
+
   return id
 }
 

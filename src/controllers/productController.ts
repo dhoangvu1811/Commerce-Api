@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /**
  * Product Controller
  * Điều phối API requests cho products
@@ -156,6 +156,7 @@ const uploadImage = async (
         message: 'Vui lòng chọn ảnh để upload',
         data: null
       })
+
       return
     }
 

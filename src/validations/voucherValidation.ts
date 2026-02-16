@@ -14,6 +14,7 @@ const nullableDateSchema = z.preprocess((val) => {
   if (val === null || val === undefined || val === '') return null
   if (val instanceof Date) return val
   if (typeof val === 'string') return new Date(val)
+
   return val
 }, z.date().nullable())
 

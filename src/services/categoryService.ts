@@ -1,6 +1,6 @@
 import { StatusCodes } from 'http-status-codes'
 import { categoryModel, type Category } from '~/models/categoryModel.js'
-import {
+import type {
   CreateCategoryInput,
   UpdateCategoryInput,
   CategoryFilter,
@@ -41,6 +41,7 @@ const getAll = async (
   limit: number = 20
 ): Promise<PaginatedCategoriesResult> => {
   const result = await categoryModel.findAll(filter, page, limit)
+
   return result
 }
 

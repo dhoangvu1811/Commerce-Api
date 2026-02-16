@@ -61,7 +61,7 @@ export default [
     rules: {
       // TypeScript specific rules
       '@typescript-eslint/no-unused-vars': [
-        'warn',
+        'error',
         {
           argsIgnorePattern: '^_',
           varsIgnorePattern: '^_'
@@ -71,9 +71,10 @@ export default [
       '@typescript-eslint/explicit-module-boundary-types': 'off',
       '@typescript-eslint/no-explicit-any': 'warn',
       '@typescript-eslint/no-inferrable-types': 'off',
-      '@typescript-eslint/no-non-null-assertion': 'warn',
+      '@typescript-eslint/no-non-null-assertion': 'off',
+      '@typescript-eslint/ban-ts-comment': 'off',
       '@typescript-eslint/consistent-type-imports': [
-        'warn',
+        'error',
         {
           prefer: 'type-imports'
         }
@@ -91,9 +92,10 @@ export default [
       'space-before-blocks': ['error', 'always'],
       'keyword-spacing': 'warn',
       'arrow-spacing': 'warn',
-      'no-multiple-empty-lines': 'warn',
+      'no-multiple-empty-lines': ['warn', { max: 2, maxEOF: 1 }],
       'no-trailing-spaces': 'warn',
       'no-multi-spaces': 'warn',
+      'newline-before-return': 'error',
       'no-undef': 'off' // TypeScript handles this
     }
   },

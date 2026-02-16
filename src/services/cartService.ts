@@ -86,6 +86,7 @@ const removeCartItem = async (userId: number, productId: number) => {
       'Sản phẩm không có trong giỏ hàng'
     )
   }
+
   return await cartModel.removeItem(userId, productId)
 }
 

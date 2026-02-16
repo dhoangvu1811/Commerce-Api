@@ -22,6 +22,7 @@ const customFileFilter = (
       'Loại file không được hỗ trợ. Vui lòng upload file ảnh (JPEG, PNG, GIF, WebP).'
     // Trả về lỗi nếu file không hợp lệ
     callback(new Error(errorMessage))
+
     return
   }
 

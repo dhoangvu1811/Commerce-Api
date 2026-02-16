@@ -85,6 +85,7 @@ const createNew = async (data: CreateProductInput): Promise<Product> => {
     },
     include: { category: true, images: true }
   })
+
   return product
 }
 
@@ -96,6 +97,7 @@ const findOneById = async (productId: number): Promise<Product | null> => {
     where: { id: productId },
     include: { category: true, images: true }
   })
+
   return product
 }
 
@@ -107,6 +109,7 @@ const findBySlug = async (slug: string): Promise<Product | null> => {
     where: { slug },
     include: { category: true, images: true }
   })
+
   return product
 }
 
@@ -124,6 +127,7 @@ const findByNameAndCategory = async (
     },
     include: { category: true, images: true }
   })
+
   return product
 }
 
@@ -135,6 +139,7 @@ const findByIds = async (productIds: number[]): Promise<Product[]> => {
     where: { id: { in: productIds } },
     include: { category: true, images: true }
   })
+
   return products
 }
 
@@ -164,7 +169,7 @@ const getMany = async (
   if (filter.status) {
     where.status = filter.status
   }
-  
+
   // Filter by price range
   if (filter.minPrice !== undefined || filter.maxPrice !== undefined) {
     where.price = {}
@@ -215,6 +220,7 @@ const update = async (
       data: updateData,
       include: { category: true, images: true }
     })
+
     return product
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -235,6 +241,7 @@ const deleteOneById = async (productId: number): Promise<Product | null> => {
       where: { id: productId },
       include: { category: true, images: true }
     })
+
     return product
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -272,6 +279,7 @@ const deleteMany = async (
   }
 
   const result = await prisma.product.deleteMany({ where })
+
   return { count: result.count }
 }
 
@@ -294,10 +302,12 @@ const decrementStock = async (
       SET stock = stock - ${qty}, updated_at = NOW()
       WHERE id = ${productId} AND stock >= ${qty}
     `
+
     return { success: result > 0, modifiedCount: result }
   } catch (error) {
     // Log error for debugging
     console.error('Error in decrementStock:', error)
+
     return { success: false, modifiedCount: 0 }
   }
 }
@@ -318,10 +328,12 @@ const incrementStock = async (
       SET stock = stock + ${qty}, updated_at = NOW()
       WHERE id = ${productId}
     `
+
     return { success: result > 0, modifiedCount: result }
   } catch (error) {
     // Log error for debugging
     console.error('Error in incrementStock:', error)
+
     return { success: false, modifiedCount: 0 }
   }
 }
@@ -342,10 +354,12 @@ const incrementSelled = async (
       SET selled = selled + ${qty}, updated_at = NOW()
       WHERE id = ${productId}
     `
+
     return { success: result > 0, modifiedCount: result }
   } catch (error) {
     // Log error for debugging
     console.error('Error in incrementSelled:', error)
+
     return { success: false, modifiedCount: 0 }
   }
 }
@@ -367,10 +381,12 @@ const decrementSelled = async (
       SET selled = GREATEST(0, selled - ${qty}), updated_at = NOW()
       WHERE id = ${productId}
     `
+
     return { success: result > 0, modifiedCount: result }
   } catch (error) {
     // Log error for debugging
     console.error('Error in decrementSelled:', error)
+
     return { success: false, modifiedCount: 0 }
   }
 }
@@ -439,6 +455,7 @@ const deleteImagesByProductId = async (
   const result = await prisma.productImage.deleteMany({
     where: { productId }
   })
+
   return { count: result.count }
 }
 
@@ -450,6 +467,7 @@ const deleteImageById = async (imageId: number): Promise<boolean> => {
     await prisma.productImage.delete({
       where: { id: imageId }
     })
+
     return true
   } catch {
     return false

@@ -21,6 +21,7 @@ const toggleWishlist = async (userId: number, productId: number) => {
 
   if (existingItem) {
     await wishlistModel.remove(userId, productId)
+
     return {
       action: 'removed',
       message: 'Đã xóa khỏi danh sách yêu thích'
@@ -35,6 +36,7 @@ const toggleWishlist = async (userId: number, productId: number) => {
     }
 
     await wishlistModel.add(userId, productId)
+
     return {
       action: 'added',
       message: 'Đã thêm vào danh sách yêu thích'

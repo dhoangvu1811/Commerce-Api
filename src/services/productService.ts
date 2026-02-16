@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-non-null-assertion */
+
 /* eslint-disable indent */
 /**
  * Product Service - Prisma Version
@@ -16,7 +16,7 @@ import {
 } from '~/models/productModel.js'
 import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
 import { prisma } from '~/config/prisma.js'
-import { ProductQueryFilter } from '~/types/product.types.js'
+import type { ProductQueryFilter } from '~/types/product.types.js'
 import { slugify } from '~/utils/helper.js'
 import type {
   PaginationInfo,
@@ -38,7 +38,8 @@ const parseProductId = (productId: string): number => {
   if (isNaN(id)) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
   }
-  return id
+
+return id
 }
 
 /**
@@ -88,7 +89,8 @@ const createNew = async (
 
     // Lấy lại product với images đã được thêm
     const productWithImages = await productModel.findOneById(createdProduct.id)
-    return productWithImages || createdProduct
+
+return productWithImages || createdProduct
   } catch (error) {
     throw error
   }
@@ -177,7 +179,8 @@ const update = async (
 
     // Lấy lại product với images đã được cập nhật
     const productWithImages = await productModel.findOneById(productIdNum)
-    return productWithImages || updatedProduct
+
+return productWithImages || updatedProduct
   } catch (error) {
     throw error
   }
@@ -232,7 +235,8 @@ const deleteSelectedProducts = async (
           `ID sản phẩm không hợp lệ: ${id}`
         )
       }
-      return num
+
+return num
     })
 
     // Kiểm tra các sản phẩm có tồn tại không

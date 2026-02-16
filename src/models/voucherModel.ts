@@ -9,7 +9,7 @@ import type {
   Prisma,
   DecimalType as Decimal
 } from '~/generated/prisma/index.js'
-import { VoucherType } from '~/generated/prisma/index.js'
+import type { VoucherType } from '~/generated/prisma/index.js'
 
 /** Voucher type export từ Prisma */
 export type { Voucher }
@@ -82,6 +82,7 @@ const createNew = async (data: CreateVoucherInput): Promise<Voucher> => {
       description: data.description ?? null
     }
   })
+
   return voucher
 }
 
@@ -92,6 +93,7 @@ const findOneById = async (voucherId: number): Promise<Voucher | null> => {
   const voucher = await prisma.voucher.findUnique({
     where: { id: voucherId }
   })
+
   return voucher
 }
 
@@ -104,6 +106,7 @@ const findOneByCode = async (code: string): Promise<Voucher | null> => {
       code: { equals: code.toUpperCase().trim(), mode: 'insensitive' }
     }
   })
+
   return voucher
 }
 
@@ -168,6 +171,7 @@ const update = async (
       where: { id: voucherId },
       data: updateData
     })
+
     return voucher
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -187,6 +191,7 @@ const deleteOneById = async (voucherId: number): Promise<Voucher | null> => {
     const voucher = await prisma.voucher.delete({
       where: { id: voucherId }
     })
+
     return voucher
   } catch (error) {
     // P2025 = Record not found (Prisma error code)
@@ -210,6 +215,7 @@ const incrementUsedCount = async (
       where: { id: voucherId },
       data: { usedCount: { increment: step } }
     })
+
     return voucher
   } catch {
     return null
@@ -235,10 +241,12 @@ const incrementUsedCountWithLimit = async (
       WHERE id = ${voucherId} 
       AND (usage_limit IS NULL OR usage_limit = 0 OR used_count + ${step} <= usage_limit)
     `
+
     return { success: result > 0, modifiedCount: result }
   } catch (error) {
     // Log error for debugging
     console.error('Error in incrementUsedCountWithLimit:', error)
+
     return { success: false, modifiedCount: 0 }
   }
 }
@@ -264,10 +272,12 @@ const decrementUsedCount = async (
     if (result > 0) {
       return await client.voucher.findUnique({ where: { id: voucherId } })
     }
+
     return null
   } catch (error) {
     // Log error for debugging
     console.error('Error in decrementUsedCount:', error)
+
     return null
   }
 }
@@ -279,6 +289,7 @@ const findByIds = async (ids: number[]): Promise<Voucher[]> => {
   const vouchers = await prisma.voucher.findMany({
     where: { id: { in: ids } }
   })
+
   return vouchers
 }
 
@@ -289,6 +300,7 @@ const deleteManyByIds = async (ids: number[]): Promise<{ count: number }> => {
   const result = await prisma.voucher.deleteMany({
     where: { id: { in: ids } }
   })
+
   return { count: result.count }
 }
 

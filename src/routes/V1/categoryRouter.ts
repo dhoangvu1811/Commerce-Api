@@ -3,7 +3,7 @@
  * Định nghĩa routes cho category module
  */
 
-import { Router } from 'express'
+import type { Router } from 'express'
 import express from 'express'
 import { categoryController } from '~/controllers/categoryController.js'
 import { categoryValidation } from '~/validations/categoryValidation.js'

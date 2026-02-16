@@ -175,6 +175,7 @@ const verifySession = async (
     // Nếu không có sessionId trong token, skip kiểm tra (backward compatibility)
     if (!sessionId) {
       next()
+
       return
     }
 
@@ -276,6 +277,7 @@ const requirePermission = (permissionName: string) => {
       // Admin luôn có tất cả permissions
       if (req.jwtDecoded?.role === ROLES.ADMIN) {
         next()
+
         return
       }
 
@@ -319,6 +321,7 @@ const requireAnyPermission = (permissionNames: string[]) => {
       // Admin luôn có tất cả permissions
       if (req.jwtDecoded?.role === ROLES.ADMIN) {
         next()
+
         return
       }
 
@@ -362,6 +365,7 @@ const requireAllPermissions = (permissionNames: string[]) => {
       // Admin luôn có tất cả permissions
       if (req.jwtDecoded?.role === 'admin') {
         next()
+
         return
       }
 

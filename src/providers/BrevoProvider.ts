@@ -45,6 +45,7 @@ const sendEmail = async (
 
   // Gọi hành động gửi mail - result có body.messageId
   const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
+
   return { messageId: result.body.messageId || '' }
 }
 
