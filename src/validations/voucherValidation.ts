@@ -35,16 +35,18 @@ const createVoucherSchema = z.object({
   amount: z
     .number({ required_error: 'Giá trị giảm là bắt buộc' })
     .positive('Giá trị giảm phải lớn hơn 0'),
-  maxDiscount: z.number().min(0, 'Giảm tối đa không được âm').optional(),
+  maxDiscount: z.number().min(0, 'Giảm tối đa không được âm').optional().nullable(),
   minOrderValue: z
     .number()
     .min(0, 'Giá trị đơn tối thiểu không được âm')
-    .optional(),
+    .optional()
+    .nullable(),
   usageLimit: z
     .number()
     .int()
     .min(0, 'Giới hạn sử dụng không được âm')
-    .optional(),
+    .optional()
+    .nullable(),
   usedCount: z
     .number()
     .int()
@@ -52,7 +54,8 @@ const createVoucherSchema = z.object({
     .optional(),
   startDate: nullableDateSchema.optional(),
   endDate: nullableDateSchema.optional(),
-  isActive: z.boolean().optional()
+  isActive: z.boolean().optional(),
+  description: z.string().optional().nullable()
 })
 
 /** Schema cập nhật voucher (tất cả optional, phải có ít nhất 1 field) */
@@ -69,13 +72,14 @@ const updateVoucherSchema = z
       .optional(),
     type: z.enum(['percent', 'fixed']).optional(),
     amount: z.number().positive('Giá trị giảm phải lớn hơn 0').optional(),
-    maxDiscount: z.number().min(0).optional(),
-    minOrderValue: z.number().min(0).optional(),
-    usageLimit: z.number().int().min(0).optional(),
+    maxDiscount: z.number().min(0).optional().nullable(),
+    minOrderValue: z.number().min(0).optional().nullable(),
+    usageLimit: z.number().int().min(0).optional().nullable(),
     usedCount: z.number().int().min(0).optional(),
     startDate: nullableDateSchema.optional(),
     endDate: nullableDateSchema.optional(),
-    isActive: z.boolean().optional()
+    isActive: z.boolean().optional(),
+    description: z.string().optional().nullable()
   })
   .refine((data) => Object.keys(data).length > 0, {
     message: 'Vui lòng cung cấp ít nhất 1 trường để cập nhật'
