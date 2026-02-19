@@ -837,14 +837,24 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
         })
       }
 
-      // 3) Update Payment
-      await tx.payment.update({
-        where: { id: latestPayment.id },
+      // 3) Update Payment (dùng updateMany có điều kiện để phòng race condition double-markPaid)
+      const paymentResult = await tx.payment.updateMany({
+        where: {
+          id: latestPayment.id,
+          status: { not: PaymentStatus.PAID }
+        },
         data: {
           status: PaymentStatus.PAID,
           paidAt: new Date()
         }
       })
+      if (paymentResult.count === 0) {
+        // Payment đã được PAID bởi request concurrent khác → rollback toàn bộ incrementSelled
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          'Đơn hàng đã được xác nhận thanh toán bởi một yêu cầu khác'
+        )
+      }
     })
 
     // Audit log
@@ -926,10 +936,19 @@ const cancel = async (
     }
 
     const latestPayment = order.payments?.[0]
-    const needDecrementSelled = latestPayment?.status === PaymentStatus.PAID
+    // Biến để capture trạng thái payment thực tế từ trong transaction (tránh stale read trong audit log)
+    let actualPaymentStatusBeforeCancel: PaymentStatus | undefined = latestPayment?.status
 
     // Execute in transaction
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // Re-read payment Bên trong transaction để tránh stale read khi markPaid và cancel chạy đồng thời
+      const currentPayment = latestPayment
+        ? await tx.payment.findUnique({ where: { id: latestPayment.id } })
+        : null
+      const shouldDecrementSelled = currentPayment?.status === PaymentStatus.PAID
+      // Lưu trạng thái để dùng trong audit log sau transaction
+      actualPaymentStatusBeforeCancel = currentPayment?.status ?? latestPayment?.status
+
       // 1) Restock using model method
       for (const item of order.items) {
         const incrementResult = await productModel.incrementStock(
@@ -945,8 +964,8 @@ const cancel = async (
         }
       }
 
-      // 2) Decrement selled if was paid using model method
-      if (needDecrementSelled) {
+      // 2) Decrement selled if was paid (dùng shouldDecrementSelled từ dữ liệu đọc trong transaction)
+      if (shouldDecrementSelled) {
         for (const item of order.items) {
           const decrementResult = await productModel.decrementSelled(
             item.productId,
@@ -979,21 +998,31 @@ const cancel = async (
         }
       }
 
-      // 4) Update order
-      await tx.order.update({
-        where: { id: orderIdNum },
+      // 4) Update order status → CANCELLED (dùng updateMany có điều kiện để phòng race condition double-cancel)
+      const cancelResult = await tx.order.updateMany({
+        where: {
+          id: orderIdNum,
+          status: { not: OrderStatus.CANCELLED }
+        },
         data: {
           status: OrderStatus.CANCELLED
         }
       })
+      if (cancelResult.count === 0) {
+        // Đơn đã bị hủy bởi request concurrent khác → rollback toàn bộ stock/selled/voucher đã xử lý
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          'Đơn hàng đã được hủy bởi một yêu cầu khác'
+        )
+      }
 
-      // 5) Update payment if exists
-      if (latestPayment) {
+      // 5) Update payment (dùng currentPayment đọc trong transaction → tránh stale read)
+      if (currentPayment) {
         await tx.payment.update({
-          where: { id: latestPayment.id },
+          where: { id: currentPayment.id },
           data: {
             status:
-              latestPayment.status === PaymentStatus.PAID
+              currentPayment.status === PaymentStatus.PAID
                 ? PaymentStatus.REFUNDED
                 : PaymentStatus.CANCELLED
           }
@@ -1001,16 +1030,16 @@ const cancel = async (
       }
     })
 
-    // Audit log
+    // Audit log (dùng actualPaymentStatusBeforeCancel từ trong transaction, không phải stale read)
     await orderModel.appendLog(orderIdNum, {
       action: 'cancel',
       performedById: requesterIdNum,
       performedByRole: isAdmin ? 'admin' : 'user',
       fromStatus: order.status,
       toStatus: OrderStatus.CANCELLED,
-      fromPaymentStatus: latestPayment?.status,
+      fromPaymentStatus: actualPaymentStatusBeforeCancel,
       toPaymentStatus:
-        latestPayment?.status === PaymentStatus.PAID
+        actualPaymentStatusBeforeCancel === PaymentStatus.PAID
           ? PaymentStatus.REFUNDED
           : PaymentStatus.CANCELLED,
       note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn'
