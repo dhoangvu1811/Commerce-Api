@@ -12,6 +12,7 @@ import { productModel } from '~/models/productModel.js'
 import { voucherModel } from '~/models/voucherModel.js'
 import { userModel } from '~/models/userModel.js'
 import { notificationService } from '~/services/notificationService.js'
+import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
 import type {
   VoucherType,
   Prisma
@@ -454,7 +455,26 @@ const create = async (
       )
     }
 
-    return mapOrderToApi(fullOrder)
+    const orderResult = mapOrderToApi(fullOrder)
+
+    // Lưu notification cho admin/staff vào DB
+    await notificationService.createAdminNotification(
+      'ORDER_NEW',
+      `Đơn hàng mới #${orderResult.orderCode} từ ${orderResult.user?.name || orderResult.user?.email || 'Khách hàng'} - ${orderResult.items.length} sản phẩm`
+    )
+
+    // Emit realtime: thông báo admin có đơn hàng mới
+    emitToAdmin(SOCKET_EVENTS.ORDER_NEW, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      userId: orderResult.userId,
+      userName: orderResult.user?.name || orderResult.user?.email || '',
+      totalPrice: orderResult.totals.payable,
+      itemCount: orderResult.items.length,
+      createdAt: orderResult.createdAt
+    })
+
+    return orderResult
   } catch (error) {
     throw error
   }
@@ -642,7 +662,7 @@ const updateStatus = async (
       note: 'Admin cập nhật trạng thái'
     })
 
-    // Notify User
+    // Notify User (DB)
     await notificationService.createNotification(
       order.userId,
       'ORDER_STATUS',
@@ -652,8 +672,27 @@ const updateStatus = async (
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+    const orderResult = mapOrderToApi(refreshed!)
 
-    return mapOrderToApi(refreshed!)
+    // Emit realtime: thông báo user trạng thái đơn hàng thay đổi
+    emitToUser(order.userId, SOCKET_EVENTS.ORDER_STATUS_UPDATED, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      fromStatus: order.status,
+      toStatus: status,
+      statusName: STATUS_NAMES[status] || status
+    })
+
+    // Emit realtime: thông báo admin panel cập nhật (loại trừ admin đang thao tác)
+    emitToAdmin(SOCKET_EVENTS.ORDER_STATUS_UPDATED, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      fromStatus: order.status,
+      toStatus: status,
+      updatedBy: adminIdNum
+    }, adminIdNum)
+
+    return orderResult
   } catch (error) {
     throw error
   }
@@ -744,18 +783,37 @@ const updatePaymentStatus = async (
       note: 'Admin cập nhật trạng thái thanh toán'
     })
 
-    // Notify User
+    // Notify User (DB)
     await notificationService.createNotification(
       order.userId,
-      'ORDER_STATUS',
+      'ORDER_PAYMENT',
       `Trạng thái thanh toán đơn hàng #${order.orderCode} đã cập nhật: ${
         PAYMENT_STATUS_NAMES[paymentStatus] || paymentStatus
       }`
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+    const orderResult = mapOrderToApi(refreshed!)
 
-    return mapOrderToApi(refreshed!)
+    // Emit realtime: thông báo user thanh toán thay đổi
+    emitToUser(order.userId, SOCKET_EVENTS.ORDER_PAYMENT_UPDATED, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      fromPaymentStatus: latestPayment.status,
+      toPaymentStatus: paymentStatus,
+      paymentStatusName: PAYMENT_STATUS_NAMES[paymentStatus] || paymentStatus
+    })
+
+    // Emit realtime: thông báo admin panel cập nhật (loại trừ admin đang thao tác)
+    emitToAdmin(SOCKET_EVENTS.ORDER_PAYMENT_UPDATED, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      fromPaymentStatus: latestPayment.status,
+      toPaymentStatus: paymentStatus,
+      updatedBy: adminIdNum
+    }, adminIdNum)
+
+    return orderResult
   } catch (error) {
     throw error
   }
@@ -872,16 +930,31 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       note: 'Xác nhận thanh toán thành công'
     })
 
-    // Notify User
+    // Notify User (DB)
     await notificationService.createNotification(
       order.userId,
-      'ORDER_STATUS',
+      'ORDER_PAYMENT',
       `Đơn hàng #${order.orderCode} của bạn đã được xác nhận thanh toán thành công.`
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+    const orderResult = mapOrderToApi(refreshed!)
 
-    return mapOrderToApi(refreshed!)
+    // Emit realtime: thông báo user thanh toán thành công
+    emitToUser(order.userId, SOCKET_EVENTS.ORDER_MARK_PAID, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      totalPrice: orderResult.totals.payable
+    })
+
+    // Emit realtime: thông báo admin panel (loại trừ admin đang thao tác)
+    emitToAdmin(SOCKET_EVENTS.ORDER_MARK_PAID, {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      confirmedBy: adminIdNum
+    }, adminIdNum)
+
+    return orderResult
   } catch (error) {
     throw error
   }
@@ -1046,8 +1119,38 @@ const cancel = async (
     })
 
     const refreshed = await orderModel.findOneById(orderIdNum)
+    const orderResult = mapOrderToApi(refreshed!)
 
-    return mapOrderToApi(refreshed!)
+    // Emit realtime: thông báo cả 2 phía về việc hủy đơn
+    const cancelPayload = {
+      orderId: orderResult.id,
+      orderCode: orderResult.orderCode,
+      cancelledBy: isAdmin ? 'admin' : 'user',
+      cancelledById: requesterIdNum
+    }
+
+    // Notify User (DB) — chỉ thông báo khi admin huỷ (để user không nhận notification về hành động của chính mình)
+    if (isAdmin) {
+      await notificationService.createNotification(
+        order.userId,
+        'ORDER_CANCELLED',
+        `Đơn hàng #${order.orderCode} đã bị admin huỷ.`
+      )
+
+      // Thông báo user qua socket
+      emitToUser(order.userId, SOCKET_EVENTS.ORDER_CANCELLED, cancelPayload)
+    } else {
+      // User tự hủy → lưu notification cho admin/staff
+      await notificationService.createAdminNotification(
+        'ORDER_CANCELLED',
+        `Khách hàng đã huỷ đơn hàng #${order.orderCode}.`
+      )
+    }
+
+    // Thông báo admin (nếu user hủy hoặc để sync admin panel, loại trừ admin đang thao tác)
+    emitToAdmin(SOCKET_EVENTS.ORDER_CANCELLED, cancelPayload, requesterIdNum)
+
+    return orderResult
   } catch (error) {
     throw error
   }

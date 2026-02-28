@@ -79,8 +79,55 @@ const markAllAsRead = async (
   }
 }
 
+/**
+ * Xoá 1 thông báo
+ */
+const deleteNotification = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = parseInt(req.jwtDecoded!._id as string, 10)
+    const notificationId = parseInt(req.params.id as string, 10)
+
+    await notificationService.deleteNotification(userId, notificationId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Đã xoá thông báo'
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Xoá tất cả thông báo đã đọc
+ */
+const deleteAllRead = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = parseInt(req.jwtDecoded!._id as string, 10)
+    const result = await notificationService.deleteAllRead(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: `Đã xoá ${result.deletedCount} thông báo đã đọc`,
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const notificationController = {
   getMyNotifications,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  deleteNotification,
+  deleteAllRead
 }

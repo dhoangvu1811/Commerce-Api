@@ -91,10 +91,30 @@ const markAllAsRead = async (userId: number): Promise<void> => {
   })
 }
 
+/**
+ * Xoá 1 notification
+ */
+const deleteOne = async (id: number): Promise<void> => {
+  await prisma.notification.delete({ where: { id } })
+}
+
+/**
+ * Xoá tất cả notification đã đọc của user
+ */
+const deleteAllRead = async (userId: number): Promise<number> => {
+  const result = await prisma.notification.deleteMany({
+    where: { userId, isRead: true }
+  })
+
+  return result.count
+}
+
 export const notificationModel = {
   create,
   getByUserId,
   countUnread,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  deleteOne,
+  deleteAllRead
 }
