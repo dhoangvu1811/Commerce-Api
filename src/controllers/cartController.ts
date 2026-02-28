@@ -103,9 +103,62 @@ const removeCartItem = async (
   }
 }
 
+/**
+ * Sync giỏ hàng guest vào tài khoản
+ */
+const syncCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = parseInt(req.jwtDecoded!._id as string, 10)
+    const items: { productId: number; quantity: number }[] = req.body.items
+
+    const result = await cartService.syncCart(userId, items)
+
+    // Tạo message thông báo có điều chỉnh stock hay không
+    const message = result.adjustedItems.length > 0
+      ? 'Một số sản phẩm đã được điều chỉnh số lượng do vượt tồn kho'
+      : 'Đồng bộ giỏ hàng thành công'
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message,
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
+/**
+ * Xóa toàn bộ giỏ hàng
+ */
+const clearCart = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
+  try {
+    const userId = parseInt(req.jwtDecoded!._id as string, 10)
+
+    await cartService.clearCart(userId)
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Đã xóa toàn bộ giỏ hàng'
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 export const cartController = {
   getMyCart,
   addToCart,
   updateCart,
-  removeCartItem
+  removeCartItem,
+  syncCart,
+  clearCart
 }
