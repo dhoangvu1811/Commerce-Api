@@ -15,5 +15,7 @@ router.use(authMiddleware.verifyToken)
 router.get('/', notificationController.getMyNotifications)
 router.patch('/read-all', notificationController.markAllAsRead)
 router.patch('/:id/read', notificationController.markAsRead)
+router.delete('/delete-read', notificationController.deleteAllRead)
+router.delete('/:id', notificationController.deleteNotification)
 
 export const notificationRouter = router
