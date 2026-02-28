@@ -5,6 +5,7 @@
 
 /* eslint-disable no-console */
 import 'dotenv/config'
+import http from 'http'
 import cookieParser from 'cookie-parser'
 import type { Request, Response, NextFunction } from 'express'
 import express from 'express'
@@ -14,6 +15,7 @@ import { APIs_V1 } from './routes/V1/index.js'
 import { connectDB, disconnectDB } from './config/prisma.js'
 import cors from 'cors'
 import { corsOptions } from './config/cors.js'
+import { initSocket } from './config/socket.js'
 import '~/providers/passport.js'
 
 /**
@@ -43,17 +45,21 @@ const START_SERVER = (): void => {
   // Middleware xử lý lỗi tập trung
   app.use(errorHandlingMiddleware)
 
+  // Tạo HTTP server và khởi tạo Socket.IO
+  const httpServer = http.createServer(app)
+  initSocket(httpServer)
+
   // Môi trường production
   if (env.BUILD_MODE === 'production') {
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
-    app.listen(port, () => {
+    httpServer.listen(port, () => {
       console.log(
         `3. PRODUCTION Hello ${env.AUTHOR}, I am running at PORT: ${port}`
       )
     })
   } else {
     // Môi trường Local dev
-    app.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
+    httpServer.listen(env.LOCAL_DEV_APP_PORT, env.LOCAL_DEV_APP_HOST, () => {
       console.log(
         `3. LOCAL_DEV Hello ${env.AUTHOR}, I am running at HOST: ${env.LOCAL_DEV_APP_HOST} and PORT: ${env.LOCAL_DEV_APP_PORT}`
       )
