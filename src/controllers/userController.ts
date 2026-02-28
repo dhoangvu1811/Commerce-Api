@@ -371,10 +371,12 @@ const refreshToken = async (
       maxAge: ms('30m' as ms.StringValue)
     })
 
+    // Trả accessToken trong body để Socket.IO client có thể dùng auth.token
+    // (HttpOnly cookie không đọc được từ JS nên cần trả qua body cho WebSocket)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Làm mới token thành công',
-      data: null
+      data: { accessToken: result.accessToken }
     })
   } catch (error) {
     next(error)
