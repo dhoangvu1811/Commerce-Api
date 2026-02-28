@@ -2,16 +2,78 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { notificationModel } from '~/models/notificationModel.js'
 import { prisma } from '~/config/prisma.js'
+import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
+import { ROLES } from '~/constants/rbac.js'
 
 /**
- * Tạo thông báo (Internal use for triggers)
+ * Tạo thông báo cho user cụ thể (Internal use for triggers)
+ * Tự động emit realtime notification đến user qua Socket.IO
  */
 const createNotification = async (
   userId: number,
   type: string,
   message: string
 ) => {
-  return await notificationModel.create({ userId, type, message })
+  const notification = await notificationModel.create({ userId, type, message })
+
+  // Emit realtime notification đến user
+  emitToUser(userId, SOCKET_EVENTS.NOTIFICATION_NEW, {
+    id: notification.id,
+    type,
+    message,
+    isRead: false,
+    createdAt: notification.createdAt
+  })
+
+  return notification
+}
+
+/**
+ * Tạo thông báo cho tất cả admin/staff
+ * Mỗi admin/staff nhận 1 bản ghi riêng trong DB + realtime socket event
+ * @param excludeUserId - Loại trừ admin đang thao tác (tránh self-notification)
+ */
+const createAdminNotification = async (
+  type: string,
+  message: string,
+  excludeUserId?: number
+) => {
+  // Tìm tất cả admin và staff
+  const adminUsers = await prisma.user.findMany({
+    where: {
+      role: {
+        name: { in: [ROLES.ADMIN, ROLES.STAFF] }
+      }
+    },
+    select: { id: true }
+  })
+
+  // Loại trừ admin đang thao tác (nếu có)
+  const targetAdmins = excludeUserId
+    ? adminUsers.filter(u => u.id !== excludeUserId)
+    : adminUsers
+
+  if (targetAdmins.length === 0) return
+
+  // Tạo notification cho từng admin (dùng createMany cho hiệu suất)
+  await prisma.notification.createMany({
+    data: targetAdmins.map(admin => ({
+      userId: admin.id,
+      type,
+      message
+    }))
+  })
+
+  // Emit realtime đến room admin (loại trừ admin đang thao tác)
+  // Dùng emitToAdmin thay vì emitToUser từng người → hiệu quả hơn
+  // FE sẽ tự fetch lại khi nhận event để đồng bộ ID chính xác
+  emitToAdmin(SOCKET_EVENTS.NOTIFICATION_NEW, {
+    id: 0, // Placeholder — FE sẽ prepend hoặc refetch
+    type,
+    message,
+    isRead: false,
+    createdAt: new Date().toISOString()
+  }, excludeUserId)
 }
 
 /**
@@ -59,9 +121,40 @@ const markAllAsRead = async (userId: number) => {
   await notificationModel.markAllAsRead(userId)
 }
 
+/**
+ * Xoá 1 thông báo
+ */
+const deleteNotification = async (userId: number, notificationId: number) => {
+  // Kiểm tra ownership
+  const count = await prisma.notification.count({
+    where: {
+      id: notificationId,
+      userId
+    }
+  })
+
+  if (count === 0) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Thông báo không tồn tại')
+  }
+
+  await notificationModel.deleteOne(notificationId)
+}
+
+/**
+ * Xoá tất cả thông báo đã đọc
+ */
+const deleteAllRead = async (userId: number) => {
+  const deletedCount = await notificationModel.deleteAllRead(userId)
+
+  return { deletedCount }
+}
+
 export const notificationService = {
   createNotification,
+  createAdminNotification,
   getMyNotifications,
   markAsRead,
-  markAllAsRead
+  markAllAsRead,
+  deleteNotification,
+  deleteAllRead
 }
