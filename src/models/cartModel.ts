@@ -107,8 +107,8 @@ const getCartByUserId = async (userId: number) => {
           image: true,
           price: true,
           discount: true,
-          stock: true
-          // include: { images: true } // Có thể include items images nếu cần, nhưng basic info là đủ
+          stock: true,
+          status: true
         }
       }
     },
