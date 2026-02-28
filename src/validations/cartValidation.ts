@@ -78,7 +78,45 @@ const updateCart = async (
   }
 }
 
+/** Schema sync guest cart */
+const syncCart = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const correctCondition = z.object({
+    items: z
+      .array(
+        z.object({
+          productId: z.union([
+            z.number().int().positive(),
+            z
+              .string()
+              .regex(INTEGER_ID_RULE)
+              .transform((val) => parseInt(val, 10))
+          ]),
+          quantity: z.number().int().min(1, 'Số lượng phải lớn hơn 0')
+        })
+      )
+      .min(1, 'Danh sách sản phẩm không được rỗng')
+  })
+
+  try {
+    await correctCondition.parseAsync(req.body)
+    next()
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      next(
+        new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, formatZodError(error))
+      )
+    } else {
+      next(error)
+    }
+  }
+}
+
 export const cartValidation = {
   addToCart,
-  updateCart
+  updateCart,
+  syncCart
 }

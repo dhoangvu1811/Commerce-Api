@@ -20,4 +20,10 @@ router.put('/update', cartValidation.updateCart, cartController.updateCart)
 
 router.delete('/remove/:productId', cartController.removeCartItem)
 
+// Đồng bộ giỏ hàng guest sau khi đăng nhập
+router.post('/sync', cartValidation.syncCart, cartController.syncCart)
+
+// Xóa toàn bộ giỏ hàng
+router.delete('/clear', cartController.clearCart)
+
 export const cartRouter = router
