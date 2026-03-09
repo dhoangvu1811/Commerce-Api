@@ -315,20 +315,31 @@ const create = async (
         // 7.1) Create or find shipping address (inside transaction)
         let shippingAddressId: number
 
-        // Check if user has existing address or create new one
+        // Check if user has existing active address matching form data
+        // isActive: true → không dùng địa chỉ đã archive (bị Copy-on-Write)
+        // province included → tránh nhầm địa chỉ cùng tên/phone khác tỉnh/thành
         const existingAddress = await tx.shippingAddress.findFirst({
           where: {
             userId: userIdNum,
+            isActive: true,
             fullName: shippingAddress.name,
             phone: shippingAddress.phone,
             address: shippingAddress.address,
-            city: shippingAddress.city
+            city: shippingAddress.city,
+            province: shippingAddress.province || ''
           }
         })
 
         if (existingAddress) {
           shippingAddressId = existingAddress.id
         } else {
+          // Kiểm tra user có địa chỉ nào chưa để quyết định isDefault
+          // Nếu đây là địa chỉ đầu tiên → tự động set làm default
+          // (logic này bypass shippingAddressService.createNew nên phải tự xử lý)
+          const activeAddressCount = await tx.shippingAddress.count({
+            where: { userId: userIdNum, isActive: true }
+          })
+
           const newAddress = await tx.shippingAddress.create({
             data: {
               userId: userIdNum,
@@ -338,7 +349,7 @@ const create = async (
               city: shippingAddress.city,
               province: shippingAddress.province || '',
               postalCode: shippingAddress.postalCode || null,
-              isDefault: false
+              isDefault: activeAddressCount === 0
             }
           })
           shippingAddressId = newAddress.id
