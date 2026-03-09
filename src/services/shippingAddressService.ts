@@ -37,9 +37,9 @@ const createNew = async (
   // Nếu set default, reset các địa chỉ cũ trong transaction
   if (data.isDefault) {
     return await prisma.$transaction(async (tx) => {
-      // Reset all to false
+      // Reset chỉ các địa chỉ active (không cần reset địa chỉ đã archive)
       await tx.shippingAddress.updateMany({
-        where: { userId },
+        where: { userId, isActive: true },
         data: { isDefault: false }
       })
 
@@ -65,7 +65,10 @@ const createNew = async (
 const getMyAddresses = async (userId: number): Promise<ShippingAddress[]> => {
   return await prisma.shippingAddress.findMany({
     where: { userId, isActive: true },
-    orderBy: { createdAt: 'desc' }
+    orderBy: [
+      { isDefault: 'desc' }, // Địa chỉ mặc định lên đầu
+      { createdAt: 'desc' }
+    ]
   })
 }
 
@@ -129,18 +132,24 @@ const updateAddress = async (
       // 1. Archive cũ
       await tx.shippingAddress.update({
         where: { id: addressId },
-        data: { isActive: false, isDefault: false } // Bỏ default của cái cũ
+        data: { isActive: false, isDefault: false }
       })
 
-      // 2. Reset others default if needed
-      if (data.isDefault) {
+      // 2. Tính effective isDefault: ưu tiên giá trị mới, fallback về giá trị gốc
+      // Quan trọng: nếu địa chỉ gốc là default nhưng payload không truyền isDefault
+      // → effectiveIsDefault = true → cần reset others TRƯỚC khi tạo mới
+      // Nếu chỉ check data.isDefault (undefined → falsy) thì sẽ bỏ qua reset → 2 default tồn tại
+      const effectiveIsDefault = data.isDefault ?? address.isDefault
+
+      // 3. Reset others nếu địa chỉ mới sẽ là default
+      if (effectiveIsDefault) {
         await tx.shippingAddress.updateMany({
           where: { userId, isActive: true },
           data: { isDefault: false }
         })
       }
 
-      // 3. Create new
+      // 4. Create new
       const newAddress = await tx.shippingAddress.create({
         data: {
           userId,
@@ -150,8 +159,8 @@ const updateAddress = async (
           city: data.city || address.city,
           province: data.province || address.province,
           postalCode: data.postalCode ?? address.postalCode,
-          isActive: true, // New logic: Active
-          isDefault: data.isDefault ?? address.isDefault
+          isActive: true,
+          isDefault: effectiveIsDefault
         }
       })
 
@@ -223,22 +232,9 @@ const deleteAddress = async (
   })
 
   // Nếu đã dùng trong đơn hàng -> Soft delete (isActive = false)
+  // Không hard delete để giữ nguyên lịch sử đơn hàng liên kết
+  // (Check default address đã được xử lý ở trên trước khi vào đây)
   if (usedInOrders > 0) {
-    // Nếu xóa default address, vẫn phải check logic default
-    if (address.isDefault) {
-      // ... (Logic check default retained from original but applies to soft delete too)
-      // Check nếu còn địa chỉ khác active
-      const count = await prisma.shippingAddress.count({
-        where: { userId, isActive: true }
-      })
-      if (count > 1) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Bạn không thể xóa địa chỉ mặc định. Vui lòng thiết lập địa chỉ khác làm mặc định trước.'
-        )
-      }
-    }
-
     await prisma.shippingAddress.update({
       where: { id: addressId },
       data: { isActive: false, isDefault: false }
@@ -253,13 +249,44 @@ const deleteAddress = async (
 }
 
 /**
- * Set default address (Shortcut)
+ * Set default address
+ * Xử lý trực tiếp bằng transaction, KHÔNG qua updateAddress để tránh kích hoạt
+ * Copy-on-Write không cần thiết — thay đổi isDefault không ảnh hưởng dữ liệu
+ * lịch sử đơn hàng, nên không cần tạo bản ghi địa chỉ mới.
  */
 const setDefaultAddress = async (
   userId: number,
   addressId: number
 ): Promise<ShippingAddress> => {
-  return await updateAddress(userId, addressId, { isDefault: true })
+  const address = await shippingAddressModel.getOneById(addressId)
+  if (!address) {
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Địa chỉ không tồn tại')
+  }
+  if (address.userId !== userId) {
+    throw new ApiError(
+      StatusCodes.FORBIDDEN,
+      'Bạn không có quyền cập nhật địa chỉ này'
+    )
+  }
+  if (!address.isActive) {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Địa chỉ không còn hoạt động')
+  }
+  // No-op nếu đã là default
+  if (address.isDefault) return address
+
+  return await prisma.$transaction(async (tx) => {
+    // Reset tất cả active addresses về false
+    await tx.shippingAddress.updateMany({
+      where: { userId, isActive: true },
+      data: { isDefault: false }
+    })
+    
+    // Set target thành default
+    return await tx.shippingAddress.update({
+      where: { id: addressId },
+      data: { isDefault: true }
+    })
+  })
 }
 
 export const shippingAddressService = {
