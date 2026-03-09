@@ -11,10 +11,13 @@ import { productModel } from '~/models/productModel.js'
  * Toggle (Thêm/Xóa) sản phẩm yêu thích
  */
 const toggleWishlist = async (userId: number, productId: number) => {
-  // Check product exists
+  // Check product exists và đang active
   const product = await productModel.findOneById(productId)
   if (!product) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Sản phẩm không tồn tại')
+  }
+  if (product.status !== 'active') {
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Sản phẩm không còn khả dụng')
   }
 
   const existingItem = await wishlistModel.checkExist(userId, productId)

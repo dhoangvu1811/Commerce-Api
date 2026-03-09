@@ -66,7 +66,8 @@ const getByUserId = async (userId: number) => {
           image: true,
           price: true,
           discount: true,
-          rating: true
+          rating: true,
+          stock: true
         }
       }
     },
