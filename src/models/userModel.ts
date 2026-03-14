@@ -4,8 +4,8 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { User, Prisma } from '~/generated/prisma/index.js'
-import { UserStatus, Gender, AccountType } from '~/generated/prisma/index.js'
+import type { User, Prisma } from '@prisma/client'
+import { UserStatus, Gender, AccountType } from '@prisma/client'
 
 /** User type export từ Prisma */
 export type { User }

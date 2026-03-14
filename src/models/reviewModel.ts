@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Review } from '~/generated/prisma/index.js'
+import type { Review } from '@prisma/client'
 
 /**
  * Tạo mới review

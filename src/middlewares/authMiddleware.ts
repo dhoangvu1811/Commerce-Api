@@ -120,7 +120,7 @@ const verifyUserOwnership = async (
   }
 }
 
-import { UserStatus } from '~/generated/prisma/index.js'
+import { UserStatus } from '@prisma/client'
 
 /**
  * Middleware kiểm tra tài khoản có đang hoạt động

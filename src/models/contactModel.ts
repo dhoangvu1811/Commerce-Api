@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Contact } from '~/generated/prisma/index.js'
+import type { Contact } from '@prisma/client'
 
 /**
  * Tạo mới contact

@@ -198,3 +198,4 @@ docs/build/
 
 /src/generated/prisma
 commit-message-instruction.md
+sql_DB.sql

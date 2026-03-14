@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Permission } from '~/generated/prisma/index.js'
+import type { Permission } from '@prisma/client'
 import type {
   PaginatedPermissionsResult,
   PermissionFilter

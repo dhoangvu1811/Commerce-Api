@@ -16,12 +16,12 @@ import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
 import type {
   VoucherType,
   Prisma
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 import {
   OrderStatus,
   PaymentStatus,
   PaymentMethod
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 import { prisma } from '~/config/prisma.js'
 import {
   ORDER_STATUS,

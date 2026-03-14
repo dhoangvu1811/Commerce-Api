@@ -7,10 +7,10 @@ import type { Timestamps, PaginationInfo } from './common.types.js'
 import type {
   Gender as PrismaGender,
   AccountType as PrismaAccountType
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 import {
   UserStatus
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 
 /**
  * User roles

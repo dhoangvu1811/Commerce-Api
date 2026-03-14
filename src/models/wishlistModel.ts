@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Wishlist } from '~/generated/prisma/index.js'
+import type { Wishlist } from '@prisma/client'
 
 export type { Wishlist }
 

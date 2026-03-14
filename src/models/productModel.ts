@@ -8,7 +8,7 @@ import type {
   Product,
   Prisma,
   DecimalType as Decimal
-} from '~/generated/prisma/index.js'
+} from '@prisma/client'
 
 /** Product type export từ Prisma */
 export type { Product }

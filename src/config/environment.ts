@@ -40,6 +40,9 @@ export const env: EnvironmentVariables = {
     process.env.WEBSITE_DOMAIN_DEVELOPMENT || 'http://localhost:5173',
   WEBSITE_DOMAIN_PRODUCTION: process.env.WEBSITE_DOMAIN_PRODUCTION || '',
 
+  // CORS
+  CORS_WHITELIST: process.env.CORS_WHITELIST || '',
+
   // Google OAuth
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
   GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET || '',

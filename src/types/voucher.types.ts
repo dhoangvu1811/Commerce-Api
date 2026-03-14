@@ -7,7 +7,7 @@ import type { Timestamps, PaginationInfo } from './common.types.js'
 /**
  * Loại voucher
  */
-import { VoucherType } from '~/generated/prisma/index.js'
+import { VoucherType } from '@prisma/client'
 
 export { VoucherType }
 

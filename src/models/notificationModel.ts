@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Notification } from '~/generated/prisma/index.js'
+import type { Notification } from '@prisma/client'
 
 export type { Notification }
 

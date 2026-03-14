@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Session } from '~/generated/prisma/index.js'
+import type { Session } from '@prisma/client'
 
 /** Session type export từ Prisma */
 export type { Session }

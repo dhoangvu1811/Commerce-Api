@@ -8,8 +8,8 @@ import type {
   Voucher,
   Prisma,
   DecimalType as Decimal
-} from '~/generated/prisma/index.js'
-import type { VoucherType } from '~/generated/prisma/index.js'
+} from '@prisma/client'
+import type { VoucherType } from '@prisma/client'
 
 /** Voucher type export từ Prisma */
 export type { Voucher }

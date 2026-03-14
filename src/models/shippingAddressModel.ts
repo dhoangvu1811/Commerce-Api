@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { ShippingAddress } from '~/generated/prisma/index.js'
+import type { ShippingAddress } from '@prisma/client'
 
 export type { ShippingAddress }
 

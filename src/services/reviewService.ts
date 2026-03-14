@@ -7,7 +7,7 @@ import ApiError from '~/utils/ApiError.js'
 import { reviewModel } from '~/models/reviewModel.js'
 import { productModel } from '~/models/productModel.js'
 import { prisma } from '~/config/prisma.js'
-import { OrderStatus } from '~/generated/prisma/index.js'
+import { OrderStatus } from '@prisma/client'
 
 interface ReviewPayload {
   productId: number

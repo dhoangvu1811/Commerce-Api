@@ -50,6 +50,7 @@ const START_SERVER = (): void => {
   initSocket(httpServer)
 
   // Môi trường production
+  console.log('🚀 ~ START_SERVER ~ env.BUILD_MODE:', env.BUILD_MODE)
   if (env.BUILD_MODE === 'production') {
     const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
     httpServer.listen(port, () => {

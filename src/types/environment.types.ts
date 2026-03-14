@@ -50,6 +50,9 @@ export interface EnvironmentConfig {
   // Website domains
   WEBSITE_DOMAIN_DEVELOPMENT: string
   WEBSITE_DOMAIN_PRODUCTION: string
+
+  // CORS
+  CORS_WHITELIST: string
 }
 
 /**

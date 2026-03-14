@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Category } from '~/generated/prisma/index.js'
+import type { Category } from '@prisma/client'
 import type {
   CreateCategoryInput,
   UpdateCategoryInput,

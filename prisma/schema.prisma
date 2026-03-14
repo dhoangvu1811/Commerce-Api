@@ -4,8 +4,7 @@
 // Prisma 7: URL is configured in prisma.config.ts, not here
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {

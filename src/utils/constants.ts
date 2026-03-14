@@ -8,17 +8,34 @@ import {
   OrderStatus,
   PaymentStatus,
   PaymentMethod
-} from '~/generated/prisma/index.js'
+} from '@prisma/client'
 
-/**
- * Danh sách domains được phép CORS
- * Thêm domain vào đây khi deploy frontend
- */
-export const WHITELIST_DOMAINS: string[] = [
+const DEFAULT_LOCAL_ORIGINS: string[] = [
   'http://localhost:5173',
   'http://localhost:3000',
   'http://localhost:3001'
 ]
+
+const normalizeOrigin = (origin: string): string => origin.trim().replace(/\/$/, '')
+
+const configuredOrigins = [
+  ...env.CORS_WHITELIST.split(',').map(normalizeOrigin),
+  normalizeOrigin(env.WEBSITE_DOMAIN_DEVELOPMENT),
+  normalizeOrigin(env.WEBSITE_DOMAIN_PRODUCTION)
+].filter(Boolean)
+
+/**
+ * Danh sách domains được phép CORS
+ * - Production: bắt buộc cấu hình qua env (CORS_WHITELIST, WEBSITE_DOMAIN_*)
+ * - Development: tự thêm localhost để thuận tiện local dev
+ */
+export const WHITELIST_DOMAINS: string[] = Array.from(
+  new Set(
+    env.BUILD_MODE === 'production'
+      ? configuredOrigins
+      : [...configuredOrigins, ...DEFAULT_LOCAL_ORIGINS]
+  )
+)
 
 /**
  * Domain website hiện tại dựa trên BUILD_MODE

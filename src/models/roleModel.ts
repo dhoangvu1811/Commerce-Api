@@ -8,7 +8,7 @@ import type {
   Role,
   Permission,
   RolePermission
-} from '~/generated/prisma/index.js'
+} from '@prisma/client'
 
 import type {
   PaginatedRolesResult,

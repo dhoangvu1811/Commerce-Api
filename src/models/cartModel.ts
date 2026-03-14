@@ -4,7 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { CartItem } from '~/generated/prisma/index.js'
+import type { CartItem } from '@prisma/client'
 
 export type { CartItem }
 

@@ -13,12 +13,12 @@ import {
   type Payment,
   OrderStatus,
   PaymentStatus
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 import type { DecimalType as Decimal ,
   PaymentMethod,
   VoucherType,
   Prisma
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 
 /** Export types từ Prisma */
 export type { Order, OrderItem, OrderLog, OrderVoucher, ShippingAddress }

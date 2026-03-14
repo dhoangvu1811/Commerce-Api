@@ -4,6 +4,9 @@ import path from 'path'
 export default defineConfig({
   entry: ['src/server.ts'],
   format: ['esm'],
+  outExtension: ({ format }) => ({
+    js: format === 'esm' ? '.js' : '.cjs'
+  }),
   dts: true,
   clean: true,
   sourcemap: true,

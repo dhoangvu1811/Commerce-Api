@@ -1,4 +1,4 @@
-import type { Role, Permission, RolePermission } from '~/generated/prisma/index.js'
+import type { Role, Permission, RolePermission } from '@prisma/client'
 import type { PaginationInfo } from './common.types.js'
 
 export interface RoleWithPermissions extends Role {

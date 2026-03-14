@@ -12,7 +12,7 @@ import {
   type Voucher,
   type VoucherFilter
 } from '~/models/voucherModel.js'
-import { VoucherType } from '~/generated/prisma/index.js'
+import { VoucherType } from '@prisma/client'
 import { prisma } from '~/config/prisma.js'
 import type {
   VoucherQueryFilter,

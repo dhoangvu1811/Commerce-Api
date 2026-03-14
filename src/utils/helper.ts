@@ -8,7 +8,7 @@ import {
   PaymentStatus,
   PaymentMethod,
   VoucherType
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 import type { Order } from '~/types/order.types.js'
 import type { Voucher } from '~/types/voucher.types.js'
 

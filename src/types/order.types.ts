@@ -8,7 +8,7 @@ import type {
   PaymentStatus as PrismaPaymentStatus,
   PaymentMethod as PrismaPaymentMethod,
   VoucherType as PrismaVoucherType
-} from '../generated/prisma/index.js'
+} from '@prisma/client'
 
 /**
  * Trạng thái đơn hàng (re-export from Prisma)
