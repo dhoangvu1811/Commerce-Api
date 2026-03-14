@@ -40,6 +40,22 @@ export const emailLimiter: RateLimitRequestHandler = rateLimit({
 })
 
 /**
+ * Rate limiter cho contact form
+ * Giới hạn: 5 requests / 10 phút
+ */
+export const contactLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 10 * 60 * 1000, // 10 phút
+  max: 5, // Tối đa 5 requests
+  message: {
+    code: StatusCodes.TOO_MANY_REQUESTS,
+    message: 'Bạn đã gửi liên hệ quá nhiều lần. Vui lòng thử lại sau 10 phút.',
+    data: null
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+})
+
+/**
  * Rate limiter tổng quan cho toàn API
  * Giới hạn: 100 requests / phút
  */
