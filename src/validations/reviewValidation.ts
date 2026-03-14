@@ -26,11 +26,13 @@ const createReview = async (
         .regex(INTEGER_ID_RULE)
         .transform((val) => parseInt(val, 10))
     ]),
-    rating: z
-      .number()
-      .int()
-      .min(1, 'Đánh giá tối thiểu 1 sao')
-      .max(5, 'Đánh giá tối đa 5 sao'),
+    rating: z.union([
+      z.number().int().min(1, 'Đánh giá tối thiểu 1 sao').max(5, 'Đánh giá tối đa 5 sao'),
+      z
+        .string()
+        .regex(/^[1-5]$/, 'Đánh giá phải là số nguyên từ 1 đến 5')
+        .transform((val) => parseInt(val, 10))
+    ]),
     comment: z.string().max(500, 'Bình luận tối đa 500 ký tự').optional()
   })
 
