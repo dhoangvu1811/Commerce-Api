@@ -70,9 +70,68 @@ const checkUserReviewed = async (
   return count > 0
 }
 
+/**
+ * Lấy review của user theo sản phẩm
+ */
+const findOneByUserAndProduct = async (
+  userId: number,
+  productId: number
+): Promise<Review | null> => {
+  return await prisma.review.findFirst({
+    where: {
+      userId,
+      productId
+    }
+  })
+}
+
+/**
+ * Tổng hợp thống kê review của sản phẩm
+ */
+const getProductReviewSummary = async (productId: number) => {
+  const [aggregate, groupedByRating] = await Promise.all([
+    prisma.review.aggregate({
+      where: { productId },
+      _avg: {
+        rating: true
+      },
+      _count: {
+        _all: true
+      }
+    }),
+    prisma.review.groupBy({
+      by: ['rating'],
+      where: { productId },
+      _count: {
+        rating: true
+      }
+    })
+  ])
+
+  const ratingBreakdown = {
+    1: 0,
+    2: 0,
+    3: 0,
+    4: 0,
+    5: 0
+  }
+
+  groupedByRating.forEach((item) => {
+    ratingBreakdown[item.rating as 1 | 2 | 3 | 4 | 5] = item._count.rating
+  })
+
+  return {
+    averageRating: aggregate._avg.rating || 0,
+    totalReviews: aggregate._count._all,
+    ratingBreakdown
+  }
+}
+
 export const reviewModel = {
   create,
   findByProductId,
   calculateAverageRating,
-  checkUserReviewed
+  checkUserReviewed,
+  findOneByUserAndProduct,
+  getProductReviewSummary
 }
