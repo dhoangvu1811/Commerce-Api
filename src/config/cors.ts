@@ -5,7 +5,6 @@
 
 import type { CorsOptions } from 'cors'
 import { StatusCodes } from 'http-status-codes'
-import { env } from '~/config/environment.js'
 import { WHITELIST_DOMAINS } from '~/utils/constants.js'
 import ApiError from '~/utils/ApiError.js'
 
@@ -19,9 +18,9 @@ export const corsOptions: CorsOptions = {
     origin: string | undefined,
     callback: (error: Error | null, allow?: boolean) => void
   ) {
-    // Cho phép việc gọi API bằng POSTMAN trên môi trường dev
-    // Nếu origin là undefined (POSTMAN) và là môi trường dev thì cho phép
-    if (!origin && env.BUILD_MODE === 'dev') {
+    // Request không có Origin thường đến từ Postman hoặc server-to-server call.
+    // CORS chỉ áp dụng cho browser, nên có thể cho phép các request này.
+    if (!origin) {
       return callback(null, true)
     }
 
@@ -34,7 +33,7 @@ export const corsOptions: CorsOptions = {
     return callback(
       new ApiError(
         StatusCodes.FORBIDDEN,
-        `${origin} không được phép bởi CORS Policy.`
+        `${origin || 'Origin không xác định'} không được phép bởi CORS Policy.`
       )
     )
   },

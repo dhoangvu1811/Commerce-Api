@@ -24,8 +24,10 @@
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "render:build": "pnpm db:generate && pnpm db:migrate:deploy && pnpm build"
   },
   "dependencies": {
     "@getbrevo/brevo": "^3.0.1",
