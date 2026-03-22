@@ -9,11 +9,7 @@ import { wishlistService } from '~/services/wishlistService.js'
 /**
  * Lấy danh sách yêu thích
  */
-const getMyWishlist = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getMyWishlist = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const result = await wishlistService.getMyWishlist(userId)
@@ -31,11 +27,7 @@ const getMyWishlist = async (
 /**
  * Toggle yêu thích
  */
-const toggleWishlist = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const toggleWishlist = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.body.productId, 10)

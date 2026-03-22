@@ -4,11 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type {
-  Product,
-  Prisma,
-  DecimalType as Decimal
-} from '@prisma/client'
+import type { Product, Prisma, DecimalType as Decimal } from '@prisma/client'
 
 /** Product type export từ Prisma */
 export type { Product }
@@ -116,10 +112,7 @@ const findBySlug = async (slug: string): Promise<Product | null> => {
 /**
  * Tìm product theo tên và categoryId (để check duplicate)
  */
-const findByNameAndCategory = async (
-  name: string,
-  categoryId: number
-): Promise<Product | null> => {
+const findByNameAndCategory = async (name: string, categoryId: number): Promise<Product | null> => {
   const product = await prisma.product.findFirst({
     where: {
       name: { equals: name, mode: 'insensitive' },
@@ -210,10 +203,7 @@ const getMany = async (
 /**
  * Cập nhật thông tin product
  */
-const update = async (
-  productId: number,
-  updateData: UpdateProductInput
-): Promise<Product | null> => {
+const update = async (productId: number, updateData: UpdateProductInput): Promise<Product | null> => {
   try {
     const product = await prisma.product.update({
       where: { id: productId },
@@ -257,9 +247,7 @@ const deleteOneById = async (productId: number): Promise<Product | null> => {
  * Xóa nhiều products theo filter
  * Safety: Yêu cầu ít nhất một điều kiện để tránh xóa nhầm tất cả products
  */
-const deleteMany = async (
-  where: Prisma.ProductWhereInput = {}
-): Promise<{ count: number }> => {
+const deleteMany = async (where: Prisma.ProductWhereInput = {}): Promise<{ count: number }> => {
   // Safety check: Không cho phép xóa tất cả products nếu filter rỗng hoặc không có điều kiện thực sự
   const whereKeys = Object.keys(where)
   const hasCondition =
@@ -397,16 +385,13 @@ const decrementSelled = async (
 /**
  * Thêm nhiều ảnh gallery cho product
  */
-const addImages = async (
-  productId: number,
-  imageUrls: string[]
-): Promise<{ count: number }> => {
+const addImages = async (productId: number, imageUrls: string[]): Promise<{ count: number }> => {
   if (!imageUrls || imageUrls.length === 0) {
     return { count: 0 }
   }
 
   const result = await prisma.productImage.createMany({
-    data: imageUrls.map((url) => ({
+    data: imageUrls.map(url => ({
       productId,
       image: url
     }))
@@ -432,7 +417,7 @@ const syncImages = async (
   let addedCount = 0
   if (imageUrls && imageUrls.length > 0) {
     const addResult = await prisma.productImage.createMany({
-      data: imageUrls.map((url) => ({
+      data: imageUrls.map(url => ({
         productId,
         image: url
       }))
@@ -449,9 +434,7 @@ const syncImages = async (
 /**
  * Xóa tất cả ảnh gallery của product
  */
-const deleteImagesByProductId = async (
-  productId: number
-): Promise<{ count: number }> => {
+const deleteImagesByProductId = async (productId: number): Promise<{ count: number }> => {
   const result = await prisma.productImage.deleteMany({
     where: { productId }
   })

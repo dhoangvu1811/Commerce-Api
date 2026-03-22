@@ -10,11 +10,7 @@ import { cartService } from '~/services/cartService.js'
 /**
  * Láy giỏ hàng
  */
-const getMyCart = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getMyCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const result = await cartService.getMyCart(userId)
@@ -32,11 +28,7 @@ const getMyCart = async (
 /**
  * Thêm vào giỏ
  */
-const addToCart = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const addToCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.body.productId, 10)
@@ -57,11 +49,7 @@ const addToCart = async (
 /**
  * Update số lượng
  */
-const updateCart = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const updateCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.body.productId, 10)
@@ -83,11 +71,7 @@ const updateCart = async (
  * Xóa item
  * productId lấy từ params cho chuẩn REST: DELETE /cart/items/:productId
  */
-const removeCartItem = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const removeCartItem = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.params.productId as string, 10)
@@ -106,11 +90,7 @@ const removeCartItem = async (
 /**
  * Sync giỏ hàng guest vào tài khoản
  */
-const syncCart = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const syncCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const items: { productId: number; quantity: number }[] = req.body.items
@@ -118,9 +98,10 @@ const syncCart = async (
     const result = await cartService.syncCart(userId, items)
 
     // Tạo message thông báo có điều chỉnh stock hay không
-    const message = result.adjustedItems.length > 0
-      ? 'Một số sản phẩm đã được điều chỉnh số lượng do vượt tồn kho'
-      : 'Đồng bộ giỏ hàng thành công'
+    const message =
+      result.adjustedItems.length > 0
+        ? 'Một số sản phẩm đã được điều chỉnh số lượng do vượt tồn kho'
+        : 'Đồng bộ giỏ hàng thành công'
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -135,11 +116,7 @@ const syncCart = async (
 /**
  * Xóa toàn bộ giỏ hàng
  */
-const clearCart = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const clearCart = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
 

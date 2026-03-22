@@ -36,17 +36,10 @@ const escapeHtml = (value: string): string => {
     .replace(/'/g, '&#39;')
 }
 
-const logContactEmailError = (
-  flow: 'admin-notification' | 'auto-reply',
-  recipient: string,
-  error: unknown
-): void => {
-  const message =
-    error instanceof Error ? error.message : 'Unknown error while sending email'
+const logContactEmailError = (flow: 'admin-notification' | 'auto-reply', recipient: string, error: unknown): void => {
+  const message = error instanceof Error ? error.message : 'Unknown error while sending email'
 
-  process.stderr.write(
-    `[ContactService] ${flow} failed for ${recipient}: ${message}\n`
-  )
+  process.stderr.write(`[ContactService] ${flow} failed for ${recipient}: ${message}\n`)
 }
 
 const sanitizeContactPayload = (data: ContactPayload): ContactPayload => {
@@ -83,10 +76,7 @@ const sanitizeRichTextForEmail = (value: string): string => {
   ])
 
   const withoutDangerousBlocks = value
-    .replace(
-      /<\s*(script|style|iframe|object|embed|form)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi,
-      ''
-    )
+    .replace(/<\s*(script|style|iframe|object|embed|form)[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
     .replace(/<!--([\s\S]*?)-->/g, '')
 
   const tagRegex = /<\/?([a-z0-9]+)(\s[^>]*)?>/gi
@@ -109,14 +99,10 @@ const sanitizeRichTextForEmail = (value: string): string => {
       } else if (tagName === 'br') {
         sanitized += '<br/>'
       } else if (tagName === 'a') {
-        const hrefMatch = attrRaw.match(
-          /href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i
-        )
+        const hrefMatch = attrRaw.match(/href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i)
         const hrefValue = hrefMatch?.[1] || hrefMatch?.[2] || hrefMatch?.[3] || ''
         const trimmedHref = hrefValue.trim()
-        const safeHref = /^(https?:\/\/|mailto:|tel:)/i.test(trimmedHref)
-          ? escapeHtml(trimmedHref)
-          : '#'
+        const safeHref = /^(https?:\/\/|mailto:|tel:)/i.test(trimmedHref) ? escapeHtml(trimmedHref) : '#'
 
         sanitized += `<a href="${safeHref}" target="_blank" rel="noopener noreferrer nofollow">`
       } else {
@@ -149,10 +135,7 @@ const getSafeWebsiteDomain = (): string | null => {
   return null
 }
 
-const buildManualReplyTemplate = (
-  fullName: string,
-  message: string
-): string => {
+const buildManualReplyTemplate = (fullName: string, message: string): string => {
   const safeName = escapeHtml(fullName)
   const safeMessage = sanitizeRichTextForEmail(message)
   const safeWebsiteDomain = getSafeWebsiteDomain()
@@ -358,17 +341,11 @@ const sendContact = async (data: ContactPayload): Promise<ContactSubmitResult> =
       logContactEmailError('admin-notification', adminEmail, error)
     }
   } else {
-    process.stderr.write(
-      '[ContactService] ADMIN_EMAIL_ADDRESS is empty, admin notification email skipped.\n'
-    )
+    process.stderr.write('[ContactService] ADMIN_EMAIL_ADDRESS is empty, admin notification email skipped.\n')
   }
 
   try {
-    await BrevoProvider.sendEmail(
-      data.email,
-      'Chúng tôi đã nhận được liên hệ của bạn',
-      buildAutoReplyTemplate(data)
-    )
+    await BrevoProvider.sendEmail(data.email, 'Chúng tôi đã nhận được liên hệ của bạn', buildAutoReplyTemplate(data))
     autoReplySent = true
   } catch (error) {
     autoReplySent = false
@@ -385,18 +362,11 @@ const sendContact = async (data: ContactPayload): Promise<ContactSubmitResult> =
 /**
  * Lấy danh sách contact (Admin)
  */
-const getContacts = async (
-  page: number,
-  limit: number,
-  status: 'all' | 'replied' | 'pending' = 'all'
-) => {
+const getContacts = async (page: number, limit: number, status: 'all' | 'replied' | 'pending' = 'all') => {
   return await contactModel.getMany(page, limit, status)
 }
 
-const replyContact = async (
-  contactId: number,
-  payload: ReplyContactPayload
-) => {
+const replyContact = async (contactId: number, payload: ReplyContactPayload) => {
   const targetContact = await contactModel.findById(contactId)
 
   if (!targetContact) {
@@ -404,15 +374,10 @@ const replyContact = async (
   }
 
   if (targetContact.isReply) {
-    throw new ApiError(
-      StatusCodes.CONFLICT,
-      'Liên hệ này đã được phản hồi trước đó'
-    )
+    throw new ApiError(StatusCodes.CONFLICT, 'Liên hệ này đã được phản hồi trước đó')
   }
 
-  const subject = sanitizeEmailSubjectValue(
-    payload.subject || 'Phản hồi liên hệ từ Commerce'
-  )
+  const subject = sanitizeEmailSubjectValue(payload.subject || 'Phản hồi liên hệ từ Commerce')
 
   await BrevoProvider.sendEmail(
     targetContact.email,

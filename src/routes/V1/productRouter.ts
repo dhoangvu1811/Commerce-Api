@@ -19,41 +19,18 @@ RouterInstance.get('/details/:id', productController.getDetails)
 RouterInstance.get('/getAll', productController.getProducts)
 
 // Protected routes - requires manage_products permission
-RouterInstance.use(
-  authMiddleware.verifyToken,
-  authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS)
-)
+RouterInstance.use(authMiddleware.verifyToken, authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS))
 
 // Admin-only routes - quản lý sản phẩm
-RouterInstance.post(
-  '/create',
-  productValidation.createNew,
-  productController.createNew
-)
+RouterInstance.post('/create', productValidation.createNew, productController.createNew)
 
-RouterInstance.put(
-  '/update/:id',
-  productValidation.update,
-  productController.update
-)
+RouterInstance.put('/update/:id', productValidation.update, productController.update)
 
-RouterInstance.delete(
-  '/delete/:id',
-  productValidation.deleteProduct,
-  productController.deleteProduct
-)
+RouterInstance.delete('/delete/:id', productValidation.deleteProduct, productController.deleteProduct)
 
-RouterInstance.post(
-  '/deleteSelected',
-  productValidation.deleteSelected,
-  productController.deleteSelectedProducts
-)
+RouterInstance.post('/deleteSelected', productValidation.deleteSelected, productController.deleteSelectedProducts)
 
 // Upload ảnh sản phẩm lên Cloudinary
-RouterInstance.post(
-  '/upload-image',
-  multerUploadMiddleware.upload.single('image'),
-  productController.uploadImage
-)
+RouterInstance.post('/upload-image', multerUploadMiddleware.upload.single('image'), productController.uploadImage)
 
 export const productRoute = RouterInstance

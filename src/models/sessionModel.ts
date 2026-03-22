@@ -62,9 +62,7 @@ const findBySessionId = async (sessionId: string): Promise<Session | null> => {
 /**
  * Tìm session theo sessionId (bất kể trạng thái)
  */
-const findBySessionIdAny = async (
-  sessionId: string
-): Promise<Session | null> => {
+const findBySessionIdAny = async (sessionId: string): Promise<Session | null> => {
   const session = await prisma.session.findUnique({
     where: { sessionId: sessionId }
   })
@@ -103,9 +101,7 @@ const findAllSessionsByUserId = async (userId: number): Promise<Session[]> => {
 /**
  * Đếm sessions theo userId cho overview table
  */
-const getSessionsSummaryByUserId = async (
-  userId: number
-): Promise<SessionsSummary> => {
+const getSessionsSummaryByUserId = async (userId: number): Promise<SessionsSummary> => {
   const now = new Date()
 
   const [totalSessions, activeSessions] = await Promise.all([
@@ -146,9 +142,7 @@ const revokeSession = async (sessionId: string): Promise<Session | null> => {
 /**
  * Vô hiệu hóa tất cả session của user
  */
-const revokeAllUserSessions = async (
-  userId: number
-): Promise<{ count: number }> => {
+const revokeAllUserSessions = async (userId: number): Promise<{ count: number }> => {
   const result = await prisma.session.updateMany({
     where: { userId, isActive: true },
     data: { isActive: false }
@@ -204,9 +198,7 @@ const deleteSession = async (sessionId: string): Promise<Session | null> => {
 /**
  * Cleanup sessions cũ (cron job) - Xóa sessions hết hạn và đã logout > 90 ngày
  */
-const cleanupExpiredSessions = async (
-  retentionDays: number = 90
-): Promise<{ count: number }> => {
+const cleanupExpiredSessions = async (retentionDays: number = 90): Promise<{ count: number }> => {
   // Safety check: Minimum retention days
   if (retentionDays < 7) {
     throw new Error('Retention days must be at least 7 days')

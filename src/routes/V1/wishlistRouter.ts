@@ -14,10 +14,6 @@ router.use(authMiddleware.verifyToken)
 
 router.get('/', wishlistController.getMyWishlist)
 
-router.post(
-  '/toggle',
-  wishlistValidation.toggleWishlist,
-  wishlistController.toggleWishlist
-)
+router.post('/toggle', wishlistValidation.toggleWishlist, wishlistController.toggleWishlist)
 
 export const wishlistRouter = router

@@ -9,11 +9,7 @@ import { reviewService } from '~/services/reviewService.js'
 /**
  * Tạo review mới
  */
-const createReview = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const createReview = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.body.productId, 10)
@@ -39,11 +35,7 @@ const createReview = async (
 /**
  * Lấy reviews của sản phẩm
  */
-const getProductReviews = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getProductReviews = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const productId = parseInt(req.params.id as string, 10)
     const result = await reviewService.getProductReviews(productId)
@@ -61,11 +53,7 @@ const getProductReviews = async (
 /**
  * Lấy thống kê review của sản phẩm
  */
-const getProductReviewSummary = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getProductReviewSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const productId = parseInt(req.params.id as string, 10)
     const result = await reviewService.getProductReviewSummary(productId)
@@ -83,11 +71,7 @@ const getProductReviewSummary = async (
 /**
  * Lấy trạng thái user có thể đánh giá sản phẩm hay không
  */
-const getMyReviewEligibility = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getMyReviewEligibility = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const productId = parseInt(req.params.id as string, 10)

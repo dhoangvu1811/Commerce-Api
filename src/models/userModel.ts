@@ -187,10 +187,7 @@ const getMany = async (
 /**
  * Cập nhật thông tin user
  */
-const update = async (
-  userId: number,
-  updateData: UpdateUserInput
-): Promise<User | null> => {
+const update = async (userId: number, updateData: UpdateUserInput): Promise<User | null> => {
   try {
     const user = await prisma.user.update({
       where: { id: userId },
@@ -310,9 +307,7 @@ const deleteOneById = async (userId: number): Promise<User | null> => {
  * Xóa nhiều users theo filter
  * Safety: Yêu cầu ít nhất một điều kiện để tránh xóa nhầm tất cả users
  */
-const deleteMany = async (
-  where: Prisma.UserWhereInput = {}
-): Promise<{ count: number }> => {
+const deleteMany = async (where: Prisma.UserWhereInput = {}): Promise<{ count: number }> => {
   // Safety check: Không cho phép xóa tất cả users nếu filter rỗng hoặc không có điều kiện thực sự
   const whereKeys = Object.keys(where)
   const hasCondition =
@@ -339,9 +334,7 @@ const deleteMany = async (
 /**
  * Xóa nhiều users theo danh sách IDs
  */
-const deleteManyByIds = async (
-  userIds: number[]
-): Promise<{ count: number }> => {
+const deleteManyByIds = async (userIds: number[]): Promise<{ count: number }> => {
   const result = await prisma.user.deleteMany({
     where: { id: { in: userIds } }
   })

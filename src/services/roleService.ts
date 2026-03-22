@@ -7,20 +7,12 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { roleModel, type Role, type Permission } from '~/models/roleModel.js'
 import { permissionModel } from '~/models/permissionModel.js'
-import type {
-  PaginatedRolesWithUserCountResult,
-  RoleFilter,
-  RoleWithPermissions
-} from '~/types/rbac.types.js'
+import type { PaginatedRolesWithUserCountResult, RoleFilter, RoleWithPermissions } from '~/types/rbac.types.js'
 
 /**
  * Get all roles with user count and pagination
  */
-const getAll = async (
-  page?: number,
-  limit?: number,
-  search?: string
-): Promise<PaginatedRolesWithUserCountResult> => {
+const getAll = async (page?: number, limit?: number, search?: string): Promise<PaginatedRolesWithUserCountResult> => {
   const filter: RoleFilter = { search }
 
   return await roleModel.findAllWithUserCount(page, limit, filter)
@@ -58,11 +50,7 @@ const create = async (name: string, displayName?: string): Promise<Role> => {
 /**
  * Update role
  */
-const update = async (
-  id: number,
-  name: string,
-  displayName?: string
-): Promise<Role> => {
+const update = async (id: number, name: string, displayName?: string): Promise<Role> => {
   // Check if role exists
   const role = await roleModel.findById(id)
   if (!role) {
@@ -79,10 +67,7 @@ const update = async (
   // Actually, usually we lock system keys.
   const systemRoles = Object.values(ROLES)
   if (systemRoles.includes(role.name as any) && name !== role.name) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Không thể đổi ID hệ thống của role mặc định'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể đổi ID hệ thống của role mặc định')
   }
 
   return await roleModel.update(id, name, displayName)
@@ -145,10 +130,7 @@ const assignPermission = async (roleId: number, permissionId: number) => {
   // Check if already assigned
   const hasPermission = await roleModel.hasPermission(roleId, permission.name)
   if (hasPermission) {
-    throw new ApiError(
-      StatusCodes.CONFLICT,
-      'Permission đã được gán cho role này'
-    )
+    throw new ApiError(StatusCodes.CONFLICT, 'Permission đã được gán cho role này')
   }
 
   return await roleModel.assignPermission(roleId, permissionId)
@@ -173,20 +155,14 @@ const removePermission = async (roleId: number, permissionId: number) => {
   try {
     return await roleModel.removePermission(roleId, permissionId)
   } catch {
-    throw new ApiError(
-      StatusCodes.NOT_FOUND,
-      'Permission không được gán cho role này'
-    )
+    throw new ApiError(StatusCodes.NOT_FOUND, 'Permission không được gán cho role này')
   }
 }
 
 /**
  * Bulk assign permissions to role
  */
-const bulkAssignPermissions = async (
-  roleId: number,
-  permissionIds: number[]
-): Promise<number> => {
+const bulkAssignPermissions = async (roleId: number, permissionIds: number[]): Promise<number> => {
   // Check if role exists
   const role = await roleModel.findById(roleId)
   if (!role) {
@@ -197,10 +173,7 @@ const bulkAssignPermissions = async (
   for (const permissionId of permissionIds) {
     const permission = await permissionModel.findById(permissionId)
     if (!permission) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        `Permission ID ${permissionId} không tồn tại`
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, `Permission ID ${permissionId} không tồn tại`)
     }
   }
 

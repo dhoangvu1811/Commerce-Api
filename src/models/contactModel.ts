@@ -25,18 +25,9 @@ const create = async (data: {
  */
 type ContactStatusFilter = 'all' | 'replied' | 'pending'
 
-const getMany = async (
-  page: number = 1,
-  limit: number = 20,
-  status: ContactStatusFilter = 'all'
-) => {
+const getMany = async (page: number = 1, limit: number = 20, status: ContactStatusFilter = 'all') => {
   const skip = (page - 1) * limit
-  const whereClause =
-    status === 'replied'
-      ? { isReply: true }
-      : status === 'pending'
-        ? { isReply: false }
-        : undefined
+  const whereClause = status === 'replied' ? { isReply: true } : status === 'pending' ? { isReply: false } : undefined
 
   const [contacts, total] = await Promise.all([
     prisma.contact.findMany({

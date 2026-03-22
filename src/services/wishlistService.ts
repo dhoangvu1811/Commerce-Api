@@ -32,10 +32,7 @@ const toggleWishlist = async (userId: number, productId: number) => {
   } else {
     const count = await wishlistModel.countByUserId(userId)
     if (count >= 50) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Danh sách yêu thích tối đa 50 sản phẩm'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Danh sách yêu thích tối đa 50 sản phẩm')
     }
 
     await wishlistModel.add(userId, productId)

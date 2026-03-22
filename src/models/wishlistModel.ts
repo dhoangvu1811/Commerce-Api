@@ -11,10 +11,7 @@ export type { Wishlist }
 /**
  * Check if product is in wishlist
  */
-const checkExist = async (
-  userId: number,
-  productId: number
-): Promise<Wishlist | null> => {
+const checkExist = async (userId: number, productId: number): Promise<Wishlist | null> => {
   return await prisma.wishlist.findUnique({
     where: {
       userId_productId: {

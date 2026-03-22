@@ -100,11 +100,7 @@ const deleteById = async (req: Request, res: Response, next: NextFunction) => {
 /**
  * Get permissions of current user
  */
-const getMyPermissions = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const getMyPermissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const userId = parseInt(req.jwtDecoded?._id as string, 10)
     if (!userId) {

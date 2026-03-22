@@ -10,11 +10,7 @@ import { shippingAddressService } from '~/services/shippingAddressService.js'
 /**
  * Tạo địa chỉ mới
  */
-const createNew = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const result = await shippingAddressService.createNew(userId, req.body)
@@ -32,11 +28,7 @@ const createNew = async (
 /**
  * Lấy danh sách địa chỉ của tôi
  */
-const getMyAddresses = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getMyAddresses = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const result = await shippingAddressService.getMyAddresses(userId)
@@ -54,18 +46,11 @@ const getMyAddresses = async (
 /**
  * Lấy chi tiết địa chỉ
  */
-const getAddressDetail = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getAddressDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const addressId = parseInt(req.params.id as string, 10)
-    const result = await shippingAddressService.getAddressDetail(
-      userId,
-      addressId
-    )
+    const result = await shippingAddressService.getAddressDetail(userId, addressId)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -80,19 +65,11 @@ const getAddressDetail = async (
 /**
  * Cập nhật địa chỉ
  */
-const updateAddress = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const updateAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const addressId = parseInt(req.params.id as string, 10)
-    const result = await shippingAddressService.updateAddress(
-      userId,
-      addressId,
-      req.body
-    )
+    const result = await shippingAddressService.updateAddress(userId, addressId, req.body)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -107,11 +84,7 @@ const updateAddress = async (
 /**
  * Xóa địa chỉ
  */
-const deleteAddress = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const addressId = parseInt(req.params.id as string, 10)
@@ -129,18 +102,11 @@ const deleteAddress = async (
 /**
  * Set default address
  */
-const setDefaultAddress = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const setDefaultAddress = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const addressId = parseInt(req.params.id as string, 10)
-    const result = await shippingAddressService.setDefaultAddress(
-      userId,
-      addressId
-    )
+    const result = await shippingAddressService.setDefaultAddress(userId, addressId)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,

@@ -50,11 +50,7 @@ const upsertItem = async (data: AddToCartInput): Promise<CartItem> => {
 /**
  * Cập nhật số lượng item
  */
-const updateQuantity = async (
-  userId: number,
-  productId: number,
-  quantity: number
-): Promise<CartItem> => {
+const updateQuantity = async (userId: number, productId: number, quantity: number): Promise<CartItem> => {
   return await prisma.cartItem.update({
     where: {
       userId_productId: {
@@ -69,10 +65,7 @@ const updateQuantity = async (
 /**
  * Xóa item khỏi giỏ
  */
-const removeItem = async (
-  userId: number,
-  productId: number
-): Promise<CartItem> => {
+const removeItem = async (userId: number, productId: number): Promise<CartItem> => {
   return await prisma.cartItem.delete({
     where: {
       userId_productId: {
@@ -131,10 +124,7 @@ const countItems = async (userId: number): Promise<number> => {
 /**
  * Find item specific
  */
-const findItem = async (
-  userId: number,
-  productId: number
-): Promise<CartItem | null> => {
+const findItem = async (userId: number, productId: number): Promise<CartItem | null> => {
   return await prisma.cartItem.findUnique({
     where: {
       userId_productId: {

@@ -61,10 +61,7 @@ const getDetail = async (categoryId: number): Promise<Category> => {
 /**
  * Update category
  */
-const update = async (
-  categoryId: number,
-  data: UpdateCategoryInput
-): Promise<Category> => {
+const update = async (categoryId: number, data: UpdateCategoryInput): Promise<Category> => {
   const existingCategory = await categoryModel.findById(categoryId)
 
   if (!existingCategory) {
@@ -112,12 +109,9 @@ const deleteCategory = async (categoryId: number): Promise<boolean> => {
  * Delete multiple categories
  * Prevent deletion if any has products
  */
-const deleteMany = async (
-  categoryIds: number[]
-): Promise<{ count: number }> => {
+const deleteMany = async (categoryIds: number[]): Promise<{ count: number }> => {
   // Check if any category has products
-  const productsCount =
-    await categoryModel.countProductsInCategories(categoryIds)
+  const productsCount = await categoryModel.countProductsInCategories(categoryIds)
 
   if (productsCount > 0) {
     throw new ApiError(
