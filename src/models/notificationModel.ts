@@ -11,11 +11,7 @@ export type { Notification }
 /**
  * create
  */
-const create = async (data: {
-  userId: number
-  type: string
-  message: string
-}): Promise<Notification> => {
+const create = async (data: { userId: number; type: string; message: string }): Promise<Notification> => {
   return await prisma.notification.create({
     data
   })
@@ -24,11 +20,7 @@ const create = async (data: {
 /**
  * get by user id (paginated)
  */
-const getByUserId = async (
-  userId: number,
-  page: number = 1,
-  limit: number = 20
-) => {
+const getByUserId = async (userId: number, page: number = 1, limit: number = 20) => {
   const skip = (page - 1) * limit
   const [notifications, total] = await Promise.all([
     prisma.notification.findMany({
@@ -68,10 +60,7 @@ const countUnread = async (userId: number): Promise<number> => {
 /**
  * mark as read
  */
-const markAsRead = async (
-  id: number,
-  _userId: number
-): Promise<Notification> => {
+const markAsRead = async (id: number, _userId: number): Promise<Notification> => {
   // Verify ownership implicitly via where clause if needed, or check logic in service
   // Prisma updateMany could be used for safety but update is simpler if ID represents unique resource
   // Better to check owner in service or use updateMany with userId filter

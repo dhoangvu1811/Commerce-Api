@@ -21,10 +21,7 @@ const ensureValidProductId = (productId: number): void => {
   }
 }
 
-const checkUserPurchasedDeliveredProduct = async (
-  userId: number,
-  productId: number
-): Promise<boolean> => {
+const checkUserPurchasedDeliveredProduct = async (userId: number, productId: number): Promise<boolean> => {
   const order = await prisma.order.findFirst({
     where: {
       userId,
@@ -43,10 +40,7 @@ const checkUserPurchasedDeliveredProduct = async (
 /**
  * Tạo review mới
  */
-const createNewReview = async (
-  userId: number,
-  data: ReviewPayload
-) => {
+const createNewReview = async (userId: number, data: ReviewPayload) => {
   ensureValidProductId(data.productId)
 
   // 1. Check Product exists
@@ -57,34 +51,22 @@ const createNewReview = async (
 
   // 2. Check purchased & delivered
   // User must have an order with this product and status = DELIVERED
-  const hasPurchased = await checkUserPurchasedDeliveredProduct(
-    userId,
-    data.productId
-  )
+  const hasPurchased = await checkUserPurchasedDeliveredProduct(userId, data.productId)
 
   if (!hasPurchased) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      'Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng thành công'
-    )
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Bạn chỉ có thể đánh giá sản phẩm đã mua và đã nhận hàng thành công')
   }
 
   // 3. Check duplicate review
-  const hasReviewed = await reviewModel.checkUserReviewed(
-    userId,
-    data.productId
-  )
+  const hasReviewed = await reviewModel.checkUserReviewed(userId, data.productId)
   if (hasReviewed) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      'Bạn đã đánh giá sản phẩm này rồi'
-    )
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Bạn đã đánh giá sản phẩm này rồi')
   }
 
   // 4. Create review + recalculate rating trong cùng transaction
   let newReview
   try {
-    newReview = await prisma.$transaction(async (tx) => {
+    newReview = await prisma.$transaction(async tx => {
       const createdReview = await tx.review.create({
         data: {
           ...data,

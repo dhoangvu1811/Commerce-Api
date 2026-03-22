@@ -5,10 +5,7 @@
 
 import passport from 'passport'
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20'
-import type {
-  Profile as GoogleProfile,
-  VerifyCallback
-} from 'passport-google-oauth20'
+import type { Profile as GoogleProfile, VerifyCallback } from 'passport-google-oauth20'
 import { Strategy as FacebookStrategy } from 'passport-facebook'
 import type { Profile as FacebookProfile } from 'passport-facebook'
 import { env } from '~/config/environment.js'

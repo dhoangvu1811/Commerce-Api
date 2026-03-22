@@ -34,9 +34,7 @@ export interface UpdateAddressInput {
 /**
  * Tạo địa chỉ mới
  */
-const createNew = async (
-  data: CreateAddressInput
-): Promise<ShippingAddress> => {
+const createNew = async (data: CreateAddressInput): Promise<ShippingAddress> => {
   // Nếu là địa chỉ đầu tiên hoặc được set default -> set isDefault = true
   // Lưu ý: Logic handle multiple default sẽ ở service layer hoặc transaction
   const address = await prisma.shippingAddress.create({
@@ -84,10 +82,7 @@ const getOneById = async (id: number): Promise<ShippingAddress | null> => {
 /**
  * Cập nhật địa chỉ
  */
-const update = async (
-  id: number,
-  data: UpdateAddressInput
-): Promise<ShippingAddress | null> => {
+const update = async (id: number, data: UpdateAddressInput): Promise<ShippingAddress | null> => {
   try {
     const address = await prisma.shippingAddress.update({
       where: { id },
@@ -119,10 +114,7 @@ const deleteOne = async (id: number): Promise<ShippingAddress | null> => {
  * Reset default address của user (set tất cả về false)
  * Dùng trong transaction khi set address khác làm default
  */
-const resetDefaultAddress = async (
-  userId: number,
-  excludeId?: number
-): Promise<void> => {
+const resetDefaultAddress = async (userId: number, excludeId?: number): Promise<void> => {
   await prisma.shippingAddress.updateMany({
     where: {
       userId,

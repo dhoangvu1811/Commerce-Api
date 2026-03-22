@@ -1,4 +1,3 @@
-
 /* eslint-disable indent */
 /**
  * Product Service - Prisma Version
@@ -18,11 +17,7 @@ import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
 import { prisma } from '~/config/prisma.js'
 import type { ProductQueryFilter } from '~/types/product.types.js'
 import { slugify } from '~/utils/helper.js'
-import type {
-  PaginationInfo,
-  UploadResult,
-  DeleteResultInfo
-} from '~/types/common.types.js'
+import type { PaginationInfo, UploadResult, DeleteResultInfo } from '~/types/common.types.js'
 
 /** Paginated products result */
 interface PaginatedProductsResult {
@@ -39,7 +34,7 @@ const parseProductId = (productId: string): number => {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'ID sản phẩm không hợp lệ')
   }
 
-return id
+  return id
 }
 
 /**
@@ -52,10 +47,7 @@ const createNew = async (
 ): Promise<Product> => {
   try {
     // Kiểm tra sản phẩm đã tồn tại chưa (theo tên và category)
-    const existingProduct = await productModel.findByNameAndCategory(
-      productData.name,
-      productData.categoryId
-    )
+    const existingProduct = await productModel.findByNameAndCategory(productData.name, productData.categoryId)
 
     if (existingProduct) {
       // Get category name for error message
@@ -64,9 +56,7 @@ const createNew = async (
       })
       throw new ApiError(
         StatusCodes.CONFLICT,
-        `Sản phẩm "${productData.name}" thuộc danh mục "${
-          category?.name || productData.categoryId
-        }" đã tồn tại`
+        `Sản phẩm "${productData.name}" thuộc danh mục "${category?.name || productData.categoryId}" đã tồn tại`
       )
     }
 
@@ -90,7 +80,7 @@ const createNew = async (
     // Lấy lại product với images đã được thêm
     const productWithImages = await productModel.findOneById(createdProduct.id)
 
-return productWithImages || createdProduct
+    return productWithImages || createdProduct
   } catch (error) {
     throw error
   }
@@ -117,10 +107,7 @@ const getDetails = async (productId: string): Promise<Product> => {
 /**
  * Cập nhật product
  */
-const update = async (
-  productId: string,
-  updateData: UpdateProductInput & { images?: string[] }
-): Promise<Product> => {
+const update = async (productId: string, updateData: UpdateProductInput & { images?: string[] }): Promise<Product> => {
   try {
     const productIdNum = parseProductId(productId)
 
@@ -133,13 +120,9 @@ const update = async (
     // Kiểm tra duplicate nếu có thay đổi name hoặc categoryId
     if (updateData.name || updateData.categoryId) {
       const nameToCheck = updateData.name || existingProduct.name
-      const categoryToCheck =
-        updateData.categoryId || existingProduct.categoryId
+      const categoryToCheck = updateData.categoryId || existingProduct.categoryId
 
-      const duplicateProduct = await productModel.findByNameAndCategory(
-        nameToCheck,
-        categoryToCheck
-      )
+      const duplicateProduct = await productModel.findByNameAndCategory(nameToCheck, categoryToCheck)
 
       // Nếu tìm thấy sản phẩm trùng và không phải là chính sản phẩm đang update
       if (duplicateProduct && duplicateProduct.id !== productIdNum) {
@@ -159,17 +142,13 @@ const update = async (
     // Update slug if name changed
     const dataToUpdate = { ...dataWithoutImages }
     if (updateData.name) {
-      ;(dataToUpdate as { slug?: string }).slug =
-        slugify(updateData.name) + '-' + Date.now()
+      ;(dataToUpdate as { slug?: string }).slug = slugify(updateData.name) + '-' + Date.now()
     }
 
     const updatedProduct = await productModel.update(productIdNum, dataToUpdate)
 
     if (!updatedProduct) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không thể cập nhật sản phẩm'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể cập nhật sản phẩm')
     }
 
     // Sync gallery images nếu có trong request
@@ -180,7 +159,7 @@ const update = async (
     // Lấy lại product với images đã được cập nhật
     const productWithImages = await productModel.findOneById(productIdNum)
 
-return productWithImages || updatedProduct
+    return productWithImages || updatedProduct
   } catch (error) {
     throw error
   }
@@ -214,41 +193,30 @@ const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
 /**
  * Xóa nhiều products
  */
-const deleteSelectedProducts = async (
-  productIds: string[]
-): Promise<DeleteResultInfo> => {
+const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResultInfo> => {
   try {
     // Validate input
     if (!productIds || !Array.isArray(productIds) || productIds.length === 0) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Danh sách ID sản phẩm không hợp lệ'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Danh sách ID sản phẩm không hợp lệ')
     }
 
     // Parse all IDs
-    const numberIds = productIds.map((id) => {
+    const numberIds = productIds.map(id => {
       const num = parseInt(id, 10)
       if (isNaN(num)) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `ID sản phẩm không hợp lệ: ${id}`
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, `ID sản phẩm không hợp lệ: ${id}`)
       }
 
-return num
+      return num
     })
 
     // Kiểm tra các sản phẩm có tồn tại không
     const existingProducts = await productModel.findByIds(numberIds)
-    const existingIds = existingProducts.map((product) => product.id)
-    const notFoundIds = numberIds.filter((id) => !existingIds.includes(id))
+    const existingIds = existingProducts.map(product => product.id)
+    const notFoundIds = numberIds.filter(id => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        `Không tìm thấy sản phẩm với ID: ${notFoundIds.join(', ')}`
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, `Không tìm thấy sản phẩm với ID: ${notFoundIds.join(', ')}`)
     }
 
     // Xóa các sản phẩm đã chọn
@@ -322,12 +290,7 @@ const getProducts = async (
       }
     }
 
-    const result = await productModel.getMany(
-      filter,
-      page,
-      itemsPerPage,
-      orderBy
-    )
+    const result = await productModel.getMany(filter, page, itemsPerPage, orderBy)
 
     return result
   } catch (error) {
@@ -381,12 +344,7 @@ const getProductsByType = async (
         orderBy = { createdAt: 'desc' }
     }
 
-    const result = await productModel.getMany(
-      filter,
-      page,
-      itemsPerPage,
-      orderBy
-    )
+    const result = await productModel.getMany(filter, page, itemsPerPage, orderBy)
 
     return result
   } catch (error) {
@@ -397,22 +355,13 @@ const getProductsByType = async (
 /**
  * Upload ảnh lên Cloudinary
  */
-const uploadImage = async (
-  fileBuffer: Buffer,
-  folderName: string = 'products'
-): Promise<UploadResult> => {
+const uploadImage = async (fileBuffer: Buffer, folderName: string = 'products'): Promise<UploadResult> => {
   try {
-    const uploadResult = await CloudinaryProvider.streamUpload(
-      fileBuffer,
-      folderName
-    )
+    const uploadResult = await CloudinaryProvider.streamUpload(fileBuffer, folderName)
 
     return uploadResult as UploadResult
   } catch (error) {
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`
-    )
+    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`)
   }
 }
 

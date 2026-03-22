@@ -56,10 +56,7 @@ const calculateAverageRating = async (productId: number): Promise<number> => {
 /**
  * Check if user reviewed product
  */
-const checkUserReviewed = async (
-  userId: number,
-  productId: number
-): Promise<boolean> => {
+const checkUserReviewed = async (userId: number, productId: number): Promise<boolean> => {
   const count = await prisma.review.count({
     where: {
       userId,
@@ -73,10 +70,7 @@ const checkUserReviewed = async (
 /**
  * Lấy review của user theo sản phẩm
  */
-const findOneByUserAndProduct = async (
-  userId: number,
-  productId: number
-): Promise<Review | null> => {
+const findOneByUserAndProduct = async (userId: number, productId: number): Promise<Review | null> => {
   return await prisma.review.findFirst({
     where: {
       userId,
@@ -116,7 +110,7 @@ const getProductReviewSummary = async (productId: number) => {
     5: 0
   }
 
-  groupedByRating.forEach((item) => {
+  groupedByRating.forEach(item => {
     ratingBreakdown[item.rating as 1 | 2 | 3 | 4 | 5] = item._count.rating
   })
 

@@ -16,22 +16,13 @@ const router: Router = express.Router()
 
 // Public Routes
 router.route('/').get(categoryController.getAll)
-router
-  .route('/:id')
-  .get(categoryValidation.checkCategoryId, categoryController.getDetail)
+router.route('/:id').get(categoryValidation.checkCategoryId, categoryController.getDetail)
 
 // Protected Routes (Admin/Staff with manage_products permission)
-router.use(
-  authMiddleware.verifyToken,
-  authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS)
-)
+router.use(authMiddleware.verifyToken, authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS))
 
 // Bulk delete
-router.delete(
-  '/delete-many',
-  categoryValidation.deleteMany,
-  categoryController.deleteMany
-)
+router.delete('/delete-many', categoryValidation.deleteMany, categoryController.deleteMany)
 
 router.post(
   '/',
@@ -48,10 +39,6 @@ router.put(
   categoryController.update
 )
 
-router.delete(
-  '/:id',
-  categoryValidation.checkCategoryId,
-  categoryController.deleteCategory
-)
+router.delete('/:id', categoryValidation.checkCategoryId, categoryController.deleteCategory)
 
 export const categoryRouter: Router = router

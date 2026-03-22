@@ -16,17 +16,8 @@ const RouterInstance: Router = express.Router()
 RouterInstance.use(authMiddleware.verifyToken)
 
 // User routes - yêu cầu user phải active
-RouterInstance.post(
-  '/create',
-  authMiddleware.verifyActiveUser,
-  orderValidation.create,
-  orderController.create
-)
-RouterInstance.get(
-  '/my-orders',
-  authMiddleware.verifyActiveUser,
-  orderController.getMyOrders
-)
+RouterInstance.post('/create', authMiddleware.verifyActiveUser, orderValidation.create, orderController.create)
+RouterInstance.get('/my-orders', authMiddleware.verifyActiveUser, orderController.getMyOrders)
 RouterInstance.get(
   '/details/:id',
   authMiddleware.verifyActiveUser,
@@ -41,11 +32,7 @@ RouterInstance.post(
 )
 
 // Admin routes - requires manage_orders permission
-RouterInstance.get(
-  '/all',
-  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
-  orderController.adminGetOrders
-)
+RouterInstance.get('/all', authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS), orderController.adminGetOrders)
 RouterInstance.get(
   '/admin/details/:id',
   authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),

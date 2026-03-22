@@ -9,21 +9,13 @@ import { notificationService } from '~/services/notificationService.js'
 /**
  * Lấy thông báo
  */
-const getMyNotifications = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getMyNotifications = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const page = parseInt((req.query.page as string) || '1', 10)
     const limit = parseInt((req.query.limit as string) || '20', 10)
 
-    const result = await notificationService.getMyNotifications(
-      userId,
-      page,
-      limit
-    )
+    const result = await notificationService.getMyNotifications(userId, page, limit)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
@@ -38,11 +30,7 @@ const getMyNotifications = async (
 /**
  * Đánh dấu đã đọc 1 cái
  */
-const markAsRead = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const markAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const notificationId = parseInt(req.params.id as string, 10)
@@ -61,11 +49,7 @@ const markAsRead = async (
 /**
  * Đánh dấu tất cả đã đọc
  */
-const markAllAsRead = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const markAllAsRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     await notificationService.markAllAsRead(userId)
@@ -82,11 +66,7 @@ const markAllAsRead = async (
 /**
  * Xoá 1 thông báo
  */
-const deleteNotification = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteNotification = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const notificationId = parseInt(req.params.id as string, 10)
@@ -105,11 +85,7 @@ const deleteNotification = async (
 /**
  * Xoá tất cả thông báo đã đọc
  */
-const deleteAllRead = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteAllRead = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const userId = parseInt(req.jwtDecoded!._id as string, 10)
     const result = await notificationService.deleteAllRead(userId)

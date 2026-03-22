@@ -5,10 +5,7 @@
 
 import { prisma } from '~/config/prisma.js'
 import type { Permission } from '@prisma/client'
-import type {
-  PaginatedPermissionsResult,
-  PermissionFilter
-} from '~/types/rbac.types.js'
+import type { PaginatedPermissionsResult, PermissionFilter } from '~/types/rbac.types.js'
 
 export type { Permission }
 
@@ -23,16 +20,16 @@ const findAll = async (
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-      OR: [
-        { name: { contains: filter.search, mode: 'insensitive' as const } },
-        {
-          displayName: {
-            contains: filter.search,
-            mode: 'insensitive' as const
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
           }
-        }
-      ]
-    }
+        ]
+      }
     : {}
 
   const [permissions, totalItems] = await Promise.all([
@@ -81,10 +78,7 @@ const findByName = async (name: string): Promise<Permission | null> => {
 /**
  * Create new permission
  */
-const create = async (
-  name: string,
-  displayName?: string
-): Promise<Permission> => {
+const create = async (name: string, displayName?: string): Promise<Permission> => {
   return await prisma.permission.create({
     data: { name, displayName }
   })
@@ -93,11 +87,7 @@ const create = async (
 /**
  * Update permission name
  */
-const update = async (
-  id: number,
-  name: string,
-  displayName?: string
-): Promise<Permission> => {
+const update = async (id: number, name: string, displayName?: string): Promise<Permission> => {
   return await prisma.permission.update({
     where: { id },
     data: { name, displayName }
@@ -120,9 +110,7 @@ const deleteById = async (id: number): Promise<Permission> => {
   // Safety check: prevent deleting permission assigned to roles
   const roleCount = await countRoles(id)
   if (roleCount > 0) {
-    throw new Error(
-      `Không thể xóa permission đang được gán cho ${roleCount} role`
-    )
+    throw new Error(`Không thể xóa permission đang được gán cho ${roleCount} role`)
   }
 
   return await prisma.permission.delete({
@@ -133,10 +121,7 @@ const deleteById = async (id: number): Promise<Permission> => {
 /**
  * Check if user has permission (via their role)
  */
-const checkUserPermission = async (
-  userId: number,
-  permissionName: string
-): Promise<boolean> => {
+const checkUserPermission = async (userId: number, permissionName: string): Promise<boolean> => {
   const count = await prisma.rolePermission.count({
     where: {
       permission: { name: permissionName },
@@ -154,10 +139,7 @@ const checkUserPermission = async (
 /**
  * Check if user has ANY of the specified permissions (optimized - single query)
  */
-const checkUserAnyPermission = async (
-  userId: number,
-  permissionNames: string[]
-): Promise<boolean> => {
+const checkUserAnyPermission = async (userId: number, permissionNames: string[]): Promise<boolean> => {
   const count = await prisma.rolePermission.count({
     where: {
       permission: { name: { in: permissionNames } },
@@ -175,10 +157,7 @@ const checkUserAnyPermission = async (
 /**
  * Check if user has ALL of the specified permissions
  */
-const checkUserAllPermissions = async (
-  userId: number,
-  permissionNames: string[]
-): Promise<boolean> => {
+const checkUserAllPermissions = async (userId: number, permissionNames: string[]): Promise<boolean> => {
   // Count how many of the required permissions the user has
   const userPermissions = await prisma.rolePermission.findMany({
     where: {
@@ -196,9 +175,9 @@ const checkUserAllPermissions = async (
   })
 
   // Check if user has all required permissions
-  const userPermissionNames = userPermissions.map((p) => p.permission.name)
+  const userPermissionNames = userPermissions.map(p => p.permission.name)
 
-  return permissionNames.every((name) => userPermissionNames.includes(name))
+  return permissionNames.every(name => userPermissionNames.includes(name))
 }
 
 /**
@@ -226,7 +205,7 @@ const findByUserId = async (userId: number): Promise<Permission[]> => {
     }
   })
 
-  return roleWithPermissions?.rolePermissions.map((rp) => rp.permission) || []
+  return roleWithPermissions?.rolePermissions.map(rp => rp.permission) || []
 }
 
 export const permissionModel = {

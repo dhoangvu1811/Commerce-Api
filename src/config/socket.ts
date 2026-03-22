@@ -77,9 +77,10 @@ const extractToken = (socket: Socket): string | null => {
 export const initSocket = (httpServer: HttpServer): SocketServer => {
   io = new SocketServer(httpServer, {
     cors: {
-      origin: env.BUILD_MODE === 'dev'
-        ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173']
-        : WHITELIST_DOMAINS,
+      origin:
+        env.BUILD_MODE === 'dev'
+          ? ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5173']
+          : WHITELIST_DOMAINS,
       credentials: true
     },
     transports: ['websocket', 'polling']
@@ -128,7 +129,7 @@ export const initSocket = (httpServer: HttpServer): SocketServer => {
   })
 
   // ── Connection handler ─────────────────────
-  io.on('connection', (socket) => {
+  io.on('connection', socket => {
     const user = socket.data.user as SocketUserData
 
     // Join room cá nhân theo userId → để gửi notification riêng

@@ -1,3 +1,4 @@
+/* eslint-disable indent */
 /* eslint-disable no-console */
 
 /**
@@ -13,15 +14,8 @@ import { voucherModel } from '~/models/voucherModel.js'
 import { userModel } from '~/models/userModel.js'
 import { notificationService } from '~/services/notificationService.js'
 import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
-import type {
-  VoucherType,
-  Prisma
-} from '@prisma/client'
-import {
-  OrderStatus,
-  PaymentStatus,
-  PaymentMethod
-} from '@prisma/client'
+import type { VoucherType, Prisma } from '@prisma/client'
+import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client'
 import { prisma } from '~/config/prisma.js'
 import {
   ORDER_STATUS,
@@ -75,7 +69,7 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
     deliveredAt: order.deliveredAt,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
-    items: order.items.map((it) => ({
+    items: order.items.map(it => ({
       productId: String(it.productId),
       name: it.name,
       image: it.image || '',
@@ -96,14 +90,14 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
     },
     user: order.user
       ? {
-        id: order.user.id,
-        name: order.user.name,
-        email: order.user.email,
-        role: order.user.role
-      }
+          id: order.user.id,
+          name: order.user.name,
+          email: order.user.email,
+          role: order.user.role
+        }
       : undefined,
     paymentStatus: order.payments[0]?.status || 'PENDING',
-    vouchers: order.orderVouchers.map((ov) => ({
+    vouchers: order.orderVouchers.map(ov => ({
       voucherId: ov.voucherId,
       code: ov.code,
       type: ov.type as VoucherType,
@@ -117,7 +111,7 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
       shippingFee: Number(order.shippingFee),
       payable: Number(order.totalPrice)
     },
-    payments: order.payments.map((p) => ({
+    payments: order.payments.map(p => ({
       id: p.id,
       orderId: p.orderId,
       paymentMethod: p.paymentMethod,
@@ -127,7 +121,7 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
       paidAt: p.paidAt,
       createdAt: p.createdAt
     })),
-    logs: order.logs.map((l) => ({
+    logs: order.logs.map(l => ({
       id: l.id,
       action: l.action,
       performedById: l.performedById,
@@ -158,20 +152,11 @@ const parseId = (id: string, name: string = 'ID'): number => {
 /**
  * Tạo đơn hàng mới (với Prisma transaction)
  */
-const create = async (
-  userId: string,
-  payload: CreateOrderPayload
-): Promise<Order> => {
+const create = async (userId: string, payload: CreateOrderPayload): Promise<Order> => {
   try {
     const userIdNum = parseId(userId, 'User ID')
 
-    const {
-      items,
-      voucherCode,
-      shippingAddress,
-      shippingFee = 0,
-      paymentMethod = ''
-    } = payload || {}
+    const { items, voucherCode, shippingAddress, shippingFee = 0, paymentMethod = '' } = payload || {}
 
     // 1) Merge duplicate productIds
     const itemsMap = new Map<string, PayloadOrderItem>()
@@ -186,31 +171,23 @@ const create = async (
     const mergedItems = Array.from(itemsMap.values())
 
     // 2) Validate & lấy thông tin sản phẩm từ DB
-    const productIds = mergedItems.map((i) =>
-      parseId(String(i.productId), 'Product ID')
-    )
+    const productIds = mergedItems.map(i => parseId(String(i.productId), 'Product ID'))
     const products = await productModel.findByIds(productIds)
     if (!products || products.length !== mergedItems.length) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Một số sản phẩm trong giỏ hàng không còn tồn tại.'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Một số sản phẩm trong giỏ hàng không còn tồn tại.')
     }
 
     // 3) Map giá/discount và kiểm tra tồn kho
-    const orderItems = mergedItems.map((i) => {
+    const orderItems = mergedItems.map(i => {
       const productIdNum = parseId(String(i.productId), 'Product ID')
-      const prod = products.find((p) => p.id === productIdNum)
+      const prod = products.find(p => p.id === productIdNum)
       if (!prod) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Sản phẩm không tồn tại')
       }
 
       // Preliminary stock check
       if (prod.stock < i.quantity) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Sản phẩm "${prod.name}" chỉ còn ${prod.stock} sản phẩm.`
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, `Sản phẩm "${prod.name}" chỉ còn ${prod.stock} sản phẩm.`)
       }
 
       const unitPrice = Number(prod.price)
@@ -243,44 +220,28 @@ const create = async (
     let discountValue = 0
 
     if (voucherCode) {
-      const voucher = await voucherModel.findOneByCode(
-        voucherCode.toUpperCase().trim()
-      )
+      const voucher = await voucherModel.findOneByCode(voucherCode.toUpperCase().trim())
       if (!voucher) {
         throw new ApiError(StatusCodes.NOT_FOUND, 'Mã giảm giá không đúng.')
       }
       if (!voucher.isActive) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Mã giảm giá đã bị vô hiệu hóa.'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã bị vô hiệu hóa.')
       }
 
       const now = new Date()
       if (voucher.startDate && new Date(voucher.startDate) > now) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Mã giảm giá chưa đến thời gian sử dụng.'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá chưa đến thời gian sử dụng.')
       }
       if (voucher.endDate && new Date(voucher.endDate) < now) {
         throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã hết hạn.')
       }
       if (voucher.usageLimit && voucher.usedCount >= voucher.usageLimit) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Mã giảm giá đã được sử dụng hết.'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã được sử dụng hết.')
       }
-      if (
-        voucher.minOrderValue &&
-        Number(subtotal) < Number(voucher.minOrderValue)
-      ) {
+      if (voucher.minOrderValue && Number(subtotal) < Number(voucher.minOrderValue)) {
         throw new ApiError(
           StatusCodes.BAD_REQUEST,
-          `Đơn hàng cần tối thiểu ${Number(
-            voucher.minOrderValue
-          ).toLocaleString('vi-VN')}đ.`
+          `Đơn hàng cần tối thiểu ${Number(voucher.minOrderValue).toLocaleString('vi-VN')}đ.`
         )
       }
 
@@ -299,171 +260,144 @@ const create = async (
     // 6) Tính tổng thanh toán
     const shipping = Number(shippingFee || 0)
     if (shipping < 0 || shipping > MAX_SHIPPING_FEE) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Phí vận chuyển không hợp lệ.'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Phí vận chuyển không hợp lệ.')
     }
-    const payable = Math.max(
-      0,
-      Number((subtotal - discountValue + shipping).toFixed(2))
-    )
+    const payable = Math.max(0, Number((subtotal - discountValue + shipping).toFixed(2)))
 
     // 7) Execute all operations in a Prisma transaction
-    const created = await prisma.$transaction(
-      async (tx: Prisma.TransactionClient) => {
-        // 7.1) Create or find shipping address (inside transaction)
-        let shippingAddressId: number
+    const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      // 7.1) Create or find shipping address (inside transaction)
+      let shippingAddressId: number
 
-        // Check if user has existing active address matching form data
-        // isActive: true → không dùng địa chỉ đã archive (bị Copy-on-Write)
-        // province included → tránh nhầm địa chỉ cùng tên/phone khác tỉnh/thành
-        const existingAddress = await tx.shippingAddress.findFirst({
-          where: {
+      // Check if user has existing active address matching form data
+      // isActive: true → không dùng địa chỉ đã archive (bị Copy-on-Write)
+      // province included → tránh nhầm địa chỉ cùng tên/phone khác tỉnh/thành
+      const existingAddress = await tx.shippingAddress.findFirst({
+        where: {
+          userId: userIdNum,
+          isActive: true,
+          fullName: shippingAddress.name,
+          phone: shippingAddress.phone,
+          address: shippingAddress.address,
+          city: shippingAddress.city,
+          province: shippingAddress.province || ''
+        }
+      })
+
+      if (existingAddress) {
+        shippingAddressId = existingAddress.id
+      } else {
+        // Kiểm tra user có địa chỉ nào chưa để quyết định isDefault
+        // Nếu đây là địa chỉ đầu tiên → tự động set làm default
+        // (logic này bypass shippingAddressService.createNew nên phải tự xử lý)
+        const activeAddressCount = await tx.shippingAddress.count({
+          where: { userId: userIdNum, isActive: true }
+        })
+
+        const newAddress = await tx.shippingAddress.create({
+          data: {
             userId: userIdNum,
-            isActive: true,
             fullName: shippingAddress.name,
             phone: shippingAddress.phone,
             address: shippingAddress.address,
             city: shippingAddress.city,
-            province: shippingAddress.province || ''
+            province: shippingAddress.province || '',
+            postalCode: shippingAddress.postalCode || null,
+            isDefault: activeAddressCount === 0
           }
         })
-
-        if (existingAddress) {
-          shippingAddressId = existingAddress.id
-        } else {
-          // Kiểm tra user có địa chỉ nào chưa để quyết định isDefault
-          // Nếu đây là địa chỉ đầu tiên → tự động set làm default
-          // (logic này bypass shippingAddressService.createNew nên phải tự xử lý)
-          const activeAddressCount = await tx.shippingAddress.count({
-            where: { userId: userIdNum, isActive: true }
-          })
-
-          const newAddress = await tx.shippingAddress.create({
-            data: {
-              userId: userIdNum,
-              fullName: shippingAddress.name,
-              phone: shippingAddress.phone,
-              address: shippingAddress.address,
-              city: shippingAddress.city,
-              province: shippingAddress.province || '',
-              postalCode: shippingAddress.postalCode || null,
-              isDefault: activeAddressCount === 0
-            }
-          })
-          shippingAddressId = newAddress.id
-        }
-
-        // 7.2) Reserve stock atomically using model method
-        for (const item of orderItems) {
-          const decrementResult = await productModel.decrementStock(
-            item.productId,
-            item.quantity,
-            tx
-          )
-          if (!decrementResult.success) {
-            throw new ApiError(
-              StatusCodes.BAD_REQUEST,
-              `Sản phẩm "${item.name}" vừa hết hàng.`
-            )
-          }
-        }
-
-        // 7.3) Reserve voucher usage using model method
-        if (voucherData) {
-          const voucherResult = await voucherModel.incrementUsedCountWithLimit(
-            voucherData.voucherId,
-            1,
-            tx
-          )
-          if (!voucherResult.success) {
-            throw new ApiError(
-              StatusCodes.BAD_REQUEST,
-              'Mã giảm giá đã hết lượt sử dụng.'
-            )
-          }
-        }
-
-        // 7.4) Create order
-        const order = await tx.order.create({
-          data: {
-            userId: userIdNum,
-            orderCode: generateOrderCode(),
-            shippingAddressId,
-            status: OrderStatus.PENDING,
-            subtotal,
-            discountAmount: discountValue,
-            shippingFee: shipping,
-            totalPrice: payable
-          }
-        })
-
-        // 7.4.1) Create initial payment
-        await tx.payment.create({
-          data: {
-            orderId: order.id,
-            paymentMethod: (isCODPayment(paymentMethod)
-              ? PaymentMethod.COD
-              : paymentMethod) as PaymentMethod,
-            value: payable,
-            status: PaymentStatus.PENDING
-          }
-        })
-
-        // 7.5) Create order items
-        await tx.orderItem.createMany({
-          data: orderItems.map((item) => ({
-            orderId: order.id,
-            productId: item.productId,
-            name: item.name,
-            image: item.image || null,
-            unitPrice: item.unitPrice,
-            discount: item.discount,
-            quantity: item.quantity,
-            lineTotal: item.lineTotal
-          }))
-        })
-
-        // 7.6) Create order voucher if exists
-        if (voucherData) {
-          await tx.orderVoucher.create({
-            data: {
-              orderId: order.id,
-              voucherId: voucherData.voucherId,
-              code: voucherData.code,
-              type: voucherData.type as VoucherType,
-              amount: voucherData.amount,
-              maxDiscount: voucherData.maxDiscount,
-              discountValue: voucherData.discountValue
-            }
-          })
-        }
-
-        // 7.7) Create initial log
-        await tx.orderLog.create({
-          data: {
-            orderId: order.id,
-            action: 'create',
-            performedById: userIdNum,
-            performedByRole: 'user',
-            toStatus: OrderStatus.PENDING,
-            toPaymentStatus: PaymentStatus.PENDING,
-            note: 'Người dùng tạo đơn hàng'
-          }
-        })
-
-        return order
+        shippingAddressId = newAddress.id
       }
-    )
+
+      // 7.2) Reserve stock atomically using model method
+      for (const item of orderItems) {
+        const decrementResult = await productModel.decrementStock(item.productId, item.quantity, tx)
+        if (!decrementResult.success) {
+          throw new ApiError(StatusCodes.BAD_REQUEST, `Sản phẩm "${item.name}" vừa hết hàng.`)
+        }
+      }
+
+      // 7.3) Reserve voucher usage using model method
+      if (voucherData) {
+        const voucherResult = await voucherModel.incrementUsedCountWithLimit(voucherData.voucherId, 1, tx)
+        if (!voucherResult.success) {
+          throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã hết lượt sử dụng.')
+        }
+      }
+
+      // 7.4) Create order
+      const order = await tx.order.create({
+        data: {
+          userId: userIdNum,
+          orderCode: generateOrderCode(),
+          shippingAddressId,
+          status: OrderStatus.PENDING,
+          subtotal,
+          discountAmount: discountValue,
+          shippingFee: shipping,
+          totalPrice: payable
+        }
+      })
+
+      // 7.4.1) Create initial payment
+      await tx.payment.create({
+        data: {
+          orderId: order.id,
+          paymentMethod: (isCODPayment(paymentMethod) ? PaymentMethod.COD : paymentMethod) as PaymentMethod,
+          value: payable,
+          status: PaymentStatus.PENDING
+        }
+      })
+
+      // 7.5) Create order items
+      await tx.orderItem.createMany({
+        data: orderItems.map(item => ({
+          orderId: order.id,
+          productId: item.productId,
+          name: item.name,
+          image: item.image || null,
+          unitPrice: item.unitPrice,
+          discount: item.discount,
+          quantity: item.quantity,
+          lineTotal: item.lineTotal
+        }))
+      })
+
+      // 7.6) Create order voucher if exists
+      if (voucherData) {
+        await tx.orderVoucher.create({
+          data: {
+            orderId: order.id,
+            voucherId: voucherData.voucherId,
+            code: voucherData.code,
+            type: voucherData.type as VoucherType,
+            amount: voucherData.amount,
+            maxDiscount: voucherData.maxDiscount,
+            discountValue: voucherData.discountValue
+          }
+        })
+      }
+
+      // 7.7) Create initial log
+      await tx.orderLog.create({
+        data: {
+          orderId: order.id,
+          action: 'create',
+          performedById: userIdNum,
+          performedByRole: 'user',
+          toStatus: OrderStatus.PENDING,
+          toPaymentStatus: PaymentStatus.PENDING,
+          note: 'Người dùng tạo đơn hàng'
+        }
+      })
+
+      return order
+    })
 
     // Return full order with relations
     const fullOrder = await orderModel.findOneById(created.id)
     if (!fullOrder) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Lỗi khi tạo đơn hàng'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Lỗi khi tạo đơn hàng')
     }
 
     const orderResult = mapOrderToApi(fullOrder)
@@ -501,11 +435,7 @@ const getMyOrders = async (
 ): Promise<PaginatedOrdersResult> => {
   try {
     const userIdNum = parseId(userId, 'User ID')
-    const result = await orderModel.getMany(
-      { userId: userIdNum },
-      page,
-      itemsPerPage
-    )
+    const result = await orderModel.getMany({ userId: userIdNum }, page, itemsPerPage)
 
     return {
       orders: result.orders.map(mapOrderToApi),
@@ -519,11 +449,7 @@ const getMyOrders = async (
 /**
  * Lấy chi tiết đơn hàng
  */
-const getDetails = async (
-  orderId: string,
-  userId: string,
-  isAdmin: boolean = false
-): Promise<Order> => {
+const getDetails = async (orderId: string, userId: string, isAdmin: boolean = false): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
 
@@ -535,10 +461,7 @@ const getDetails = async (
     }
 
     if (!isAdmin && order.userId !== userIdNum) {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        'Bạn không có quyền xem đơn hàng này'
-      )
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền xem đơn hàng này')
     }
 
     return mapOrderToApi(order)
@@ -582,11 +505,7 @@ const adminGetOrders = async (
 /**
  * Cập nhật trạng thái đơn hàng
  */
-const updateStatus = async (
-  orderId: string,
-  data: UpdateStatusData,
-  adminId: string
-): Promise<Order> => {
+const updateStatus = async (orderId: string, data: UpdateStatusData, adminId: string): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
     const adminIdNum = parseId(adminId, 'Admin ID')
@@ -598,18 +517,12 @@ const updateStatus = async (
 
     const { status } = data
     if (!status || !ORDER_STATUS.includes(status)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Trạng thái đơn hàng không hợp lệ'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Trạng thái đơn hàng không hợp lệ')
     }
 
     // Block final statuses via this route
     if (status === OrderStatus.CANCELLED) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Không thể set trạng thái ${status} qua route này`
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, `Không thể set trạng thái ${status} qua route này`)
     }
 
     // Validate status transition
@@ -617,10 +530,7 @@ const updateStatus = async (
       if (!isValidStatusTransition(order.status, status)) {
         const fromName = STATUS_NAMES[order.status] || order.status
         const toName = STATUS_NAMES[status] || status
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `Không thể chuyển từ "${fromName}" sang "${toName}"`
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, `Không thể chuyển từ "${fromName}" sang "${toName}"`)
       }
     }
 
@@ -630,35 +540,23 @@ const updateStatus = async (
 
     const updateCheck = canUpdateStatus(order as unknown as Order, status)
     if (!updateCheck.allowed) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        updateCheck.reason || 'Không thể cập nhật'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, updateCheck.reason || 'Không thể cập nhật')
     }
 
     // Validate consistency
     if (!isConsistentStatusPayment(status, paymentStatus, paymentMethod)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Trạng thái không nhất quán với thanh toán'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Trạng thái không nhất quán với thanh toán')
     }
 
     // Update
     const updateData: UpdateOrderInput = { status }
-    if (
-      status === OrderStatus.DELIVERED &&
-      order.status !== OrderStatus.DELIVERED
-    ) {
+    if (status === OrderStatus.DELIVERED && order.status !== OrderStatus.DELIVERED) {
       updateData.deliveredAt = new Date()
     }
 
     const updated = await orderModel.update(orderIdNum, updateData)
     if (!updated) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        'Không tìm thấy đơn hàng để cập nhật'
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy đơn hàng để cập nhật')
     }
 
     // Audit log
@@ -677,9 +575,7 @@ const updateStatus = async (
     await notificationService.createNotification(
       order.userId,
       'ORDER_STATUS',
-      `Đơn hàng #${order.orderCode} của bạn đã chuyển sang trạng thái: ${
-        STATUS_NAMES[status] || status
-      }`
+      `Đơn hàng #${order.orderCode} của bạn đã chuyển sang trạng thái: ${STATUS_NAMES[status] || status}`
     )
 
     const refreshed = await orderModel.findOneById(orderIdNum)
@@ -695,13 +591,17 @@ const updateStatus = async (
     })
 
     // Emit realtime: thông báo admin panel cập nhật (loại trừ admin đang thao tác)
-    emitToAdmin(SOCKET_EVENTS.ORDER_STATUS_UPDATED, {
-      orderId: orderResult.id,
-      orderCode: orderResult.orderCode,
-      fromStatus: order.status,
-      toStatus: status,
-      updatedBy: adminIdNum
-    }, adminIdNum)
+    emitToAdmin(
+      SOCKET_EVENTS.ORDER_STATUS_UPDATED,
+      {
+        orderId: orderResult.id,
+        orderCode: orderResult.orderCode,
+        fromStatus: order.status,
+        toStatus: status,
+        updatedBy: adminIdNum
+      },
+      adminIdNum
+    )
 
     return orderResult
   } catch (error) {
@@ -712,11 +612,7 @@ const updateStatus = async (
 /**
  * Cập nhật trạng thái thanh toán
  */
-const updatePaymentStatus = async (
-  orderId: string,
-  data: UpdatePaymentStatusData,
-  adminId: string
-): Promise<Order> => {
+const updatePaymentStatus = async (orderId: string, data: UpdatePaymentStatusData, adminId: string): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
     const adminIdNum = parseId(adminId, 'Admin ID')
@@ -728,51 +624,28 @@ const updatePaymentStatus = async (
 
     const { paymentStatus } = data
     if (!paymentStatus || !PAYMENT_STATUS.includes(paymentStatus as any)) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Trạng thái thanh toán không hợp lệ'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Trạng thái thanh toán không hợp lệ')
     }
 
     const latestPayment = order.payments?.[0]
     if (!latestPayment) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không tìm thấy thông tin thanh toán'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không tìm thấy thông tin thanh toán')
     }
 
     // Block PAID/REFUNDED via this route
-    if (
-      paymentStatus === PaymentStatus.PAID ||
-      paymentStatus === PaymentStatus.REFUNDED
-    ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Không thể set ${paymentStatus} qua route này`
-      )
+    if (paymentStatus === PaymentStatus.PAID || paymentStatus === PaymentStatus.REFUNDED) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, `Không thể set ${paymentStatus} qua route này`)
     }
 
     // Block final order statuses
-    if (
-      order.status === OrderStatus.CANCELLED ||
-      order.status === OrderStatus.DELIVERED
-    ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Đơn hàng đã ở trạng thái cuối'
-      )
+    if (order.status === OrderStatus.CANCELLED || order.status === OrderStatus.DELIVERED) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Đơn hàng đã ở trạng thái cuối')
     }
 
     // Validate transition
     if (paymentStatus !== latestPayment.status) {
-      if (
-        !isValidPaymentStatusTransition(latestPayment.status, paymentStatus)
-      ) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Chuyển trạng thái thanh toán không hợp lệ'
-        )
+      if (!isValidPaymentStatusTransition(latestPayment.status, paymentStatus)) {
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Chuyển trạng thái thanh toán không hợp lệ')
       }
     }
 
@@ -816,13 +689,17 @@ const updatePaymentStatus = async (
     })
 
     // Emit realtime: thông báo admin panel cập nhật (loại trừ admin đang thao tác)
-    emitToAdmin(SOCKET_EVENTS.ORDER_PAYMENT_UPDATED, {
-      orderId: orderResult.id,
-      orderCode: orderResult.orderCode,
-      fromPaymentStatus: latestPayment.status,
-      toPaymentStatus: paymentStatus,
-      updatedBy: adminIdNum
-    }, adminIdNum)
+    emitToAdmin(
+      SOCKET_EVENTS.ORDER_PAYMENT_UPDATED,
+      {
+        orderId: orderResult.id,
+        orderCode: orderResult.orderCode,
+        fromPaymentStatus: latestPayment.status,
+        toPaymentStatus: paymentStatus,
+        updatedBy: adminIdNum
+      },
+      adminIdNum
+    )
 
     return orderResult
   } catch (error) {
@@ -845,18 +722,12 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
 
     const latestPayment = order.payments?.[0]
     if (!latestPayment) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không tìm thấy thông tin thanh toán'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không tìm thấy thông tin thanh toán')
     }
 
     const markPaidCheck = canMarkPaid(order as unknown as Order, true)
     if (!markPaidCheck.allowed) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        markPaidCheck.reason || 'Không thể xác nhận thanh toán'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, markPaidCheck.reason || 'Không thể xác nhận thanh toán')
     }
 
     if (latestPayment.status === PaymentStatus.PAID) {
@@ -868,10 +739,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       latestPayment.status !== PaymentStatus.PROCESSING &&
       latestPayment.status !== PaymentStatus.FAILED
     ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Không thể xác nhận thanh toán cho đơn hàng này'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Không thể xác nhận thanh toán cho đơn hàng này')
     }
 
     const isCOD = isCODPayment(latestPayment.paymentMethod)
@@ -880,11 +748,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1) Increment selled for each item using model method
       for (const item of order.items) {
-        const incrementResult = await productModel.incrementSelled(
-          item.productId,
-          item.quantity,
-          tx
-        )
+        const incrementResult = await productModel.incrementSelled(item.productId, item.quantity, tx)
         if (!incrementResult.success) {
           throw new ApiError(
             StatusCodes.INTERNAL_SERVER_ERROR,
@@ -919,10 +783,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       })
       if (paymentResult.count === 0) {
         // Payment đã được PAID bởi request concurrent khác → rollback toàn bộ incrementSelled
-        throw new ApiError(
-          StatusCodes.CONFLICT,
-          'Đơn hàng đã được xác nhận thanh toán bởi một yêu cầu khác'
-        )
+        throw new ApiError(StatusCodes.CONFLICT, 'Đơn hàng đã được xác nhận thanh toán bởi một yêu cầu khác')
       }
     })
 
@@ -932,10 +793,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       performedById: adminIdNum,
       performedByRole: 'admin',
       fromStatus: order.status,
-      toStatus:
-        !isCOD && order.status === OrderStatus.PENDING
-          ? OrderStatus.CONFIRMED
-          : order.status,
+      toStatus: !isCOD && order.status === OrderStatus.PENDING ? OrderStatus.CONFIRMED : order.status,
       fromPaymentStatus: latestPayment.status,
       toPaymentStatus: PaymentStatus.PAID,
       note: 'Xác nhận thanh toán thành công'
@@ -959,11 +817,15 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
     })
 
     // Emit realtime: thông báo admin panel (loại trừ admin đang thao tác)
-    emitToAdmin(SOCKET_EVENTS.ORDER_MARK_PAID, {
-      orderId: orderResult.id,
-      orderCode: orderResult.orderCode,
-      confirmedBy: adminIdNum
-    }, adminIdNum)
+    emitToAdmin(
+      SOCKET_EVENTS.ORDER_MARK_PAID,
+      {
+        orderId: orderResult.id,
+        orderCode: orderResult.orderCode,
+        confirmedBy: adminIdNum
+      },
+      adminIdNum
+    )
 
     return orderResult
   } catch (error) {
@@ -974,11 +836,7 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
 /**
  * Hủy đơn hàng (với Prisma transaction)
  */
-const cancel = async (
-  orderId: string,
-  requesterId: string,
-  isAdmin: boolean = false
-): Promise<Order> => {
+const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = false): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
     const requesterIdNum = parseId(requesterId, 'Requester ID')
@@ -991,26 +849,15 @@ const cancel = async (
     // Permission check
     if (!isAdmin) {
       if (order.userId !== requesterIdNum) {
-        throw new ApiError(
-          StatusCodes.FORBIDDEN,
-          'Bạn không có quyền hủy đơn hàng này'
-        )
+        throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền hủy đơn hàng này')
       }
-      const canUserCancel =
-        order.status === OrderStatus.PENDING ||
-        order.status === OrderStatus.CONFIRMED
+      const canUserCancel = order.status === OrderStatus.PENDING || order.status === OrderStatus.CONFIRMED
       if (!canUserCancel) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Chỉ có thể hủy đơn khi đang ở PENDING hoặc CONFIRMED'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Chỉ có thể hủy đơn khi đang ở PENDING hoặc CONFIRMED')
       }
     } else {
       if (order.status === OrderStatus.DELIVERED) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Không thể hủy đơn hàng đã giao'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Không thể hủy đơn hàng đã giao')
       }
     }
 
@@ -1026,36 +873,23 @@ const cancel = async (
     // Execute in transaction
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // Re-read payment Bên trong transaction để tránh stale read khi markPaid và cancel chạy đồng thời
-      const currentPayment = latestPayment
-        ? await tx.payment.findUnique({ where: { id: latestPayment.id } })
-        : null
+      const currentPayment = latestPayment ? await tx.payment.findUnique({ where: { id: latestPayment.id } }) : null
       const shouldDecrementSelled = currentPayment?.status === PaymentStatus.PAID
       // Lưu trạng thái để dùng trong audit log sau transaction
       actualPaymentStatusBeforeCancel = currentPayment?.status ?? latestPayment?.status
 
       // 1) Restock using model method
       for (const item of order.items) {
-        const incrementResult = await productModel.incrementStock(
-          item.productId,
-          item.quantity,
-          tx
-        )
+        const incrementResult = await productModel.incrementStock(item.productId, item.quantity, tx)
         if (!incrementResult.success) {
-          throw new ApiError(
-            StatusCodes.INTERNAL_SERVER_ERROR,
-            `Không thể hoàn trả tồn kho cho sản phẩm ${item.name}`
-          )
+          throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Không thể hoàn trả tồn kho cho sản phẩm ${item.name}`)
         }
       }
 
       // 2) Decrement selled if was paid (dùng shouldDecrementSelled từ dữ liệu đọc trong transaction)
       if (shouldDecrementSelled) {
         for (const item of order.items) {
-          const decrementResult = await productModel.decrementSelled(
-            item.productId,
-            item.quantity,
-            tx
-          )
+          const decrementResult = await productModel.decrementSelled(item.productId, item.quantity, tx)
           if (!decrementResult.success) {
             throw new ApiError(
               StatusCodes.INTERNAL_SERVER_ERROR,
@@ -1069,15 +903,9 @@ const cancel = async (
       if (order.orderVouchers && order.orderVouchers.length > 0) {
         const voucherId = order.orderVouchers[0]?.voucherId
         if (voucherId) {
-          const voucherResult = await voucherModel.decrementUsedCount(
-            voucherId,
-            1,
-            tx
-          )
+          const voucherResult = await voucherModel.decrementUsedCount(voucherId, 1, tx)
           if (!voucherResult) {
-            console.warn(
-              `Warning: Could not decrement voucher usage for voucher ID ${voucherId}`
-            )
+            console.warn(`Warning: Could not decrement voucher usage for voucher ID ${voucherId}`)
           }
         }
       }
@@ -1094,10 +922,7 @@ const cancel = async (
       })
       if (cancelResult.count === 0) {
         // Đơn đã bị hủy bởi request concurrent khác → rollback toàn bộ stock/selled/voucher đã xử lý
-        throw new ApiError(
-          StatusCodes.CONFLICT,
-          'Đơn hàng đã được hủy bởi một yêu cầu khác'
-        )
+        throw new ApiError(StatusCodes.CONFLICT, 'Đơn hàng đã được hủy bởi một yêu cầu khác')
       }
 
       // 5) Update payment (dùng currentPayment đọc trong transaction → tránh stale read)
@@ -1105,10 +930,7 @@ const cancel = async (
         await tx.payment.update({
           where: { id: currentPayment.id },
           data: {
-            status:
-              currentPayment.status === PaymentStatus.PAID
-                ? PaymentStatus.REFUNDED
-                : PaymentStatus.CANCELLED
+            status: currentPayment.status === PaymentStatus.PAID ? PaymentStatus.REFUNDED : PaymentStatus.CANCELLED
           }
         })
       }
@@ -1123,9 +945,7 @@ const cancel = async (
       toStatus: OrderStatus.CANCELLED,
       fromPaymentStatus: actualPaymentStatusBeforeCancel,
       toPaymentStatus:
-        actualPaymentStatusBeforeCancel === PaymentStatus.PAID
-          ? PaymentStatus.REFUNDED
-          : PaymentStatus.CANCELLED,
+        actualPaymentStatusBeforeCancel === PaymentStatus.PAID ? PaymentStatus.REFUNDED : PaymentStatus.CANCELLED,
       note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn'
     })
 
@@ -1170,9 +990,7 @@ const cancel = async (
 /**
  * Admin: Lấy logs của đơn hàng
  */
-const adminGetOrderLogs = async (
-  orderId: string
-): Promise<OrderLogsResponse> => {
+const adminGetOrderLogs = async (orderId: string): Promise<OrderLogsResponse> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
 
@@ -1183,7 +1001,7 @@ const adminGetOrderLogs = async (
 
     // Populate user info for each log
     const logsWithUserInfo: LogWithUserInfo[] = await Promise.all(
-      (order.logs || []).map(async (log) => {
+      (order.logs || []).map(async log => {
         let performedBy: LogUserInfo | null = null
 
         if (log.performedById) {

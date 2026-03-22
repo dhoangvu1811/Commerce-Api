@@ -148,7 +148,7 @@ export interface UpdateUserByAdminInput extends UpdateUserInput {
 export interface UpdatePasswordInput {
   currentPassword?: string
   newPassword: string
-  confirmNewPassword: string
+  confirmPassword: string
 }
 
 /**
@@ -245,4 +245,36 @@ export interface VerifyAccountResult {
     emailVerified: boolean
     status: UserStatus
   }
+}
+
+/**
+ * Input quên mật khẩu
+ */
+export interface ForgotPasswordInput {
+  email: string
+}
+
+/**
+ * Input đặt lại mật khẩu
+ */
+export interface ResetPasswordInput {
+  email: string
+  token: string
+  newPassword: string
+  confirmPassword: string
+}
+
+/**
+ * Kết quả gửi email quên mật khẩu
+ */
+export interface ForgotPasswordResult {
+  message: string
+  expiresIn: string
+}
+
+/**
+ * Kết quả đặt lại mật khẩu
+ */
+export interface ResetPasswordResult {
+  message: string
 }

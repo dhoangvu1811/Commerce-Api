@@ -1,4 +1,3 @@
-
 /**
  * Voucher Controller
  * Điều phối API requests cho vouchers
@@ -9,11 +8,7 @@ import { StatusCodes } from 'http-status-codes'
 import { voucherService } from '~/services/voucherService.js'
 import type { VoucherType } from '~/types/voucher.types.js'
 
-const createNew = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const created = await voucherService.createNew(req.body)
     res.status(StatusCodes.CREATED).json({
@@ -26,11 +21,7 @@ const createNew = async (
   }
 }
 
-const getDetails = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = String(req.params.id)
     const voucher = await voucherService.getDetails(id)
@@ -44,11 +35,7 @@ const getDetails = async (
   }
 }
 
-const update = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = String(req.params.id)
     const updated = await voucherService.update(id, req.body)
@@ -62,11 +49,7 @@ const update = async (
   }
 }
 
-const deleteVoucher = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteVoucher = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = String(req.params.id)
     const result = await voucherService.deleteVoucher(id)
@@ -80,11 +63,7 @@ const deleteVoucher = async (
   }
 }
 
-const getVouchers = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getVouchers = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { page, itemsPerPage, search, type, isActive, sort } = req.query || {}
     const query = {
@@ -109,11 +88,7 @@ const getVouchers = async (
   }
 }
 
-const verifyVoucher = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const verifyVoucher = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { code, orderTotal } = req.body || {}
     const result = await voucherService.verifyVoucher(code, orderTotal)
@@ -127,11 +102,7 @@ const verifyVoucher = async (
   }
 }
 
-const deleteMultiple = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteMultiple = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { voucherIds } = req.body || {}
     const result = await voucherService.deleteMultiple(voucherIds)
@@ -145,16 +116,10 @@ const deleteMultiple = async (
   }
 }
 
-const getActivePublic = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getActivePublic = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { limit } = req.query || {}
-    const vouchers = await voucherService.getActivePublic(
-      limit ? parseInt(limit as string) : undefined
-    )
+    const vouchers = await voucherService.getActivePublic(limit ? parseInt(limit as string) : undefined)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Lấy danh sách voucher đang hoạt động thành công',

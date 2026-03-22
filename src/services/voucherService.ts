@@ -7,18 +7,10 @@
 
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import {
-  voucherModel,
-  type Voucher,
-  type VoucherFilter
-} from '~/models/voucherModel.js'
+import { voucherModel, type Voucher, type VoucherFilter } from '~/models/voucherModel.js'
 import { VoucherType } from '@prisma/client'
 import { prisma } from '~/config/prisma.js'
-import type {
-  VoucherQueryFilter,
-  VerifyVoucherResult,
-  Voucher as VoucherInterface
-} from '~/types/voucher.types.js'
+import type { VoucherQueryFilter, VerifyVoucherResult, Voucher as VoucherInterface } from '~/types/voucher.types.js'
 import type { PaginationInfo, DeleteResultInfo } from '~/types/common.types.js'
 
 /** Paginated vouchers result */
@@ -36,15 +28,13 @@ const parseVoucherId = (voucherId: string): number => {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'ID voucher không hợp lệ')
   }
 
-return id
+  return id
 }
 
 /**
  * Lấy danh sách voucher đang hoạt động cho người dùng (public)
  */
-const getActivePublic = async (
-  limit: number = 100
-): Promise<PaginatedVouchersResult> => {
+const getActivePublic = async (limit: number = 100): Promise<PaginatedVouchersResult> => {
   try {
     const now = new Date()
 
@@ -64,13 +54,11 @@ const getActivePublic = async (
     })
 
     // Filter those where usedCount < usageLimit (or usageLimit is null/0)
-    const activeVouchers = vouchers.filter(
-      (v: { usageLimit: number | null; usedCount: number }) => {
-        if (!v.usageLimit || v.usageLimit === 0) return true
+    const activeVouchers = vouchers.filter((v: { usageLimit: number | null; usedCount: number }) => {
+      if (!v.usageLimit || v.usageLimit === 0) return true
 
-return v.usedCount < v.usageLimit
-      }
-    )
+      return v.usedCount < v.usageLimit
+    })
 
     return {
       vouchers: activeVouchers,
@@ -110,18 +98,12 @@ const createNew = async (data: {
     // Check duplicate
     const existed = await voucherModel.findOneByCode(code)
     if (existed) {
-      throw new ApiError(
-        StatusCodes.CONFLICT,
-        `Mã voucher "${code}" đã tồn tại`
-      )
+      throw new ApiError(StatusCodes.CONFLICT, `Mã voucher "${code}" đã tồn tại`)
     }
 
     // Ràng buộc: nếu type = percent thì amount <= 100
     if (data.type === VoucherType.percent && Number(data.amount) > 100) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Giá trị phần trăm không được vượt quá 100%'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Giá trị phần trăm không được vượt quá 100%')
     }
 
     // Validate startDate và endDate
@@ -137,10 +119,7 @@ const createNew = async (data: {
 
     // Validate endDate > startDate
     if (startDate && endDate && endDate <= startDate) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Ngày kết thúc phải sau ngày bắt đầu'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Ngày kết thúc phải sau ngày bắt đầu')
     }
 
     const created = await voucherModel.createNew({
@@ -214,10 +193,7 @@ const update = async (
       const newCode = (updateData.code as string).toUpperCase().trim()
       const duplicated = await voucherModel.findOneByCode(newCode)
       if (duplicated && duplicated.id !== voucherId) {
-        throw new ApiError(
-          StatusCodes.CONFLICT,
-          `Mã voucher "${newCode}" đã tồn tại`
-        )
+        throw new ApiError(StatusCodes.CONFLICT, `Mã voucher "${newCode}" đã tồn tại`)
       }
       updateData.code = newCode
     }
@@ -225,15 +201,9 @@ const update = async (
     // Nếu type = percent, kiểm tra amount <= 100
     const typeToCheck = (updateData.type as VoucherType) || existing.type
     if (typeToCheck === VoucherType.percent) {
-      const amountToCheck =
-        updateData.amount !== undefined
-          ? updateData.amount
-          : Number(existing.amount)
+      const amountToCheck = updateData.amount !== undefined ? updateData.amount : Number(existing.amount)
       if (Number(amountToCheck) > 100) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Giá trị phần trăm không được vượt quá 100%'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Giá trị phần trăm không được vượt quá 100%')
       }
     }
 
@@ -246,24 +216,14 @@ const update = async (
     }
 
     // Validate endDate > startDate
-    if (
-      updateData.startDate &&
-      updateData.endDate &&
-      (updateData.endDate as Date) <= (updateData.startDate as Date)
-    ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Ngày kết thúc phải sau ngày bắt đầu'
-      )
+    if (updateData.startDate && updateData.endDate && (updateData.endDate as Date) <= (updateData.startDate as Date)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Ngày kết thúc phải sau ngày bắt đầu')
     }
 
     const updated = await voucherModel.update(voucherId, updateData)
 
     if (!updated) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không thể cập nhật voucher'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể cập nhật voucher')
     }
 
     return updated
@@ -298,40 +258,29 @@ const deleteVoucher = async (id: string): Promise<DeleteResultInfo> => {
 /**
  * Xóa nhiều vouchers
  */
-const deleteMultiple = async (
-  voucherIds: string[]
-): Promise<DeleteResultInfo> => {
+const deleteMultiple = async (voucherIds: string[]): Promise<DeleteResultInfo> => {
   try {
     if (!voucherIds || !Array.isArray(voucherIds) || voucherIds.length === 0) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Danh sách ID voucher không hợp lệ'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Danh sách ID voucher không hợp lệ')
     }
 
     // Parse all IDs
-    const numberIds = voucherIds.map((id) => {
+    const numberIds = voucherIds.map(id => {
       const num = parseInt(id, 10)
       if (isNaN(num)) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          `ID voucher không hợp lệ: ${id}`
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, `ID voucher không hợp lệ: ${id}`)
       }
 
-return num
+      return num
     })
 
     // Check existing
     const existing = await voucherModel.findByIds(numberIds)
-    const existingIds = existing.map((v) => v.id)
-    const notFound = numberIds.filter((id) => !existingIds.includes(id))
+    const existingIds = existing.map(v => v.id)
+    const notFound = numberIds.filter(id => !existingIds.includes(id))
 
     if (notFound.length > 0) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        `Không tìm thấy voucher với ID: ${notFound.join(', ')}`
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, `Không tìm thấy voucher với ID: ${notFound.join(', ')}`)
     }
 
     const result = await voucherModel.deleteManyByIds(numberIds)
@@ -392,12 +341,7 @@ const getVouchers = async (
       }
     }
 
-    const result = await voucherModel.getMany(
-      filter,
-      page,
-      itemsPerPage,
-      orderBy
-    )
+    const result = await voucherModel.getMany(filter, page, itemsPerPage, orderBy)
 
     return result
   } catch (error) {
@@ -408,10 +352,7 @@ const getVouchers = async (
 /**
  * Kiểm tra voucher theo code và tổng tiền
  */
-const verifyVoucher = async (
-  code: string,
-  orderTotal: number
-): Promise<VerifyVoucherResult> => {
+const verifyVoucher = async (code: string, orderTotal: number): Promise<VerifyVoucherResult> => {
   try {
     if (!code) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Vui lòng nhập mã giảm giá')
@@ -423,38 +364,23 @@ const verifyVoucher = async (
     }
 
     if (!voucher.isActive) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Mã giảm giá đã bị vô hiệu hóa'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã bị vô hiệu hóa')
     }
 
     const now = new Date()
     if (voucher.startDate && new Date(voucher.startDate) > now) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Mã giảm giá chưa bắt đầu hiệu lực'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá chưa bắt đầu hiệu lực')
     }
     if (voucher.endDate && new Date(voucher.endDate) < now) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã hết hạn')
     }
 
     if (voucher.usageLimit && voucher.usedCount >= voucher.usageLimit) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Mã giảm giá đã đạt giới hạn sử dụng'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Mã giảm giá đã đạt giới hạn sử dụng')
     }
 
-    if (
-      voucher.minOrderValue &&
-      Number(orderTotal) < Number(voucher.minOrderValue)
-    ) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        `Đơn tối thiểu để áp dụng là ${voucher.minOrderValue}`
-      )
+    if (voucher.minOrderValue && Number(orderTotal) < Number(voucher.minOrderValue)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, `Đơn tối thiểu để áp dụng là ${voucher.minOrderValue}`)
     }
 
     // Tính toán giảm giá

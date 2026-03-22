@@ -29,7 +29,7 @@ export const authLimiter: RateLimitRequestHandler = rateLimit({
  */
 export const emailLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 giờ
-  max: 3, // Tối đa 3 requests
+  max: 50, // Tối đa 50 requests
   message: {
     code: StatusCodes.TOO_MANY_REQUESTS,
     message: 'Quá nhiều yêu cầu gửi email. Vui lòng thử lại sau 1 giờ.',
@@ -45,7 +45,7 @@ export const emailLimiter: RateLimitRequestHandler = rateLimit({
  */
 export const contactLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 10 * 60 * 1000, // 10 phút
-  max: 5, // Tối đa 5 requests
+  max: 50, // Tối đa 50 requests
   message: {
     code: StatusCodes.TOO_MANY_REQUESTS,
     message: 'Bạn đã gửi liên hệ quá nhiều lần. Vui lòng thử lại sau 10 phút.',

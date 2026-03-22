@@ -14,12 +14,7 @@ import { PERMISSIONS } from '~/constants/rbac.js'
 const router: Router = express.Router()
 
 // Public: Gửi liên hệ
-router.post(
-  '/',
-  contactLimiter,
-  contactValidation.createContact,
-  contactController.sendContact
-)
+router.post('/', contactLimiter, contactValidation.createContact, contactController.sendContact)
 
 // Protected (Admin): Xem danh sách liên hệ - requires manage_contacts permission
 router.get(

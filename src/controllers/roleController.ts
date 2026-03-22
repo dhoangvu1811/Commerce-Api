@@ -99,11 +99,7 @@ const deleteById = async (req: Request, res: Response, next: NextFunction) => {
 /**
  * Get permissions for a role
  */
-const getPermissions = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const getPermissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = parseInt(req.params.id as string, 10)
     const permissions = await roleService.getPermissions(id)
@@ -120,11 +116,7 @@ const getPermissions = async (
 /**
  * Assign permission to role
  */
-const assignPermission = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const assignPermission = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const roleId = parseInt(req.params.id as string, 10)
     const { permissionId } = req.body
@@ -141,11 +133,7 @@ const assignPermission = async (
 /**
  * Remove permission from role
  */
-const removePermission = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const removePermission = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const roleId = parseInt(req.params.id as string, 10)
     const permissionId = parseInt(req.params.permissionId as string, 10)
@@ -162,11 +150,7 @@ const removePermission = async (
 /**
  * Bulk assign permissions to role
  */
-const bulkAssignPermissions = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
+const bulkAssignPermissions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const roleId = parseInt(req.params.id as string, 10)
     const { permissionIds } = req.body

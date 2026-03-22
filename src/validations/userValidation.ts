@@ -243,6 +243,34 @@ const verifyUserAccountSchema = z.object({
   token: z.string({ required_error: 'Token xác minh là bắt buộc' })
 })
 
+/** Schema quên mật khẩu */
+const forgotPasswordSchema = z.object({
+  email: z
+    .string({ required_error: 'Email là bắt buộc' })
+    .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+    .transform((val) => val.toLowerCase().trim())
+})
+
+/** Schema đặt lại mật khẩu */
+const resetPasswordSchema = z
+  .object({
+    email: z
+      .string({ required_error: 'Email là bắt buộc' })
+      .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
+      .transform((val) => val.toLowerCase().trim()),
+    token: z.string({ required_error: 'Token đặt lại mật khẩu là bắt buộc' }),
+    newPassword: z
+      .string({ required_error: 'Mật khẩu mới là bắt buộc' })
+      .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
+    confirmPassword: z.string({
+      required_error: 'Xác nhận mật khẩu là bắt buộc'
+    })
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Xác nhận mật khẩu không khớp',
+    path: ['confirmPassword']
+  })
+
 /** Schema thu hồi session */
 const revokeSessionSchema = z.object({
   sessionId: z
@@ -443,6 +471,40 @@ const verifyUserAccount = async (
   next()
 }
 
+const forgotPassword = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const result = forgotPasswordSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
+    )
+  req.body = result.data
+  next()
+}
+
+const resetPassword = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const result = resetPasswordSchema.safeParse(req.body)
+  if (!result.success)
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(result.error)
+      )
+    )
+  req.body = result.data
+  next()
+}
+
 const revokeSession = async (
   req: Request,
   _res: Response,
@@ -543,6 +605,8 @@ export const userValidation = {
   userActivation,
   sendVerificationEmail,
   verifyUserAccount,
+  forgotPassword,
+  resetPassword,
   revokeSession,
   revokeAllSessions,
   getUserSessions,

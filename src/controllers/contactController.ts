@@ -9,11 +9,7 @@ import { contactService } from '~/services/contactService.js'
 /**
  * Gửi liên hệ
  */
-const sendContact = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const sendContact = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const result = await contactService.sendContact(req.body)
 
@@ -30,26 +26,16 @@ const sendContact = async (
 /**
  * Get contacts (Admin/Internal use)
  */
-const getContacts = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getContacts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const parsedPage = parseInt((req.query.page as string) || '1', 10)
     const parsedLimit = parseInt((req.query.limit as string) || '20', 10)
 
     const page = Number.isNaN(parsedPage) || parsedPage < 1 ? 1 : parsedPage
-    const limit =
-      Number.isNaN(parsedLimit) || parsedLimit < 1
-        ? 20
-        : Math.min(parsedLimit, 100)
+    const limit = Number.isNaN(parsedLimit) || parsedLimit < 1 ? 20 : Math.min(parsedLimit, 100)
 
     const statusQuery = (req.query.status as string) || 'all'
-    const status =
-      statusQuery === 'replied' || statusQuery === 'pending'
-        ? statusQuery
-        : 'all'
+    const status = statusQuery === 'replied' || statusQuery === 'pending' ? statusQuery : 'all'
 
     const result = await contactService.getContacts(page, limit, status)
 
@@ -66,11 +52,7 @@ const getContacts = async (
 /**
  * Reply contact (Admin)
  */
-const replyContact = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const replyContact = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const contactId = parseInt(req.params.id as string, 10)
 

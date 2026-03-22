@@ -17,18 +17,12 @@ router.use(authMiddleware.verifyToken)
 router
   .route('/')
   .get(shippingAddressController.getMyAddresses)
-  .post(
-    shippingAddressValidation.createNew,
-    shippingAddressController.createNew
-  )
+  .post(shippingAddressValidation.createNew, shippingAddressController.createNew)
 
 router
   .route('/:id')
   .get(shippingAddressController.getAddressDetail)
-  .put(
-    shippingAddressValidation.update,
-    shippingAddressController.updateAddress
-  )
+  .put(shippingAddressValidation.update, shippingAddressController.updateAddress)
   .delete(shippingAddressController.deleteAddress)
 
 // Route set default riêng

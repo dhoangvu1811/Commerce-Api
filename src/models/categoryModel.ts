@@ -90,9 +90,7 @@ const findBySlug = async (slug: string): Promise<Category | null> => {
 /**
  * Tạo mới category
  */
-const create = async (
-  data: CreateCategoryInput & { slug: string }
-): Promise<Category> => {
+const create = async (data: CreateCategoryInput & { slug: string }): Promise<Category> => {
   return await prisma.category.create({
     data
   })
@@ -101,10 +99,7 @@ const create = async (
 /**
  * Cập nhật category
  */
-const update = async (
-  id: number,
-  data: UpdateCategoryInput & { slug?: string }
-): Promise<Category> => {
+const update = async (id: number, data: UpdateCategoryInput & { slug?: string }): Promise<Category> => {
   return await prisma.category.update({
     where: { id },
     data
@@ -123,9 +118,7 @@ const countProducts = async (categoryId: number): Promise<number> => {
 /**
  * Đếm số sản phẩm trong danh sách categories
  */
-const countProductsInCategories = async (
-  categoryIds: number[]
-): Promise<number> => {
+const countProductsInCategories = async (categoryIds: number[]): Promise<number> => {
   return await prisma.product.count({
     where: { categoryId: { in: categoryIds } }
   })

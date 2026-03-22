@@ -16,17 +16,11 @@ import { prisma } from '~/config/prisma.js'
 /**
  * Tạo địa chỉ mới
  */
-const createNew = async (
-  userId: number,
-  data: Omit<CreateAddressInput, 'userId'>
-): Promise<ShippingAddress> => {
+const createNew = async (userId: number, data: Omit<CreateAddressInput, 'userId'>): Promise<ShippingAddress> => {
   // Check limit (ví dụ max 10 addresses)
   const count = await shippingAddressModel.countByUserId(userId)
   if (count >= 10) {
-    throw new ApiError(
-      StatusCodes.BAD_REQUEST,
-      'Bạn chỉ được lưu tối đa 10 địa chỉ'
-    )
+    throw new ApiError(StatusCodes.BAD_REQUEST, 'Bạn chỉ được lưu tối đa 10 địa chỉ')
   }
 
   // Nếu là địa chỉ đầu tiên, luôn set default
@@ -36,7 +30,7 @@ const createNew = async (
 
   // Nếu set default, reset các địa chỉ cũ trong transaction
   if (data.isDefault) {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async tx => {
       // Reset chỉ các địa chỉ active (không cần reset địa chỉ đã archive)
       await tx.shippingAddress.updateMany({
         where: { userId, isActive: true },
@@ -75,20 +69,14 @@ const getMyAddresses = async (userId: number): Promise<ShippingAddress[]> => {
 /**
  * Lấy chi tiết địa chỉ
  */
-const getAddressDetail = async (
-  userId: number,
-  addressId: number
-): Promise<ShippingAddress> => {
+const getAddressDetail = async (userId: number, addressId: number): Promise<ShippingAddress> => {
   const address = await shippingAddressModel.getOneById(addressId)
   if (!address) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Địa chỉ không tồn tại')
   }
   // Check quyền sở hữu
   if (address.userId !== userId) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Bạn không có quyền truy cập địa chỉ này'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền truy cập địa chỉ này')
   }
 
   return address
@@ -97,20 +85,13 @@ const getAddressDetail = async (
 /**
  * Cập nhật địa chỉ (Copy-on-Write if used in Orders)
  */
-const updateAddress = async (
-  userId: number,
-  addressId: number,
-  data: UpdateAddressInput
-): Promise<ShippingAddress> => {
+const updateAddress = async (userId: number, addressId: number, data: UpdateAddressInput): Promise<ShippingAddress> => {
   const address = await shippingAddressModel.getOneById(addressId)
   if (!address) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Địa chỉ không tồn tại')
   }
   if (address.userId !== userId) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Bạn không có quyền cập nhật địa chỉ này'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền cập nhật địa chỉ này')
   }
 
   // Nếu set default
@@ -128,7 +109,7 @@ const updateAddress = async (
 
   // Nếu đã dùng trong đơn hàng -> Copy-on-Write
   if (usedInOrders > 0) {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async tx => {
       // 1. Archive cũ
       await tx.shippingAddress.update({
         where: { id: addressId },
@@ -170,7 +151,7 @@ const updateAddress = async (
 
   // Nếu chưa dùng -> Update trực tiếp
   if (data.isDefault) {
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async tx => {
       // Reset others
       await tx.shippingAddress.updateMany({
         where: { userId, id: { not: addressId }, isActive: true },
@@ -198,19 +179,13 @@ const updateAddress = async (
 /**
  * Xóa địa chỉ
  */
-const deleteAddress = async (
-  userId: number,
-  addressId: number
-): Promise<boolean> => {
+const deleteAddress = async (userId: number, addressId: number): Promise<boolean> => {
   const address = await shippingAddressModel.getOneById(addressId)
   if (!address) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Địa chỉ không tồn tại')
   }
   if (address.userId !== userId) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Bạn không có quyền xóa địa chỉ này'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền xóa địa chỉ này')
   }
 
   // Nếu xóa địa chỉ default, warning user hoặc auto set cái khác (ở đây chọn throw error bắt user set cái khác trước)
@@ -254,19 +229,13 @@ const deleteAddress = async (
  * Copy-on-Write không cần thiết — thay đổi isDefault không ảnh hưởng dữ liệu
  * lịch sử đơn hàng, nên không cần tạo bản ghi địa chỉ mới.
  */
-const setDefaultAddress = async (
-  userId: number,
-  addressId: number
-): Promise<ShippingAddress> => {
+const setDefaultAddress = async (userId: number, addressId: number): Promise<ShippingAddress> => {
   const address = await shippingAddressModel.getOneById(addressId)
   if (!address) {
     throw new ApiError(StatusCodes.NOT_FOUND, 'Địa chỉ không tồn tại')
   }
   if (address.userId !== userId) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Bạn không có quyền cập nhật địa chỉ này'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền cập nhật địa chỉ này')
   }
   if (!address.isActive) {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'Địa chỉ không còn hoạt động')
@@ -274,13 +243,13 @@ const setDefaultAddress = async (
   // No-op nếu đã là default
   if (address.isDefault) return address
 
-  return await prisma.$transaction(async (tx) => {
+  return await prisma.$transaction(async tx => {
     // Reset tất cả active addresses về false
     await tx.shippingAddress.updateMany({
       where: { userId, isActive: true },
       data: { isDefault: false }
     })
-    
+
     // Set target thành default
     return await tx.shippingAddress.update({
       where: { id: addressId },

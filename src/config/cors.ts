@@ -14,10 +14,7 @@ import ApiError from '~/utils/ApiError.js'
  * - Production mode: Chỉ cho phép các domain trong whitelist
  */
 export const corsOptions: CorsOptions = {
-  origin: function (
-    origin: string | undefined,
-    callback: (error: Error | null, allow?: boolean) => void
-  ) {
+  origin: function (origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
     // Request không có Origin thường đến từ Postman hoặc server-to-server call.
     // CORS chỉ áp dụng cho browser, nên có thể cho phép các request này.
     if (!origin) {
@@ -31,10 +28,7 @@ export const corsOptions: CorsOptions = {
 
     // Cuối cùng nếu domain không được chấp nhận thì trả về lỗi
     return callback(
-      new ApiError(
-        StatusCodes.FORBIDDEN,
-        `${origin || 'Origin không xác định'} không được phép bởi CORS Policy.`
-      )
+      new ApiError(StatusCodes.FORBIDDEN, `${origin || 'Origin không xác định'} không được phép bởi CORS Policy.`)
     )
   },
 

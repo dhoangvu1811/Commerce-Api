@@ -33,7 +33,11 @@ export type {
   UpdateUserInput,
   UpdateUserByAdminInput,
   UpdatePasswordInput,
-  GetUsersResult
+  GetUsersResult,
+  ForgotPasswordInput,
+  ResetPasswordInput,
+  ForgotPasswordResult,
+  ResetPasswordResult
 } from './user.types.js'
 
 // Product types
@@ -95,6 +99,7 @@ export type {
   AccessTokenPayload,
   RefreshTokenPayload,
   VerificationTokenPayload,
+  PasswordResetTokenPayload,
   TokenUserData,
   IJwtProvider
 } from './jwt.types.js'

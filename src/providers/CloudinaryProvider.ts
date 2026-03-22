@@ -22,20 +22,14 @@ cloudinaryV2.config({
  * @param {string} folderName - Tên folder trên Cloudinary
  * @returns {Promise<UploadApiResponse>} Kết quả upload
  */
-const streamUpload = (
-  fileBuffer: Buffer,
-  folderName: string
-): Promise<UploadApiResponse> => {
+const streamUpload = (fileBuffer: Buffer, folderName: string): Promise<UploadApiResponse> => {
   return new Promise((resolve, reject) => {
     // Tạo một luồng stream upload lên Cloudinary
-    const stream = cloudinaryV2.uploader.upload_stream(
-      { folder: folderName },
-      (err, result) => {
-        if (err) reject(err)
-        else if (result) resolve(result)
-        else reject(new Error('Upload failed: no result returned'))
-      }
-    )
+    const stream = cloudinaryV2.uploader.upload_stream({ folder: folderName }, (err, result) => {
+      if (err) reject(err)
+      else if (result) resolve(result)
+      else reject(new Error('Upload failed: no result returned'))
+    })
     // Thực hiện upload luồng trên bằng lib streamifier
     streamifier.createReadStream(fileBuffer)?.pipe(stream)
   })

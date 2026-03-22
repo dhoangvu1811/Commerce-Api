@@ -14,11 +14,7 @@ import {
   OrderStatus,
   PaymentStatus
 } from '@prisma/client'
-import type { DecimalType as Decimal ,
-  PaymentMethod,
-  VoucherType,
-  Prisma
-} from '@prisma/client'
+import type { DecimalType as Decimal, PaymentMethod, VoucherType, Prisma } from '@prisma/client'
 
 /** Export types từ Prisma */
 export type { Order, OrderItem, OrderLog, OrderVoucher, ShippingAddress }
@@ -129,90 +125,86 @@ export interface OrderLogsResult {
 /**
  * Tạo order mới với tất cả relations (transaction)
  */
-const createNew = async (
-  data: CreateOrderInput
-): Promise<OrderWithRelations> => {
-  const order = await prisma.$transaction(
-    async (tx: Prisma.TransactionClient) => {
-      // 1. Tạo Order
-      const createdOrder = await tx.order.create({
-        data: {
-          userId: data.userId,
-          orderCode: data.orderCode,
-          shippingAddressId: data.shippingAddressId,
-          status: data.status || OrderStatus.PENDING,
-          subtotal: data.subtotal,
-          discountAmount: data.discountAmount ?? 0,
-          shippingFee: data.shippingFee ?? 0,
-          totalPrice: data.totalPrice
-        }
-      })
-
-      // 1.1 Tạo Payment record đầu tiên
-      await tx.payment.create({
-        data: {
-          orderId: createdOrder.id,
-          paymentMethod: data.paymentMethod,
-          value: data.totalPrice,
-          status: PaymentStatus.PENDING
-        }
-      })
-
-      // 2. Tạo OrderItems
-      await tx.orderItem.createMany({
-        data: data.items.map((item) => ({
-          orderId: createdOrder.id,
-          productId: item.productId,
-          name: item.name,
-          image: item.image || null,
-          unitPrice: item.unitPrice,
-          discount: item.discount ?? 0,
-          quantity: item.quantity,
-          lineTotal: item.lineTotal
-        }))
-      })
-
-      // 3. Tạo OrderVoucher nếu có
-      if (data.voucher) {
-        await tx.orderVoucher.create({
-          data: {
-            orderId: createdOrder.id,
-            voucherId: data.voucher.voucherId,
-            code: data.voucher.code,
-            type: data.voucher.type,
-            amount: data.voucher.amount,
-            maxDiscount: data.voucher.maxDiscount ?? null,
-            discountValue: data.voucher.discountValue
-          }
-        })
+const createNew = async (data: CreateOrderInput): Promise<OrderWithRelations> => {
+  const order = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    // 1. Tạo Order
+    const createdOrder = await tx.order.create({
+      data: {
+        userId: data.userId,
+        orderCode: data.orderCode,
+        shippingAddressId: data.shippingAddressId,
+        status: data.status || OrderStatus.PENDING,
+        subtotal: data.subtotal,
+        discountAmount: data.discountAmount ?? 0,
+        shippingFee: data.shippingFee ?? 0,
+        totalPrice: data.totalPrice
       }
+    })
 
-      // 4. Tạo initial log
-      await tx.orderLog.create({
+    // 1.1 Tạo Payment record đầu tiên
+    await tx.payment.create({
+      data: {
+        orderId: createdOrder.id,
+        paymentMethod: data.paymentMethod,
+        value: data.totalPrice,
+        status: PaymentStatus.PENDING
+      }
+    })
+
+    // 2. Tạo OrderItems
+    await tx.orderItem.createMany({
+      data: data.items.map(item => ({
+        orderId: createdOrder.id,
+        productId: item.productId,
+        name: item.name,
+        image: item.image || null,
+        unitPrice: item.unitPrice,
+        discount: item.discount ?? 0,
+        quantity: item.quantity,
+        lineTotal: item.lineTotal
+      }))
+    })
+
+    // 3. Tạo OrderVoucher nếu có
+    if (data.voucher) {
+      await tx.orderVoucher.create({
         data: {
           orderId: createdOrder.id,
-          action: 'create',
-          performedById: data.userId,
-          performedByRole: 'user',
-          toStatus: 'PENDING',
-          toPaymentStatus: 'PENDING',
-          note: 'Người dùng tạo đơn hàng'
-        }
-      })
-
-      // 5. Return với relations
-      return await tx.order.findUnique({
-        where: { id: createdOrder.id },
-        include: {
-          items: true,
-          logs: { orderBy: { createdAt: 'desc' } },
-          orderVouchers: true,
-          shippingAddress: true,
-          payments: { orderBy: { createdAt: 'desc' } }
+          voucherId: data.voucher.voucherId,
+          code: data.voucher.code,
+          type: data.voucher.type,
+          amount: data.voucher.amount,
+          maxDiscount: data.voucher.maxDiscount ?? null,
+          discountValue: data.voucher.discountValue
         }
       })
     }
-  )
+
+    // 4. Tạo initial log
+    await tx.orderLog.create({
+      data: {
+        orderId: createdOrder.id,
+        action: 'create',
+        performedById: data.userId,
+        performedByRole: 'user',
+        toStatus: 'PENDING',
+        toPaymentStatus: 'PENDING',
+        note: 'Người dùng tạo đơn hàng'
+      }
+    })
+
+    // 5. Return với relations
+    return await tx.order.findUnique({
+      where: { id: createdOrder.id },
+      include: {
+        items: true,
+        logs: { orderBy: { createdAt: 'desc' } },
+        orderVouchers: true,
+        shippingAddress: true,
+        payments: { orderBy: { createdAt: 'desc' } }
+      }
+    })
+  })
 
   return order as OrderWithRelations
 }
@@ -220,9 +212,7 @@ const createNew = async (
 /**
  * Tìm order theo ID với relations
  */
-const findOneById = async (
-  orderId: number
-): Promise<OrderWithRelations | null> => {
+const findOneById = async (orderId: number): Promise<OrderWithRelations | null> => {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     include: {
@@ -248,9 +238,7 @@ const findOneById = async (
 /**
  * Tìm order theo orderCode
  */
-const findByOrderCode = async (
-  orderCode: string
-): Promise<OrderWithRelations | null> => {
+const findByOrderCode = async (orderCode: string): Promise<OrderWithRelations | null> => {
   const order = await prisma.order.findUnique({
     where: { orderCode },
     include: {
@@ -357,10 +345,7 @@ const getMany = async (
 /**
  * Cập nhật thông tin order
  */
-const update = async (
-  orderId: number,
-  updateData: UpdateOrderInput
-): Promise<Order | null> => {
+const update = async (orderId: number, updateData: UpdateOrderInput): Promise<Order | null> => {
   try {
     const order = await prisma.order.update({
       where: { id: orderId },
@@ -381,10 +366,7 @@ const update = async (
 /**
  * Thêm log entry vào order (thay thế embedded logs)
  */
-const appendLog = async (
-  orderId: number,
-  logEntry: CreateOrderLogInput
-): Promise<OrderLog> => {
+const appendLog = async (orderId: number, logEntry: CreateOrderLogInput): Promise<OrderLog> => {
   const log = await prisma.orderLog.create({
     data: {
       orderId,
@@ -426,9 +408,7 @@ const deleteOneById = async (orderId: number): Promise<Order | null> => {
 /**
  * Lấy logs của order theo ID
  */
-const getLogsByOrderId = async (
-  orderId: number
-): Promise<OrderLogsResult | null> => {
+const getLogsByOrderId = async (orderId: number): Promise<OrderLogsResult | null> => {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
     select: {

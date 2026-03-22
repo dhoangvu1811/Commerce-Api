@@ -9,11 +9,7 @@ import { ROLES } from '~/constants/rbac.js'
  * Tạo thông báo cho user cụ thể (Internal use for triggers)
  * Tự động emit realtime notification đến user qua Socket.IO
  */
-const createNotification = async (
-  userId: number,
-  type: string,
-  message: string
-) => {
+const createNotification = async (userId: number, type: string, message: string) => {
   const notification = await notificationModel.create({ userId, type, message })
 
   // Emit realtime notification đến user
@@ -33,11 +29,7 @@ const createNotification = async (
  * Mỗi admin/staff nhận 1 bản ghi riêng trong DB + realtime socket event
  * @param excludeUserId - Loại trừ admin đang thao tác (tránh self-notification)
  */
-const createAdminNotification = async (
-  type: string,
-  message: string,
-  excludeUserId?: number
-) => {
+const createAdminNotification = async (type: string, message: string, excludeUserId?: number) => {
   // Tìm tất cả admin và staff
   const adminUsers = await prisma.user.findMany({
     where: {
@@ -49,9 +41,7 @@ const createAdminNotification = async (
   })
 
   // Loại trừ admin đang thao tác (nếu có)
-  const targetAdmins = excludeUserId
-    ? adminUsers.filter(u => u.id !== excludeUserId)
-    : adminUsers
+  const targetAdmins = excludeUserId ? adminUsers.filter(u => u.id !== excludeUserId) : adminUsers
 
   if (targetAdmins.length === 0) return
 
@@ -67,23 +57,23 @@ const createAdminNotification = async (
   // Emit realtime đến room admin (loại trừ admin đang thao tác)
   // Dùng emitToAdmin thay vì emitToUser từng người → hiệu quả hơn
   // FE sẽ tự fetch lại khi nhận event để đồng bộ ID chính xác
-  emitToAdmin(SOCKET_EVENTS.NOTIFICATION_NEW, {
-    id: 0, // Placeholder — FE sẽ prepend hoặc refetch
-    type,
-    message,
-    isRead: false,
-    createdAt: new Date().toISOString()
-  }, excludeUserId)
+  emitToAdmin(
+    SOCKET_EVENTS.NOTIFICATION_NEW,
+    {
+      id: 0, // Placeholder — FE sẽ prepend hoặc refetch
+      type,
+      message,
+      isRead: false,
+      createdAt: new Date().toISOString()
+    },
+    excludeUserId
+  )
 }
 
 /**
  * Láy thông báo của user
  */
-const getMyNotifications = async (
-  userId: number,
-  page: number,
-  limit: number
-) => {
+const getMyNotifications = async (userId: number, page: number, limit: number) => {
   const [data, unreadCount] = await Promise.all([
     notificationModel.getByUserId(userId, page, limit),
     notificationModel.countUnread(userId)

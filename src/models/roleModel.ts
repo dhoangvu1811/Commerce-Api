@@ -1,14 +1,11 @@
+/* eslint-disable indent */
 /**
  * Role Model
  * CRUD operations for Role management (RBAC)
  */
 
 import { prisma } from '~/config/prisma.js'
-import type {
-  Role,
-  Permission,
-  RolePermission
-} from '@prisma/client'
+import type { Role, Permission, RolePermission } from '@prisma/client'
 
 import type {
   PaginatedRolesResult,
@@ -22,24 +19,20 @@ export type { Role, Permission }
 /**
  * Find all roles with pagination
  */
-const findAll = async (
-  page: number = 1,
-  limit: number = 10,
-  filter?: RoleFilter
-): Promise<PaginatedRolesResult> => {
+const findAll = async (page: number = 1, limit: number = 10, filter?: RoleFilter): Promise<PaginatedRolesResult> => {
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-      OR: [
-        { name: { contains: filter.search, mode: 'insensitive' as const } },
-        {
-          displayName: {
-            contains: filter.search,
-            mode: 'insensitive' as const
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
           }
-        }
-      ]
-    }
+        ]
+      }
     : {}
 
   const [roles, totalItems] = await Promise.all([
@@ -78,16 +71,16 @@ const findAllWithUserCount = async (
   const skip = (page - 1) * limit
   const where = filter?.search
     ? {
-      OR: [
-        { name: { contains: filter.search, mode: 'insensitive' as const } },
-        {
-          displayName: {
-            contains: filter.search,
-            mode: 'insensitive' as const
+        OR: [
+          { name: { contains: filter.search, mode: 'insensitive' as const } },
+          {
+            displayName: {
+              contains: filter.search,
+              mode: 'insensitive' as const
+            }
           }
-        }
-      ]
-    }
+        ]
+      }
     : {}
 
   const [roles, totalItems] = await Promise.all([
@@ -160,11 +153,7 @@ const create = async (name: string, displayName?: string): Promise<Role> => {
 /**
  * Update role
  */
-const update = async (
-  id: number,
-  name: string,
-  displayName?: string
-): Promise<Role> => {
+const update = async (id: number, name: string, displayName?: string): Promise<Role> => {
   return await prisma.role.update({
     where: { id },
     data: { name, displayName }
@@ -198,10 +187,7 @@ const deleteById = async (id: number): Promise<Role> => {
 /**
  * Assign permission to role
  */
-const assignPermission = async (
-  roleId: number,
-  permissionId: number
-): Promise<RolePermission> => {
+const assignPermission = async (roleId: number, permissionId: number): Promise<RolePermission> => {
   return await prisma.rolePermission.create({
     data: { roleId, permissionId }
   })
@@ -210,12 +196,9 @@ const assignPermission = async (
 /**
  * Bulk assign permissions to role
  */
-const bulkAssignPermissions = async (
-  roleId: number,
-  permissionIds: number[]
-): Promise<number> => {
+const bulkAssignPermissions = async (roleId: number, permissionIds: number[]): Promise<number> => {
   const result = await prisma.rolePermission.createMany({
-    data: permissionIds.map((permissionId) => ({ roleId, permissionId })),
+    data: permissionIds.map(permissionId => ({ roleId, permissionId })),
     skipDuplicates: true
   })
 
@@ -225,10 +208,7 @@ const bulkAssignPermissions = async (
 /**
  * Remove permission from role
  */
-const removePermission = async (
-  roleId: number,
-  permissionId: number
-): Promise<RolePermission> => {
+const removePermission = async (roleId: number, permissionId: number): Promise<RolePermission> => {
   return await prisma.rolePermission.delete({
     where: {
       roleId_permissionId: { roleId, permissionId }
@@ -251,16 +231,13 @@ const getPermissions = async (roleId: number): Promise<Permission[]> => {
     }
   })
 
-  return roleWithPermissions?.rolePermissions.map((rp) => rp.permission) || []
+  return roleWithPermissions?.rolePermissions.map(rp => rp.permission) || []
 }
 
 /**
  * Check if role has permission
  */
-const hasPermission = async (
-  roleId: number,
-  permissionName: string
-): Promise<boolean> => {
+const hasPermission = async (roleId: number, permissionName: string): Promise<boolean> => {
   const count = await prisma.rolePermission.count({
     where: {
       roleId,

@@ -11,20 +11,13 @@ import { CloudinaryProvider } from '~/providers/CloudinaryProvider.js'
 /**
  * API tạo mới category
  */
-const createNew = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     let imageUrl = req.body.image
 
     // Handle image upload if file is present
     if (req.file) {
-      const uploadResult = await CloudinaryProvider.streamUpload(
-        req.file.buffer,
-        'categories'
-      )
+      const uploadResult = await CloudinaryProvider.streamUpload(req.file.buffer, 'categories')
       imageUrl = uploadResult.secure_url
     }
 
@@ -46,15 +39,10 @@ const createNew = async (
 /**
  * API lấy danh sách category
  */
-const getAll = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getAll = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const page = Number(req.query.page) || 1
-    const limit =
-      Number(req.query.limit) || Number(req.query.itemsPerPage) || 20
+    const limit = Number(req.query.limit) || Number(req.query.itemsPerPage) || 20
 
     const result = await categoryService.getAll(
       {
@@ -77,11 +65,7 @@ const getAll = async (
 /**
  * API lấy chi tiết category
  */
-const getDetail = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const getDetail = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params
     const category = await categoryService.getDetail(Number(id))
@@ -99,21 +83,14 @@ const getDetail = async (
 /**
  * API cập nhật category
  */
-const update = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const update = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params
     let imageUrl = req.body.image
 
     // Handle image upload if file is present
     if (req.file) {
-      const uploadResult = await CloudinaryProvider.streamUpload(
-        req.file.buffer,
-        'categories'
-      )
+      const uploadResult = await CloudinaryProvider.streamUpload(req.file.buffer, 'categories')
       imageUrl = uploadResult.secure_url
     }
 
@@ -135,11 +112,7 @@ const update = async (
 /**
  * API xóa category
  */
-const deleteCategory = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteCategory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { id } = req.params
     await categoryService.deleteCategory(Number(id))
@@ -156,14 +129,10 @@ const deleteCategory = async (
 /**
  * API xóa nhiều category
  */
-const deleteMany = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-): Promise<void> => {
+const deleteMany = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const { ids } = req.body
-    const numericIds = (ids as (string | number)[]).map((id) => Number(id))
+    const numericIds = (ids as (string | number)[]).map(id => Number(id))
 
     const result = await categoryService.deleteMany(numericIds)
 

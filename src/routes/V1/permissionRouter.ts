@@ -20,11 +20,7 @@ RouterInstance.use(authMiddleware.verifyToken)
 RouterInstance.get('/me', permissionController.getMyPermissions)
 
 // Permission CRUD - Protected by Permission
-RouterInstance.get(
-  '/',
-  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ROLES),
-  permissionController.getAll
-)
+RouterInstance.get('/', authMiddleware.requirePermission(PERMISSIONS.MANAGE_ROLES), permissionController.getAll)
 RouterInstance.get(
   '/:id',
   authMiddleware.requirePermission(PERMISSIONS.MANAGE_ROLES),

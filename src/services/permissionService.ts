@@ -6,19 +6,12 @@
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { permissionModel, type Permission } from '~/models/permissionModel.js'
-import type {
-  PaginatedPermissionsResult,
-  PermissionFilter
-} from '~/types/rbac.types.js'
+import type { PaginatedPermissionsResult, PermissionFilter } from '~/types/rbac.types.js'
 
 /**
  * Get all permissions with pagination
  */
-const getAll = async (
-  page?: number,
-  limit?: number,
-  search?: string
-): Promise<PaginatedPermissionsResult> => {
+const getAll = async (page?: number, limit?: number, search?: string): Promise<PaginatedPermissionsResult> => {
   const filter: PermissionFilter = { search }
 
   return await permissionModel.findAll(page, limit, filter)
@@ -43,10 +36,7 @@ import { PERMISSIONS } from '~/constants/rbac.js'
 /**
  * Create new permission
  */
-const create = async (
-  name: string,
-  displayName?: string
-): Promise<Permission> => {
+const create = async (name: string, displayName?: string): Promise<Permission> => {
   // Check if permission name already exists
   const existing = await permissionModel.findByName(name)
   if (existing) {
@@ -59,11 +49,7 @@ const create = async (
 /**
  * Update permission
  */
-const update = async (
-  id: number,
-  name: string,
-  displayName?: string
-): Promise<Permission> => {
+const update = async (id: number, name: string, displayName?: string): Promise<Permission> => {
   // Check if permission exists
   const permission = await permissionModel.findById(id)
   if (!permission) {
@@ -78,14 +64,8 @@ const update = async (
 
   // Prevent renaming system permissions if necessary
   const systemPermissions = Object.values(PERMISSIONS)
-  if (
-    systemPermissions.includes(permission.name as any) &&
-    permission.name !== name
-  ) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Không thể đổi System Key của permission mặc định'
-    )
+  if (systemPermissions.includes(permission.name as any) && permission.name !== name) {
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể đổi System Key của permission mặc định')
   }
 
   return await permissionModel.update(id, name, displayName)
@@ -104,10 +84,7 @@ const deleteById = async (id: number): Promise<Permission> => {
   // Prevent deleting system permissions
   const systemPermissions = Object.values(PERMISSIONS) as string[]
   if (systemPermissions.includes(permission.name)) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Không thể xóa permission mặc định của hệ thống'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể xóa permission mặc định của hệ thống')
   }
 
   try {

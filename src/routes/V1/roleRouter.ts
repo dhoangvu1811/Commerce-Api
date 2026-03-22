@@ -20,20 +20,14 @@ RouterInstance.use(authMiddleware.verifyToken)
 // Get all roles: Allowed for users who can manage roles OR manage users (for dropdowns)
 RouterInstance.get(
   '/',
-  authMiddleware.requireAnyPermission([
-    PERMISSIONS.MANAGE_ROLES,
-    PERMISSIONS.MANAGE_USERS
-  ]),
+  authMiddleware.requireAnyPermission([PERMISSIONS.MANAGE_ROLES, PERMISSIONS.MANAGE_USERS]),
   roleController.getAll
 )
 
 // Read single role: Same logic
 RouterInstance.get(
   '/:id',
-  authMiddleware.requireAnyPermission([
-    PERMISSIONS.MANAGE_ROLES,
-    PERMISSIONS.MANAGE_USERS
-  ]),
+  authMiddleware.requireAnyPermission([PERMISSIONS.MANAGE_ROLES, PERMISSIONS.MANAGE_USERS]),
   roleValidation.validateRoleId,
   roleController.getById
 )

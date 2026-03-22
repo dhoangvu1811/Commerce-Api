@@ -4,11 +4,7 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type {
-  Voucher,
-  Prisma,
-  DecimalType as Decimal
-} from '@prisma/client'
+import type { Voucher, Prisma, DecimalType as Decimal } from '@prisma/client'
 import type { VoucherType } from '@prisma/client'
 
 /** Voucher type export từ Prisma */
@@ -162,10 +158,7 @@ const getMany = async (
 /**
  * Cập nhật thông tin voucher
  */
-const update = async (
-  voucherId: number,
-  updateData: UpdateVoucherInput
-): Promise<Voucher | null> => {
+const update = async (voucherId: number, updateData: UpdateVoucherInput): Promise<Voucher | null> => {
   try {
     const voucher = await prisma.voucher.update({
       where: { id: voucherId },
@@ -206,10 +199,7 @@ const deleteOneById = async (voucherId: number): Promise<Voucher | null> => {
 /**
  * Tăng số lần sử dụng voucher
  */
-const incrementUsedCount = async (
-  voucherId: number,
-  step: number = 1
-): Promise<Voucher | null> => {
+const incrementUsedCount = async (voucherId: number, step: number = 1): Promise<Voucher | null> => {
   try {
     const voucher = await prisma.voucher.update({
       where: { id: voucherId },
