@@ -7,13 +7,7 @@
 
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
-import {
-  userModel,
-  type User,
-  type UserFilter,
-  UserStatus,
-  AccountType
-} from '~/models/userModel.js'
+import { userModel, type User, type UserFilter, UserStatus, AccountType } from '~/models/userModel.js'
 import { sessionModel } from '~/models/sessionModel.js'
 import { roleModel } from '~/models/roleModel.js'
 import { prisma } from '~/config/prisma.js'
@@ -38,13 +32,17 @@ import type {
   PaginatedUsersResult,
   RefreshTokenResult,
   EmailVerificationResult,
-  VerifyAccountResult
+  VerifyAccountResult,
+  ResetPasswordInput,
+  ForgotPasswordResult,
+  ResetPasswordResult
 } from '~/types/user.types.js'
 import type { UploadResult, DeleteResultInfo } from '~/types/common.types.js'
 
 // Default role ID for regular users (seeded in database)
 const DEFAULT_USER_ROLE_ID = 2 // 'user' role
 const ADMIN_ROLE_ID = 1 // 'admin' role
+const FORGOT_PASSWORD_GENERIC_MESSAGE = 'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.'
 
 /**
  * Parse userId string to number
@@ -55,7 +53,7 @@ const parseUserId = (userId: string): number => {
     throw new ApiError(StatusCodes.BAD_REQUEST, 'User ID không hợp lệ')
   }
 
-return id
+  return id
 }
 
 /**
@@ -64,16 +62,13 @@ return id
 const hashPassword = async (password: string): Promise<string> => {
   const saltRounds = 12
 
-return await bcrypt.hash(password, saltRounds)
+  return await bcrypt.hash(password, saltRounds)
 }
 
 /**
  * So sánh mật khẩu
  */
-const comparePassword = async (
-  password: string,
-  hashedPassword: string
-): Promise<boolean> => {
+const comparePassword = async (password: string, hashedPassword: string): Promise<boolean> => {
   return await bcrypt.compare(password, hashedPassword)
 }
 
@@ -86,10 +81,7 @@ const register = async (userData: RegisterInput): Promise<UserResponseType> => {
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
-      throw new ApiError(
-        StatusCodes.CONFLICT,
-        `Email "${userData.email}" đã được sử dụng`
-      )
+      throw new ApiError(StatusCodes.CONFLICT, `Email "${userData.email}" đã được sử dụng`)
     }
 
     // Hash mật khẩu
@@ -140,20 +132,14 @@ const login = async (
     const user = await userModel.findOneByEmail(email)
 
     if (!user) {
-      throw new ApiError(
-        StatusCodes.NOT_ACCEPTABLE,
-        'Email hoặc mật khẩu không đúng'
-      )
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Email hoặc mật khẩu không đúng')
     }
 
     // So sánh mật khẩu
     const isPasswordValid = await comparePassword(password, user.password)
 
     if (!isPasswordValid) {
-      throw new ApiError(
-        StatusCodes.NOT_ACCEPTABLE,
-        'Email hoặc mật khẩu không đúng'
-      )
+      throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Email hoặc mật khẩu không đúng')
     }
 
     // Cập nhật thời gian đăng nhập cuối
@@ -163,17 +149,13 @@ const login = async (
     const sessionId = uuidv4()
 
     // Get role name from included relation (no separate query needed)
-    const roleName =
-      (user as unknown as { role: { name: string } }).role?.name || 'user'
+    const roleName = (user as unknown as { role: { name: string } }).role?.name || 'user'
 
     // Kiểm tra loginContext - nếu đăng nhập từ Admin Dashboard thì phải là admin hoặc staff
     const { loginContext } = loginData
     const adminRoles = ['admin', 'staff']
     if (loginContext === 'admin' && !adminRoles.includes(roleName)) {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        'Bạn không có quyền truy cập vào trang quản trị'
-      )
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không có quyền truy cập vào trang quản trị')
     }
 
     // Tạo token với sessionId
@@ -182,18 +164,11 @@ const login = async (
       email: user.email,
       role: roleName as UserRole
     }
-    const accessToken = JwtProvider.generateAccessToken(
-      tokenUserData,
-      sessionId
-    )
-    const refreshToken = JwtProvider.generateRefreshToken(
-      tokenUserData,
-      sessionId
-    )
+    const accessToken = JwtProvider.generateAccessToken(tokenUserData, sessionId)
+    const refreshToken = JwtProvider.generateRefreshToken(tokenUserData, sessionId)
 
     // Tính thời gian hết hạn của refresh token (7 ngày)
-    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN ||
-      '7d') as ms.StringValue
+    const refreshExpiresInStr = (env.JWT_REFRESH_EXPIRES_IN || '7d') as ms.StringValue
     const refreshTokenExpiresIn = ms(refreshExpiresInStr)
     const expiresAt = new Date(Date.now() + refreshTokenExpiresIn)
 
@@ -224,9 +199,7 @@ const login = async (
 /**
  * Refresh access token
  */
-const refreshToken = async (
-  refreshTokenValue: string
-): Promise<RefreshTokenResult> => {
+const refreshToken = async (refreshTokenValue: string): Promise<RefreshTokenResult> => {
   try {
     // Verify refresh token
     const decoded = JwtProvider.verifyRefreshToken(refreshTokenValue)
@@ -247,10 +220,7 @@ const refreshToken = async (
 
       // Kiểm tra session có khớp với user không
       if (String(activeSession.userId) !== decoded._id) {
-        throw new ApiError(
-          StatusCodes.UNAUTHORIZED,
-          'Phiên đăng nhập không hợp lệ'
-        )
+        throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ')
       }
     }
 
@@ -259,15 +229,11 @@ const refreshToken = async (
     const user = await userModel.findOneById(userId)
 
     if (!user) {
-      throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
-        'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.'
-      )
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập không hợp lệ. Vui lòng đăng nhập lại.')
     }
 
     // Get role name from included relation
-    const roleName =
-      (user as unknown as { role: { name: string } }).role?.name || 'user'
+    const roleName = (user as unknown as { role: { name: string } }).role?.name || 'user'
 
     // Tạo access token mới với sessionId
     const tokenUserData = {
@@ -275,23 +241,14 @@ const refreshToken = async (
       email: user.email,
       role: roleName as UserRole
     }
-    const newAccessToken = JwtProvider.generateAccessToken(
-      tokenUserData,
-      sessionIdValue
-    )
+    const newAccessToken = JwtProvider.generateAccessToken(tokenUserData, sessionIdValue)
 
     return {
       accessToken: newAccessToken
     }
   } catch (error) {
-    if (
-      (error as Error).name === 'JsonWebTokenError' ||
-      (error as Error).name === 'TokenExpiredError'
-    ) {
-      throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
-        'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.'
-      )
+    if ((error as Error).name === 'JsonWebTokenError' || (error as Error).name === 'TokenExpiredError') {
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.')
     }
     throw error
   }
@@ -306,10 +263,7 @@ const getDetails = async (userId: string): Promise<UserResponseType> => {
     const user = await userModel.findOneById(userIdNum)
 
     if (!user) {
-      throw new ApiError(
-        StatusCodes.UNAUTHORIZED,
-        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
-      )
+      throw new ApiError(StatusCodes.UNAUTHORIZED, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Loại bỏ password khỏi response
@@ -324,35 +278,26 @@ const getDetails = async (userId: string): Promise<UserResponseType> => {
 /**
  * Cập nhật user (bởi chính user)
  */
-const updateUser = async (
-  userId: string,
-  updateData: UpdateUserInputType
-): Promise<UserResponseType> => {
+const updateUser = async (userId: string, updateData: UpdateUserInputType): Promise<UserResponseType> => {
   try {
     const userIdNum = parseUserId(userId)
 
     // Kiểm tra user có tồn tại không
     const existingUser = await userModel.findOneById(userIdNum)
     if (!existingUser) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Cập nhật user
     const sanitizedData = { ...updateData }
     if ((sanitizedData as any).gender === '') {
-      (sanitizedData as any).gender = undefined
+      ;(sanitizedData as any).gender = undefined
     }
 
     const updatedUser = await userModel.update(userIdNum, sanitizedData)
 
     if (!updatedUser) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không thể cập nhật thông tin'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể cập nhật thông tin')
     }
 
     // Loại bỏ password khỏi response
@@ -367,46 +312,29 @@ const updateUser = async (
 /**
  * Cập nhật password
  */
-const updatePassword = async (
-  userId: string,
-  passwordData: UpdatePasswordInput
-): Promise<{ message: string }> => {
+const updatePassword = async (userId: string, passwordData: UpdatePasswordInput): Promise<{ message: string }> => {
   try {
     const userIdNum = parseUserId(userId)
 
     // Tìm user
     const user = await userModel.findOneById(userIdNum)
     if (!user) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.'
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy tài khoản. Vui lòng đăng nhập lại.')
     }
 
     // Kiểm tra mật khẩu hiện tại
-    const isOAuthUser =
-      user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
-    const hasOAuthPassword =
-      user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
+    const isOAuthUser = user.typeAccount === 'GOOGLE' || user.typeAccount === 'FACEBOOK'
+    const hasOAuthPassword = user.password === 'GOOGLE-AUTH1*#' || user.password === 'FACEBOOK-AUTH1*#'
 
     if (!isOAuthUser || (isOAuthUser && !hasOAuthPassword)) {
       if (!passwordData.currentPassword) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Vui lòng nhập mật khẩu hiện tại'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Vui lòng nhập mật khẩu hiện tại')
       }
 
-      const isCurrentPasswordValid = await comparePassword(
-        passwordData.currentPassword,
-        user.password
-      )
+      const isCurrentPasswordValid = await comparePassword(passwordData.currentPassword, user.password)
 
       if (!isCurrentPasswordValid) {
-        throw new ApiError(
-          StatusCodes.NOT_ACCEPTABLE,
-          'Mật khẩu hiện tại không đúng'
-        )
+        throw new ApiError(StatusCodes.NOT_ACCEPTABLE, 'Mật khẩu hiện tại không đúng')
       }
     }
 
@@ -420,10 +348,8 @@ const updatePassword = async (
 
     // Nếu OAuth user lần đầu set password
     if (
-      (user.typeAccount === AccountType.GOOGLE &&
-        user.password === 'GOOGLE-AUTH1*#') ||
-      (user.typeAccount === AccountType.FACEBOOK &&
-        user.password === 'FACEBOOK-AUTH1*#')
+      (user.typeAccount === AccountType.GOOGLE && user.password === 'GOOGLE-AUTH1*#') ||
+      (user.typeAccount === AccountType.FACEBOOK && user.password === 'FACEBOOK-AUTH1*#')
     ) {
       updateData.typeAccount = AccountType.LOCAL
     }
@@ -442,22 +368,13 @@ const updatePassword = async (
 /**
  * Upload avatar
  */
-const uploadAvatar = async (
-  fileBuffer: Buffer,
-  folderName: string = 'users-commerceweb'
-): Promise<UploadResult> => {
+const uploadAvatar = async (fileBuffer: Buffer, folderName: string = 'users-commerceweb'): Promise<UploadResult> => {
   try {
-    const uploadResult = await CloudinaryProvider.streamUpload(
-      fileBuffer,
-      folderName
-    )
+    const uploadResult = await CloudinaryProvider.streamUpload(fileBuffer, folderName)
 
     return uploadResult as UploadResult
   } catch (error) {
-    throw new ApiError(
-      StatusCodes.INTERNAL_SERVER_ERROR,
-      `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`
-    )
+    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Lỗi upload ảnh lên Cloudinary: ${(error as Error).message}`)
   }
 }
 
@@ -524,10 +441,10 @@ const getUsers = async (
     const result = await userModel.getMany(filter, page, itemsPerPage, orderBy)
 
     // Loại bỏ password khỏi tất cả user trong response
-    const usersWithoutPassword = result.users.map((user) => {
+    const usersWithoutPassword = result.users.map(user => {
       const { password: _password, ...userWithoutPassword } = user
 
-return userWithoutPassword as unknown as UserResponseType
+      return userWithoutPassword as unknown as UserResponseType
     })
 
     return {
@@ -542,16 +459,13 @@ return userWithoutPassword as unknown as UserResponseType
 /**
  * Cập nhật user bởi admin
  */
-const updateUserByAdmin = async (
-  userId: string,
-  updateData: UpdateUserByAdminInput
-): Promise<UserResponseType> => {
+const updateUserByAdmin = async (userId: string, updateData: UpdateUserByAdminInput): Promise<UserResponseType> => {
   try {
     const userIdNum = parseUserId(userId)
 
     // Sanitize gender
     if ((updateData as any).gender === '') {
-      (updateData as any).gender = undefined
+      ;(updateData as any).gender = undefined
     }
 
     // Kiểm tra user có tồn tại không
@@ -564,10 +478,7 @@ const updateUserByAdmin = async (
     if (updateData.email && updateData.email !== existingUser.email) {
       const duplicateUser = await userModel.findOneByEmail(updateData.email)
       if (duplicateUser) {
-        throw new ApiError(
-          StatusCodes.CONFLICT,
-          `Email "${updateData.email}" đã được sử dụng`
-        )
+        throw new ApiError(StatusCodes.CONFLICT, `Email "${updateData.email}" đã được sử dụng`)
       }
     }
 
@@ -599,8 +510,7 @@ const updateUserByAdmin = async (
 
     // Revoke all sessions if role or status changed to inactive
     if (
-      (prismaUpdateData.roleId &&
-        prismaUpdateData.roleId !== existingUser.roleId) ||
+      (prismaUpdateData.roleId && prismaUpdateData.roleId !== existingUser.roleId) ||
       (prismaUpdateData.status && prismaUpdateData.status !== UserStatus.active)
     ) {
       await sessionModel.revokeAllUserSessions(userIdNum)
@@ -630,10 +540,7 @@ const createUserByAdmin = async (
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
-      throw new ApiError(
-        StatusCodes.CONFLICT,
-        `Email "${userData.email}" đã được sử dụng`
-      )
+      throw new ApiError(StatusCodes.CONFLICT, `Email "${userData.email}" đã được sử dụng`)
     }
 
     const hashedPassword = await hashPassword(userData.password)
@@ -660,10 +567,8 @@ const createUserByAdmin = async (
       address: userData.address || undefined,
       dateOfBirth: userData.dateOfBirth ? new Date(userData.dateOfBirth) : null,
       gender: userData.gender || undefined,
-      status:
-        userData.status !== undefined ? userData.status : UserStatus.active,
-      emailVerified:
-        userData.emailVerified !== undefined ? userData.emailVerified : false,
+      status: userData.status !== undefined ? userData.status : UserStatus.active,
+      emailVerified: userData.emailVerified !== undefined ? userData.emailVerified : false,
       typeAccount: userData.typeAccount || AccountType.LOCAL
     })
 
@@ -678,20 +583,14 @@ const createUserByAdmin = async (
 /**
  * Xóa user
  */
-const deleteUser = async (
-  userId: string,
-  currentUserId: string
-): Promise<DeleteResultInfo> => {
+const deleteUser = async (userId: string, currentUserId: string): Promise<DeleteResultInfo> => {
   try {
     const userIdNum = parseUserId(userId)
     const currentUserIdNum = parseUserId(currentUserId)
 
     // Không cho phép xóa chính mình
     if (userIdNum === currentUserIdNum) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Bạn không thể xóa chính tài khoản của mình'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Bạn không thể xóa chính tài khoản của mình')
     }
 
     const existingUser = await userModel.findOneById(userIdNum)
@@ -713,48 +612,33 @@ const deleteUser = async (
 /**
  * Xóa nhiều users
  */
-const deleteMultipleUsers = async (
-  userIds: string[],
-  currentUserId: string
-): Promise<DeleteResultInfo> => {
+const deleteMultipleUsers = async (userIds: string[], currentUserId: string): Promise<DeleteResultInfo> => {
   try {
     if (!userIds || !Array.isArray(userIds) || userIds.length === 0) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Vui lòng chọn ít nhất một người dùng để xóa'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Vui lòng chọn ít nhất một người dùng để xóa')
     }
 
     // Parse all IDs
     const currentUserIdNum = parseUserId(currentUserId)
-    const numberIds = userIds.map((id) => {
+    const numberIds = userIds.map(id => {
       const num = parseInt(id, 10)
       if (isNaN(num)) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Một số người dùng được chọn không hợp lệ'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Một số người dùng được chọn không hợp lệ')
       }
       if (num === currentUserIdNum) {
-        throw new ApiError(
-          StatusCodes.BAD_REQUEST,
-          'Bạn không thể xóa chính tài khoản của mình trong danh sách'
-        )
+        throw new ApiError(StatusCodes.BAD_REQUEST, 'Bạn không thể xóa chính tài khoản của mình trong danh sách')
       }
 
-return num
+      return num
     })
 
     // Kiểm tra các user có tồn tại không
     const existingUsers = await userModel.findByIds(numberIds)
-    const existingIds = existingUsers.map((user) => user.id)
-    const notFoundIds = numberIds.filter((id) => !existingIds.includes(id))
+    const existingIds = existingUsers.map(user => user.id)
+    const notFoundIds = numberIds.filter(id => !existingIds.includes(id))
 
     if (notFoundIds.length > 0) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        'Một số người dùng không tồn tại. Vui lòng làm mới trang và thử lại.'
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Một số người dùng không tồn tại. Vui lòng làm mới trang và thử lại.')
     }
 
     const result = await userModel.deleteManyByIds(numberIds)
@@ -782,18 +666,12 @@ const activateUser = async (userId: string): Promise<UserResponseType> => {
     }
 
     if (existingUser.status === UserStatus.active) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Tài khoản đã được kích hoạt trước đó'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được kích hoạt trước đó')
     }
 
     const activatedUser = await userModel.activateUser(userIdNum)
     if (!activatedUser) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không thể kích hoạt tài khoản'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể kích hoạt tài khoản')
     }
 
     const { password: _password, ...userResponse } = activatedUser
@@ -818,25 +696,16 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
 
     // Check admin (roleId = 1)
     if (existingUser.roleId === ADMIN_ROLE_ID) {
-      throw new ApiError(
-        StatusCodes.FORBIDDEN,
-        'Không thể vô hiệu hóa tài khoản quản trị viên'
-      )
+      throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể vô hiệu hóa tài khoản quản trị viên')
     }
 
     if (existingUser.status === UserStatus.inactive) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Tài khoản đã bị vô hiệu hóa trước đó'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã bị vô hiệu hóa trước đó')
     }
 
     const deactivatedUser = await userModel.deactivateUser(userIdNum)
     if (!deactivatedUser) {
-      throw new ApiError(
-        StatusCodes.INTERNAL_SERVER_ERROR,
-        'Không thể vô hiệu hóa tài khoản'
-      )
+      throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Không thể vô hiệu hóa tài khoản')
     }
 
     // Revoke all sessions immediately
@@ -853,16 +722,11 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
 /**
  * Gửi email xác minh tài khoản
  */
-const sendVerificationEmail = async (
-  email: string
-): Promise<EmailVerificationResult> => {
+const sendVerificationEmail = async (email: string): Promise<EmailVerificationResult> => {
   try {
     const user = await userModel.findOneByEmail(email)
     if (!user) {
-      throw new ApiError(
-        StatusCodes.NOT_FOUND,
-        'Email không tồn tại trong hệ thống'
-      )
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Email không tồn tại trong hệ thống')
     }
 
     if (user.emailVerified) {
@@ -870,9 +734,7 @@ const sendVerificationEmail = async (
     }
 
     const verifyToken = JwtProvider.generateVerificationToken(email)
-    const verificationLink = `${WEBSITE_DOMAIN}/verify-account?email=${encodeURIComponent(
-      email
-    )}&token=${verifyToken}`
+    const verificationLink = `${WEBSITE_DOMAIN}/verify-account?email=${encodeURIComponent(email)}&token=${verifyToken}`
 
     const emailSubject = 'Xác minh tài khoản - Commerce Web'
     const emailContent = `
@@ -926,18 +788,12 @@ const sendVerificationEmail = async (
 /**
  * Xác minh tài khoản người dùng
  */
-const verifyUserAccount = async (
-  email: string,
-  token: string
-): Promise<VerifyAccountResult> => {
+const verifyUserAccount = async (email: string, token: string): Promise<VerifyAccountResult> => {
   try {
     const decoded = JwtProvider.verifyVerificationToken(token)
 
     if (decoded.email !== email) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Email không khớp với token xác minh'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email không khớp với token xác minh')
     }
 
     const user = await userModel.findOneByEmail(email)
@@ -946,10 +802,7 @@ const verifyUserAccount = async (
     }
 
     if (user.emailVerified) {
-      throw new ApiError(
-        StatusCodes.BAD_REQUEST,
-        'Tài khoản đã được xác minh trước đó'
-      )
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Tài khoản đã được xác minh trước đó')
     }
 
     const updatedUser = await userModel.update(user.id, {
@@ -973,6 +826,140 @@ const verifyUserAccount = async (
 }
 
 /**
+ * Gửi email quên mật khẩu
+ * - Luôn trả message chung để tránh lộ email có tồn tại hay không
+ */
+const forgotPassword = async (email: string): Promise<ForgotPasswordResult> => {
+  try {
+    const user = await userModel.findOneByEmail(email)
+
+    // Không tiết lộ email có tồn tại hay không
+    if (!user) {
+      return {
+        message: FORGOT_PASSWORD_GENERIC_MESSAGE,
+        expiresIn: '15 minutes'
+      }
+    }
+
+    const resetToken = JwtProvider.generatePasswordResetToken(email)
+    const decoded = JwtProvider.verifyPasswordResetToken(resetToken)
+
+    // Lưu uuid để enforce one-time token
+    await userModel.update(user.id, {
+      activationToken: decoded.uuid
+    })
+
+    const resetLink = `${WEBSITE_DOMAIN}/reset-password?email=${encodeURIComponent(
+      email
+    )}&token=${encodeURIComponent(resetToken)}`
+
+    const emailSubject = 'Đặt lại mật khẩu - Commerce Web'
+    const emailContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Đặt lại mật khẩu</title>
+        <style>
+          body { font-family: Arial, sans-serif; background-color: #f4f6f9; color: #333; margin: 0; padding: 0; }
+          .container { max-width: 600px; margin: 30px auto; background: #ffffff; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+          .header { background: linear-gradient(90deg, #007bff, #0056b3); color: #ffffff; text-align: center; padding: 30px 20px; }
+          .header h1 { margin: 0; font-size: 24px; }
+          .content { padding: 30px 25px; line-height: 1.6; }
+          .content h2 { margin-top: 0; color: #007bff; font-size: 20px; }
+          .button { display: inline-block; background: #007bff; color: #ffffff !important; padding: 14px 35px; text-decoration: none; border-radius: 6px; font-size: 16px; margin: 20px 0; }
+          .link-box { background: #f1f3f5; padding: 12px; border-radius: 6px; font-size: 14px; word-break: break-all; }
+          .footer { text-align: center; font-size: 12px; color: #666; padding: 20px; border-top: 1px solid #eaeaea; background: #fafafa; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header"><h1>Yêu cầu đặt lại mật khẩu</h1></div>
+          <div class="content">
+            <h2>Xin chào,</h2>
+            <p>Bạn vừa yêu cầu đặt lại mật khẩu cho tài khoản trên <strong>Commerce Web</strong>.</p>
+            <p>Nhấp vào nút bên dưới để đặt lại mật khẩu:</p>
+            <div style="text-align: center;"><a href="${resetLink}" class="button">Đặt lại mật khẩu</a></div>
+            <p>Nếu nút không hoạt động, sao chép link sau vào trình duyệt:</p>
+            <div class="link-box">${resetLink}</div>
+            <p><strong>Lưu ý:</strong> Link có hiệu lực trong 15 phút và chỉ dùng được 1 lần.</p>
+            <p>Nếu bạn không thực hiện yêu cầu này, hãy bỏ qua email.</p>
+          </div>
+          <div class="footer"><p>© ${new Date().getFullYear()} Commerce Web. Mọi quyền được bảo lưu.</p></div>
+        </div>
+      </body>
+      </html>
+    `
+
+    await BrevoProvider.sendEmail(email, emailSubject, emailContent)
+
+    return {
+      message: FORGOT_PASSWORD_GENERIC_MESSAGE,
+      expiresIn: '15 minutes'
+    }
+  } catch (error) {
+    // Không lộ thông tin chi tiết cho client ở luồng quên mật khẩu.
+    // Log nội bộ để theo dõi lỗi vận hành (email provider, db, v.v.).
+    console.error('❌ forgotPassword internal error:', (error as Error).message)
+
+    return {
+      message: FORGOT_PASSWORD_GENERIC_MESSAGE,
+      expiresIn: '15 minutes'
+    }
+  }
+}
+
+/**
+ * Đặt lại mật khẩu bằng reset token
+ */
+const resetPassword = async (resetData: ResetPasswordInput): Promise<ResetPasswordResult> => {
+  try {
+    const { email, token, newPassword } = resetData
+    const decoded = JwtProvider.verifyPasswordResetToken(token)
+
+    if (decoded.email !== email) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Email không khớp với token đặt lại mật khẩu')
+    }
+
+    const user = await userModel.findOneByEmail(email)
+    if (!user) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Link đặt lại mật khẩu không hợp lệ hoặc đã hết hạn')
+    }
+
+    // Enforce one-time token qua uuid đã lưu trong activationToken
+    if (!user.activationToken || user.activationToken !== decoded.uuid) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Link đặt lại mật khẩu không hợp lệ hoặc đã được sử dụng')
+    }
+
+    const hashedNewPassword = await hashPassword(newPassword)
+
+    const updateData: { password: string; activationToken: null; typeAccount?: AccountType } = {
+      password: hashedNewPassword,
+      activationToken: null
+    }
+
+    // Nếu OAuth user lần đầu set password qua reset flow
+    if (
+      (user.typeAccount === AccountType.GOOGLE && user.password === 'GOOGLE-AUTH1*#') ||
+      (user.typeAccount === AccountType.FACEBOOK && user.password === 'FACEBOOK-AUTH1*#')
+    ) {
+      updateData.typeAccount = AccountType.LOCAL
+    }
+
+    await userModel.update(user.id, updateData)
+
+    // Thu hồi toàn bộ sessions cũ sau khi reset password
+    await sessionModel.revokeAllUserSessions(user.id)
+
+    return {
+      message: 'Đặt lại mật khẩu thành công. Vui lòng đăng nhập lại.'
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+/**
  * Change user role (Admin only)
  * Không cho phép thay đổi role của chính mình hoặc của admin khác
  */
@@ -989,10 +976,7 @@ const changeUserRole = async (
 
   // Không cho thay đổi role của chính mình
   if (targetId === currentId) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Bạn không thể thay đổi role của chính mình'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Bạn không thể thay đổi role của chính mình')
   }
 
   // Kiểm tra user tồn tại
@@ -1009,10 +993,7 @@ const changeUserRole = async (
 
   // Không cho thay đổi role của admin khác (bảo vệ admin)
   if (user.roleId === ADMIN_ROLE_ID && newRoleId !== ADMIN_ROLE_ID) {
-    throw new ApiError(
-      StatusCodes.FORBIDDEN,
-      'Không thể thay đổi role của admin khác'
-    )
+    throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể thay đổi role của admin khác')
   }
 
   // Cập nhật role
@@ -1048,5 +1029,7 @@ export const userService = {
   comparePassword,
   sendVerificationEmail,
   verifyUserAccount,
+  forgotPassword,
+  resetPassword,
   changeUserRole
 }

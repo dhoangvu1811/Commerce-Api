@@ -35,6 +35,15 @@ export interface VerificationTokenPayload extends JwtPayloadBase {
 }
 
 /**
+ * Payload cho Password Reset Token
+ */
+export interface PasswordResetTokenPayload extends JwtPayloadBase {
+  email: string
+  type: 'password_reset'
+  uuid: string
+}
+
+/**
  * User data cần thiết để tạo token
  */
 export interface TokenUserData {
@@ -58,4 +67,6 @@ export interface IJwtProvider {
   decodeToken: (token: string) => JwtPayload | null
   generateVerificationToken: (email: string) => string
   verifyVerificationToken: (token: string) => VerificationTokenPayload
+  generatePasswordResetToken: (email: string) => string
+  verifyPasswordResetToken: (token: string) => PasswordResetTokenPayload
 }

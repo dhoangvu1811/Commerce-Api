@@ -14,6 +14,7 @@ import type {
   AccessTokenPayload,
   RefreshTokenPayload,
   VerificationTokenPayload,
+  PasswordResetTokenPayload,
   TokenUserData
 } from '~/types/jwt.types.js'
 
@@ -168,6 +169,48 @@ const verifyVerificationToken = (token: string): VerificationTokenPayload => {
 }
 
 /**
+ * Tạo password reset token
+ * @param {string} email - Email cần reset mật khẩu
+ * @returns {string} Password Reset Token
+ */
+const generatePasswordResetToken = (email: string): string => {
+  const payload: PasswordResetTokenPayload = {
+    email,
+    type: 'password_reset',
+    uuid: uuidv4()
+  }
+
+  // Token reset password có hiệu lực ngắn để giảm rủi ro lộ link
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: '15m' })
+}
+
+/**
+ * Xác minh password reset token
+ * @param {string} token - Token cần xác minh
+ * @returns {PasswordResetTokenPayload} Payload đã decode
+ * @throws {ApiError} Nếu token không hợp lệ hoặc hết hạn
+ */
+const verifyPasswordResetToken = (token: string): PasswordResetTokenPayload => {
+  try {
+    const decoded = jwt.verify(
+      token,
+      env.JWT_ACCESS_SECRET
+    ) as PasswordResetTokenPayload
+
+    if (decoded.type !== 'password_reset') {
+      throw new Error('Invalid token type')
+    }
+
+    return decoded
+  } catch {
+    throw new ApiError(
+      StatusCodes.BAD_REQUEST,
+      'Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn'
+    )
+  }
+}
+
+/**
  * JWT Provider object chứa các methods
  */
 export const JwtProvider = {
@@ -179,5 +222,7 @@ export const JwtProvider = {
   verifyRefreshTokenIgnoreExpiration,
   decodeToken,
   generateVerificationToken,
-  verifyVerificationToken
+  verifyVerificationToken,
+  generatePasswordResetToken,
+  verifyPasswordResetToken
 }

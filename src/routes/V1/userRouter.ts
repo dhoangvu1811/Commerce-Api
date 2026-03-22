@@ -17,18 +17,8 @@ import { PERMISSIONS } from '~/constants/rbac.js'
 const RouterInstance: Router = express.Router()
 
 // Public routes - không cần xác thực (với rate limiting để bảo vệ khỏi brute force)
-RouterInstance.post(
-  '/register',
-  authLimiter,
-  userValidation.register,
-  userController.register
-)
-RouterInstance.post(
-  '/login',
-  authLimiter,
-  userValidation.login,
-  userController.login
-)
+RouterInstance.post('/register', authLimiter, userValidation.register, userController.register)
+RouterInstance.post('/login', authLimiter, userValidation.login, userController.login)
 RouterInstance.post('/refresh-token', userController.refreshToken)
 
 // Email verification routes (với rate limiting chặt hơn)
@@ -38,17 +28,12 @@ RouterInstance.post(
   userValidation.sendVerificationEmail,
   userController.sendVerificationEmail
 )
-RouterInstance.get(
-  '/verify-account',
-  userValidation.verifyUserAccount,
-  userController.verifyUserAccount
-)
+RouterInstance.get('/verify-account', userValidation.verifyUserAccount, userController.verifyUserAccount)
+RouterInstance.post('/forgot-password', emailLimiter, userValidation.forgotPassword, userController.forgotPassword)
+RouterInstance.post('/reset-password', emailLimiter, userValidation.resetPassword, userController.resetPassword)
 
 // Google OAuth routes
-RouterInstance.get(
-  '/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-)
+RouterInstance.get('/auth/google', passport.authenticate('google', { scope: ['profile', 'email'] }))
 
 RouterInstance.get(
   '/auth/google/callback',
@@ -64,10 +49,7 @@ RouterInstance.get(
 RouterInstance.get('/auth/google/failure', userController.googleOAuthFailure)
 
 // Facebook OAuth routes
-RouterInstance.get(
-  '/auth/facebook',
-  passport.authenticate('facebook', { scope: ['email'] })
-)
+RouterInstance.get('/auth/facebook', passport.authenticate('facebook', { scope: ['email'] }))
 
 RouterInstance.get(
   '/auth/facebook/callback',
@@ -80,17 +62,10 @@ RouterInstance.get(
 )
 
 // Explicit Facebook failure route
-RouterInstance.get(
-  '/auth/facebook/failure',
-  userController.facebookOAuthFailure
-)
+RouterInstance.get('/auth/facebook/failure', userController.facebookOAuthFailure)
 
 // Logout route - sử dụng middleware đặc biệt cho phép logout ngay cả khi AT hết hạn
-RouterInstance.post(
-  '/logout',
-  authMiddleware.verifyTokenForLogout,
-  userController.logout
-)
+RouterInstance.post('/logout', authMiddleware.verifyTokenForLogout, userController.logout)
 
 // Protected routes - cần xác thực
 RouterInstance.use(authMiddleware.verifyToken)
@@ -100,11 +75,7 @@ RouterInstance.use(authMiddleware.verifySession) // Kiểm tra session có còn 
 RouterInstance.get('/me', userController.getCurrentUser)
 
 // Admin routes - requires manage_users permission
-RouterInstance.get(
-  '/all',
-  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
-  userController.getUsers
-)
+RouterInstance.get('/all', authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS), userController.getUsers)
 
 // Lấy users với session summary cho table overview
 RouterInstance.get(
@@ -120,11 +91,7 @@ RouterInstance.post(
   userController.createUserByAdmin
 )
 
-RouterInstance.get(
-  '/details/:id',
-  authMiddleware.verifyUserOwnership,
-  userController.getDetails
-)
+RouterInstance.get('/details/:id', authMiddleware.verifyUserOwnership, userController.getDetails)
 
 RouterInstance.put(
   '/update/:id',
@@ -201,24 +168,12 @@ RouterInstance.put(
   userValidation.updateUser,
   userController.updateCurrentUser
 )
-RouterInstance.put(
-  '/me/password',
-  userValidation.updatePassword,
-  userController.updatePassword
-)
-RouterInstance.post(
-  '/upload-avatar',
-  multerUploadMiddleware.upload.single('avatar'),
-  userController.uploadAvatar
-)
+RouterInstance.put('/me/password', userValidation.updatePassword, userController.updatePassword)
+RouterInstance.post('/upload-avatar', multerUploadMiddleware.upload.single('avatar'), userController.uploadAvatar)
 
 // Session management routes - User quản lý sessions của chính mình
 RouterInstance.get('/my-sessions', userController.getCurrentUserSessions)
 
-RouterInstance.post(
-  '/revoke-my-session',
-  userValidation.revokeMySession,
-  userController.revokeMySession
-)
+RouterInstance.post('/revoke-my-session', userValidation.revokeMySession, userController.revokeMySession)
 
 export const userRoute = RouterInstance
