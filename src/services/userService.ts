@@ -39,10 +39,29 @@ import type {
 } from '~/types/user.types.js'
 import type { UploadResult, DeleteResultInfo } from '~/types/common.types.js'
 
-// Default role ID for regular users (seeded in database)
-const DEFAULT_USER_ROLE_ID = 2 // 'user' role
-const ADMIN_ROLE_ID = 1 // 'admin' role
 const FORGOT_PASSWORD_GENERIC_MESSAGE = 'Nếu email tồn tại trong hệ thống, chúng tôi đã gửi hướng dẫn đặt lại mật khẩu.'
+
+const ROLE_NAMES = {
+  ADMIN: 'admin',
+  USER: 'user'
+} as const
+
+const roleIdCache = new Map<string, number>()
+
+const getRoleIdByName = async (roleName: string): Promise<number> => {
+  if (roleIdCache.has(roleName)) {
+    return roleIdCache.get(roleName) as number
+  }
+
+  const role = await prisma.role.findFirst({ where: { name: roleName } })
+  if (!role) {
+    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, `Role "${roleName}" chưa được seed trong database`)
+  }
+
+  roleIdCache.set(roleName, role.id)
+
+  return role.id
+}
 
 /**
  * Parse userId string to number
@@ -77,6 +96,8 @@ const comparePassword = async (password: string, hashedPassword: string): Promis
  */
 const register = async (userData: RegisterInput): Promise<UserResponseType> => {
   try {
+    const defaultUserRoleId = await getRoleIdByName(ROLE_NAMES.USER)
+
     // Kiểm tra email đã tồn tại chưa
     const existingUser = await userModel.findOneByEmail(userData.email)
 
@@ -92,7 +113,7 @@ const register = async (userData: RegisterInput): Promise<UserResponseType> => {
       name: userData.name,
       email: userData.email,
       password: hashedPassword,
-      roleId: DEFAULT_USER_ROLE_ID,
+      roleId: defaultUserRoleId,
       typeAccount: AccountType.LOCAL,
       status: UserStatus.inactive
     })
@@ -537,6 +558,8 @@ const createUserByAdmin = async (
   }
 ): Promise<UserResponseType> => {
   try {
+    const defaultUserRoleId = await getRoleIdByName(ROLE_NAMES.USER)
+
     const existingUser = await userModel.findOneByEmail(userData.email)
 
     if (existingUser) {
@@ -546,7 +569,7 @@ const createUserByAdmin = async (
     const hashedPassword = await hashPassword(userData.password)
 
     // Get roleId (priority: roleId > role name > default)
-    let roleId = DEFAULT_USER_ROLE_ID
+    let roleId = defaultUserRoleId
     if (userData.roleId) {
       roleId = userData.roleId
     } else if (userData.role) {
@@ -687,6 +710,7 @@ const activateUser = async (userId: string): Promise<UserResponseType> => {
  */
 const deactivateUser = async (userId: string): Promise<UserResponseType> => {
   try {
+    const adminRoleId = await getRoleIdByName(ROLE_NAMES.ADMIN)
     const userIdNum = parseUserId(userId)
 
     const existingUser = await userModel.findOneById(userIdNum)
@@ -694,8 +718,8 @@ const deactivateUser = async (userId: string): Promise<UserResponseType> => {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy người dùng')
     }
 
-    // Check admin (roleId = 1)
-    if (existingUser.roleId === ADMIN_ROLE_ID) {
+    // Check admin role theo role name đã resolve từ DB
+    if (existingUser.roleId === adminRoleId) {
       throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể vô hiệu hóa tài khoản quản trị viên')
     }
 
@@ -971,6 +995,7 @@ const changeUserRole = async (
   user: UserResponseType
   newRole: { id: number; name: string }
 }> => {
+  const adminRoleId = await getRoleIdByName(ROLE_NAMES.ADMIN)
   const targetId = parseUserId(targetUserId)
   const currentId = parseUserId(currentUserId)
 
@@ -992,7 +1017,7 @@ const changeUserRole = async (
   }
 
   // Không cho thay đổi role của admin khác (bảo vệ admin)
-  if (user.roleId === ADMIN_ROLE_ID && newRoleId !== ADMIN_ROLE_ID) {
+  if (user.roleId === adminRoleId && newRoleId !== adminRoleId) {
     throw new ApiError(StatusCodes.FORBIDDEN, 'Không thể thay đổi role của admin khác')
   }
 

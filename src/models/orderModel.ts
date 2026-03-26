@@ -14,7 +14,9 @@ import {
   OrderStatus,
   PaymentStatus
 } from '@prisma/client'
-import type { DecimalType as Decimal, PaymentMethod, VoucherType, Prisma } from '@prisma/client'
+import type { PaymentMethod, VoucherType, Prisma } from '@prisma/client'
+
+type Decimal = Prisma.Decimal
 
 /** Export types từ Prisma */
 export type { Order, OrderItem, OrderLog, OrderVoucher, ShippingAddress }

@@ -4,8 +4,10 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Voucher, Prisma, DecimalType as Decimal } from '@prisma/client'
+import type { Voucher, Prisma } from '@prisma/client'
 import type { VoucherType } from '@prisma/client'
+
+type Decimal = Prisma.Decimal
 
 /** Voucher type export từ Prisma */
 export type { Voucher }

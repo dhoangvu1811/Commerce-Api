@@ -4,7 +4,9 @@
  */
 
 import { prisma } from '~/config/prisma.js'
-import type { Product, Prisma, DecimalType as Decimal } from '@prisma/client'
+import type { Product, Prisma } from '@prisma/client'
+
+type Decimal = Prisma.Decimal
 
 /** Product type export từ Prisma */
 export type { Product }

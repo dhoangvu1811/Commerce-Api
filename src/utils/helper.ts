@@ -362,11 +362,14 @@ export const canMarkPaid = (
 
 import slugifyLib from 'slugify'
 
+type SlugifyFn = (input: string, options?: { lower?: boolean; locale?: string; remove?: RegExp }) => string
+const slugifyFn = slugifyLib as unknown as SlugifyFn
+
 /**
  * Chuyển đổi string thành slug sử dụng thư viện slugify
  */
 export const slugify = (text: string): string => {
-  return slugifyLib(text, {
+  return slugifyFn(text, {
     lower: true, // convert to lower case
     locale: 'vi', // language code of the locale to use
     remove: /[*+~.()'"!:@]/g // remove characters that match regex, defaults to `undefined`
