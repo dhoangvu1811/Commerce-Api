@@ -323,7 +323,7 @@ const sendContact = async (data: ContactPayload): Promise<ContactSubmitResult> =
   let emailNotificationSent = false
   let autoReplySent = false
 
-  const adminEmail = env.ADMIN_EMAIL_ADDRESS
+  const adminEmail = env.ADMIN_NOTIFICATION_EMAIL
 
   if (adminEmail) {
     try {
@@ -333,7 +333,8 @@ const sendContact = async (data: ContactPayload): Promise<ContactSubmitResult> =
       await BrevoProvider.sendEmail(
         adminEmail,
         `[CONTACT] ${safeSubjectName} - ${safeSubjectEmail}`,
-        buildAdminEmailTemplate(data)
+        buildAdminEmailTemplate(data),
+        { replyTo: data.email }
       )
       emailNotificationSent = true
     } catch (error) {
@@ -341,7 +342,7 @@ const sendContact = async (data: ContactPayload): Promise<ContactSubmitResult> =
       logContactEmailError('admin-notification', adminEmail, error)
     }
   } else {
-    process.stderr.write('[ContactService] ADMIN_EMAIL_ADDRESS is empty, admin notification email skipped.\n')
+    process.stderr.write('[ContactService] ADMIN_NOTIFICATION_EMAIL is empty, admin notification email skipped.\n')
   }
 
   try {

@@ -23,15 +23,18 @@ apiInstance.setApiKey(0, env.BREVO_API_KEY)
 const sendEmail = async (
   recipientEmail: string,
   customSubject: string,
-  customHtmlContent: string
+  customHtmlContent: string,
+  options?: {
+    replyTo?: string
+  }
 ): Promise<BrevoEmailResult> => {
   // Khởi tạo SendSmtpEmail với thông tin cần thiết
   const sendSmtpEmail = new SendSmtpEmail()
 
   // Tài khoản gửi mail
   sendSmtpEmail.sender = {
-    email: env.ADMIN_EMAIL_ADDRESS,
-    name: env.ADMIN_EMAIL_NAME
+    email: env.BREVO_SENDER_EMAIL,
+    name: env.BREVO_SENDER_NAME
   }
 
   // Những tài khoản nhận mail
@@ -42,6 +45,10 @@ const sendEmail = async (
 
   // Nội dung email
   sendSmtpEmail.htmlContent = customHtmlContent
+
+  if (options?.replyTo) {
+    sendSmtpEmail.replyTo = { email: options.replyTo }
+  }
 
   // Gọi hành động gửi mail - result có body.messageId
   const result = await apiInstance.sendTransacEmail(sendSmtpEmail)
