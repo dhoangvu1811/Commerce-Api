@@ -14,6 +14,7 @@ export type BuildMode = 'dev' | 'production'
 export interface EnvironmentConfig {
   // PostgreSQL
   DATABASE_URL: string
+  DATABASE_DIRECT_URL: string
 
   // App
   LOCAL_DEV_APP_HOST: string

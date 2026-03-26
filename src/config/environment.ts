@@ -12,6 +12,7 @@ import type { EnvironmentVariables } from '~/types/environment.types.js'
 export const env: EnvironmentVariables = {
   // PostgreSQL
   DATABASE_URL: process.env.DATABASE_URL || '',
+  DATABASE_DIRECT_URL: process.env.DATABASE_DIRECT_URL || '',
 
   // App Configuration
   LOCAL_DEV_APP_HOST: process.env.LOCAL_DEV_APP_HOST || 'localhost',

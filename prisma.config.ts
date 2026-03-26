@@ -3,12 +3,17 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+const processEnv = (globalThis as {
+  process?: { env?: Record<string, string | undefined> };
+}).process?.env ?? {};
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Ưu tiên direct URL cho Prisma CLI/migrations để tránh issue với pooler.
+    url: processEnv["DATABASE_DIRECT_URL"] ?? processEnv["DATABASE_URL"],
   },
 });
