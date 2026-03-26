@@ -32,8 +32,9 @@ export const env: EnvironmentVariables = {
 
   // Brevo Email
   BREVO_API_KEY: process.env.BREVO_API_KEY || '',
-  ADMIN_EMAIL_ADDRESS: process.env.ADMIN_EMAIL_ADDRESS || '',
-  ADMIN_EMAIL_NAME: process.env.ADMIN_EMAIL_NAME || '',
+  BREVO_SENDER_EMAIL: process.env.BREVO_SENDER_EMAIL || process.env.ADMIN_EMAIL_ADDRESS || '',
+  BREVO_SENDER_NAME: process.env.BREVO_SENDER_NAME || process.env.ADMIN_EMAIL_NAME || '',
+  ADMIN_NOTIFICATION_EMAIL: process.env.ADMIN_NOTIFICATION_EMAIL || process.env.ADMIN_EMAIL_ADDRESS || '',
 
   // Website Domains
   WEBSITE_DOMAIN_DEVELOPMENT: process.env.WEBSITE_DOMAIN_DEVELOPMENT || 'http://localhost:5173',
@@ -41,6 +42,18 @@ export const env: EnvironmentVariables = {
 
   // CORS
   CORS_WHITELIST: process.env.CORS_WHITELIST || '',
+
+  // GHN Shipping
+  GHN_API_BASE_URL: process.env.GHN_API_BASE_URL || 'https://online-gateway.ghn.vn/shiip/public-api',
+  GHN_TOKEN: process.env.GHN_TOKEN || '',
+  GHN_SHOP_ID: Number(process.env.GHN_SHOP_ID) || 0,
+  GHN_FROM_DISTRICT_ID: Number(process.env.GHN_FROM_DISTRICT_ID) || 0,
+  GHN_FROM_WARD_ID: process.env.GHN_FROM_WARD_ID || '',
+  GHN_DEFAULT_WEIGHT: process.env.GHN_DEFAULT_WEIGHT || '500',
+  GHN_DEFAULT_LENGTH: process.env.GHN_DEFAULT_LENGTH || '20',
+  GHN_DEFAULT_WIDTH: process.env.GHN_DEFAULT_WIDTH || '15',
+  GHN_DEFAULT_HEIGHT: process.env.GHN_DEFAULT_HEIGHT || '5',
+  GHN_FALLBACK_FEE: process.env.GHN_FALLBACK_FEE || '25000',
 
   // Google OAuth
   GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',

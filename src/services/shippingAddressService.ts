@@ -17,6 +17,17 @@ import { prisma } from '~/config/prisma.js'
  * Tạo địa chỉ mới
  */
 const createNew = async (userId: number, data: Omit<CreateAddressInput, 'userId'>): Promise<ShippingAddress> => {
+  const normalizedDistrict = typeof data.district === 'string' ? data.district.trim() : ''
+  const normalizedProvince = typeof data.province === 'string' ? data.province.trim() : ''
+
+  if (!normalizedDistrict) {
+    throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Tên Quận/Huyện là bắt buộc')
+  }
+
+  if (!normalizedProvince) {
+    throw new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Tên Tỉnh/Thành là bắt buộc')
+  }
+
   // Check limit (ví dụ max 10 addresses)
   const count = await shippingAddressModel.countByUserId(userId)
   if (count >= 10) {
@@ -40,8 +51,17 @@ const createNew = async (userId: number, data: Omit<CreateAddressInput, 'userId'
       // Create new
       return await tx.shippingAddress.create({
         data: {
-          ...data,
           userId,
+          fullName: data.fullName,
+          phone: data.phone,
+          addressLine: data.addressLine,
+          fullAddress: data.fullAddress,
+          provinceId: data.provinceId,
+          districtId: data.districtId,
+          district: normalizedDistrict,
+          province: normalizedProvince,
+          wardCode: data.wardCode,
+          ward: data.ward,
           postalCode: data.postalCode ?? null,
           isDefault: true
         }
@@ -50,7 +70,12 @@ const createNew = async (userId: number, data: Omit<CreateAddressInput, 'userId'
   }
 
   // Normal create
-  return await shippingAddressModel.createNew({ ...data, userId })
+  return await shippingAddressModel.createNew({
+    ...data,
+    district: normalizedDistrict,
+    province: normalizedProvince,
+    userId
+  })
 }
 
 /**
@@ -131,14 +156,29 @@ const updateAddress = async (userId: number, addressId: number, data: UpdateAddr
       }
 
       // 4. Create new
+      const oldAddress = address as ShippingAddress & {
+        addressLine?: string
+        fullAddress?: string
+        provinceId?: number
+        districtId?: number
+        district?: string
+        wardCode?: string
+        ward?: string
+      }
+
       const newAddress = await tx.shippingAddress.create({
         data: {
           userId,
           fullName: data.fullName || address.fullName,
           phone: data.phone || address.phone,
-          address: data.address || address.address,
-          city: data.city || address.city,
+          addressLine: data.addressLine || oldAddress.addressLine || address.addressLine,
+          fullAddress: data.fullAddress || oldAddress.fullAddress || address.fullAddress,
+          provinceId: data.provinceId || oldAddress.provinceId || 0,
+          districtId: data.districtId || oldAddress.districtId || 0,
+          district: data.district || oldAddress.district || address.district,
           province: data.province || address.province,
+          wardCode: data.wardCode || oldAddress.wardCode || '',
+          ward: data.ward || oldAddress.ward || '',
           postalCode: data.postalCode ?? address.postalCode,
           isActive: true,
           isDefault: effectiveIsDefault
@@ -168,7 +208,11 @@ const updateAddress = async (userId: number, addressId: number, data: UpdateAddr
   }
 
   // Normal update
-  const updated = await shippingAddressModel.update(addressId, data)
+  const updatePayload: UpdateAddressInput = {
+    ...data
+  }
+
+  const updated = await shippingAddressModel.update(addressId, updatePayload)
   if (!updated) {
     throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Cập nhật thất bại')
   }

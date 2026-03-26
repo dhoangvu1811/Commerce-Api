@@ -13,9 +13,14 @@ export interface CreateAddressInput {
   userId: number
   fullName: string
   phone: string
-  address: string
-  city: string
+  addressLine: string
+  fullAddress: string
+  provinceId: number
+  districtId: number
+  district: string
   province: string
+  wardCode: string
+  ward: string
   postalCode?: string
   isDefault?: boolean
 }
@@ -24,9 +29,14 @@ export interface CreateAddressInput {
 export interface UpdateAddressInput {
   fullName?: string
   phone?: string
-  address?: string
-  city?: string
+  addressLine?: string
+  fullAddress?: string
+  provinceId?: number
+  districtId?: number
+  district?: string
   province?: string
+  wardCode?: string
+  ward?: string
   postalCode?: string
   isDefault?: boolean
 }
@@ -41,9 +51,14 @@ const createNew = async (data: CreateAddressInput): Promise<ShippingAddress> => 
     data: {
       userId: data.userId,
       fullName: data.fullName,
+      addressLine: data.addressLine,
+      fullAddress: data.fullAddress,
+      provinceId: data.provinceId,
+      districtId: data.districtId,
+      district: data.district,
+      wardCode: data.wardCode,
+      ward: data.ward,
       phone: data.phone,
-      address: data.address,
-      city: data.city,
       province: data.province,
       postalCode: data.postalCode ?? null,
       isDefault: data.isDefault ?? false
