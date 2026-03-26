@@ -247,8 +247,11 @@ pnpm clean         # Xoá thư mục dist
 | `CLOUDINARY_API_KEY` | Cloudinary API key | ✅ |
 | `CLOUDINARY_API_SECRET` | Cloudinary API secret | ✅ |
 | `BREVO_API_KEY` | Brevo transactional email API key | ✅ |
-| `ADMIN_EMAIL_ADDRESS` | Email sender address | ✅ |
-| `ADMIN_EMAIL_NAME` | Email sender display name | |
+| `BREVO_SENDER_EMAIL` | Email sender address đã verify trên Brevo | ✅ |
+| `BREVO_SENDER_NAME` | Email sender display name | |
+| `ADMIN_NOTIFICATION_EMAIL` | Email nhận thông báo contact từ khách | ✅ |
+| `ADMIN_EMAIL_ADDRESS` | Biến cũ, fallback tương thích ngược | |
+| `ADMIN_EMAIL_NAME` | Biến cũ, fallback tương thích ngược | |
 | `GOOGLE_CLIENT_ID` | Google OAuth client ID | |
 | `GOOGLE_CLIENT_SECRET` | Google OAuth client secret | |
 | `GOOGLE_CALLBACK_URL` | Google OAuth callback URL | |
