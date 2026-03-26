@@ -44,8 +44,9 @@ export interface EnvironmentConfig {
 
   // Brevo Email
   BREVO_API_KEY: string
-  ADMIN_EMAIL_ADDRESS: string
-  ADMIN_EMAIL_NAME: string
+  BREVO_SENDER_EMAIL: string
+  BREVO_SENDER_NAME: string
+  ADMIN_NOTIFICATION_EMAIL: string
 
   // Website domains
   WEBSITE_DOMAIN_DEVELOPMENT: string
@@ -53,6 +54,18 @@ export interface EnvironmentConfig {
 
   // CORS
   CORS_WHITELIST: string
+
+  // GHN Shipping
+  GHN_API_BASE_URL: string
+  GHN_TOKEN: string
+  GHN_SHOP_ID: number
+  GHN_FROM_DISTRICT_ID: number
+  GHN_FROM_WARD_ID: string
+  GHN_DEFAULT_WEIGHT: string
+  GHN_DEFAULT_LENGTH: string
+  GHN_DEFAULT_WIDTH: string
+  GHN_DEFAULT_HEIGHT: string
+  GHN_FALLBACK_FEE: string
 }
 
 /**

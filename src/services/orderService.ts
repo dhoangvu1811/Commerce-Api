@@ -13,6 +13,7 @@ import { productModel } from '~/models/productModel.js'
 import { voucherModel } from '~/models/voucherModel.js'
 import { userModel } from '~/models/userModel.js'
 import { notificationService } from '~/services/notificationService.js'
+import { ghnService } from '~/services/ghnService.js'
 import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
 import type { VoucherType, Prisma } from '@prisma/client'
 import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client'
@@ -82,9 +83,15 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
       id: order.shippingAddress?.id,
       name: order.shippingAddress?.fullName || '',
       phone: order.shippingAddress?.phone || '',
-      address: order.shippingAddress?.address || '',
-      city: order.shippingAddress?.city || '',
+      addressLine: order.shippingAddress?.addressLine || '',
+      address: order.shippingAddress?.addressLine || '',
+      fullAddress: order.shippingAddress?.fullAddress || '',
+      provinceId: order.shippingAddress?.provinceId,
+      districtId: order.shippingAddress?.districtId,
+      district: order.shippingAddress?.district || '',
       province: order.shippingAddress?.province || '',
+      wardCode: order.shippingAddress?.wardCode || undefined,
+      ward: order.shippingAddress?.ward || undefined,
       postalCode: order.shippingAddress?.postalCode || undefined,
       isDefault: order.shippingAddress?.isDefault
     },
@@ -156,7 +163,24 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
   try {
     const userIdNum = parseId(userId, 'User ID')
 
-    const { items, voucherCode, shippingAddress, shippingFee = 0, paymentMethod = '' } = payload || {}
+    const { items, voucherCode, shippingAddressId, shippingServiceId, paymentMethod = '' } = payload || {}
+    const shippingAddressIdNum = Number(shippingAddressId)
+
+    if (!shippingAddressIdNum || Number.isNaN(shippingAddressIdNum)) {
+      throw new ApiError(StatusCodes.BAD_REQUEST, 'Địa chỉ giao hàng không hợp lệ')
+    }
+
+    const userShippingAddress = await prisma.shippingAddress.findFirst({
+      where: {
+        id: shippingAddressIdNum,
+        userId: userIdNum,
+        isActive: true
+      }
+    })
+
+    if (!userShippingAddress) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy địa chỉ giao hàng')
+    }
 
     // 1) Merge duplicate productIds
     const itemsMap = new Map<string, PayloadOrderItem>()
@@ -257,8 +281,21 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
       }
     }
 
-    // 6) Tính tổng thanh toán
-    const shipping = Number(shippingFee || 0)
+    // 6) Tính phí vận chuyển từ GHN (server-side source of truth)
+    const estimatedWeight = Math.max(
+      500,
+      orderItems.reduce((sum, item) => sum + item.quantity * 200, 0)
+    )
+
+    const shippingQuote = await ghnService.quoteFee({
+      toDistrictId: userShippingAddress.districtId,
+      toWardCode: userShippingAddress.wardCode,
+      serviceId: shippingServiceId,
+      insuranceValue: Math.max(0, Math.round(subtotal - discountValue)),
+      weight: estimatedWeight
+    })
+
+    const shipping = Number(shippingQuote.totalFee || 0)
     if (shipping < 0 || shipping > MAX_SHIPPING_FEE) {
       throw new ApiError(StatusCodes.BAD_REQUEST, 'Phí vận chuyển không hợp lệ.')
     }
@@ -266,50 +303,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
 
     // 7) Execute all operations in a Prisma transaction
     const created = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-      // 7.1) Create or find shipping address (inside transaction)
-      let shippingAddressId: number
-
-      // Check if user has existing active address matching form data
-      // isActive: true → không dùng địa chỉ đã archive (bị Copy-on-Write)
-      // province included → tránh nhầm địa chỉ cùng tên/phone khác tỉnh/thành
-      const existingAddress = await tx.shippingAddress.findFirst({
-        where: {
-          userId: userIdNum,
-          isActive: true,
-          fullName: shippingAddress.name,
-          phone: shippingAddress.phone,
-          address: shippingAddress.address,
-          city: shippingAddress.city,
-          province: shippingAddress.province || ''
-        }
-      })
-
-      if (existingAddress) {
-        shippingAddressId = existingAddress.id
-      } else {
-        // Kiểm tra user có địa chỉ nào chưa để quyết định isDefault
-        // Nếu đây là địa chỉ đầu tiên → tự động set làm default
-        // (logic này bypass shippingAddressService.createNew nên phải tự xử lý)
-        const activeAddressCount = await tx.shippingAddress.count({
-          where: { userId: userIdNum, isActive: true }
-        })
-
-        const newAddress = await tx.shippingAddress.create({
-          data: {
-            userId: userIdNum,
-            fullName: shippingAddress.name,
-            phone: shippingAddress.phone,
-            address: shippingAddress.address,
-            city: shippingAddress.city,
-            province: shippingAddress.province || '',
-            postalCode: shippingAddress.postalCode || null,
-            isDefault: activeAddressCount === 0
-          }
-        })
-        shippingAddressId = newAddress.id
-      }
-
-      // 7.2) Reserve stock atomically using model method
+      // 7.1) Reserve stock atomically using model method
       for (const item of orderItems) {
         const decrementResult = await productModel.decrementStock(item.productId, item.quantity, tx)
         if (!decrementResult.success) {
@@ -317,7 +311,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }
       }
 
-      // 7.3) Reserve voucher usage using model method
+      // 7.2) Reserve voucher usage using model method
       if (voucherData) {
         const voucherResult = await voucherModel.incrementUsedCountWithLimit(voucherData.voucherId, 1, tx)
         if (!voucherResult.success) {
@@ -325,12 +319,12 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }
       }
 
-      // 7.4) Create order
+      // 7.3) Create order
       const order = await tx.order.create({
         data: {
           userId: userIdNum,
           orderCode: generateOrderCode(),
-          shippingAddressId,
+          shippingAddressId: shippingAddressIdNum,
           status: OrderStatus.PENDING,
           subtotal,
           discountAmount: discountValue,
@@ -339,7 +333,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }
       })
 
-      // 7.4.1) Create initial payment
+      // 7.3.1) Create initial payment
       await tx.payment.create({
         data: {
           orderId: order.id,
@@ -349,7 +343,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }
       })
 
-      // 7.5) Create order items
+      // 7.4) Create order items
       await tx.orderItem.createMany({
         data: orderItems.map(item => ({
           orderId: order.id,
@@ -363,7 +357,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }))
       })
 
-      // 7.6) Create order voucher if exists
+      // 7.5) Create order voucher if exists
       if (voucherData) {
         await tx.orderVoucher.create({
           data: {
@@ -378,7 +372,7 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         })
       }
 
-      // 7.7) Create initial log
+      // 7.6) Create initial log
       await tx.orderLog.create({
         data: {
           orderId: order.id,

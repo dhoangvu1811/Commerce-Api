@@ -50,9 +50,15 @@ export interface ShippingAddress {
   id?: string | number
   name: string
   phone: string
-  address: string
-  city: string
+  addressLine: string
+  address?: string
+  fullAddress: string
+  provinceId?: number
+  districtId?: number
+  district?: string
   province: string
+  wardCode?: string
+  ward?: string
   postalCode?: string
   isDefault?: boolean
 }
@@ -185,8 +191,8 @@ export interface PayloadOrderItem {
 export interface CreateOrderPayload {
   items: PayloadOrderItem[]
   voucherCode?: string
-  shippingAddress: ShippingAddress
-  shippingFee?: number
+  shippingAddressId: number
+  shippingServiceId: number
   paymentMethod?: string
 }
 

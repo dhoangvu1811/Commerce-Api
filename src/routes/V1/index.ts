@@ -19,6 +19,7 @@ import { contactRouter } from './contactRouter.js'
 import { notificationRouter } from './notificationRouter.js'
 import { roleRoute } from './roleRouter.js'
 import { permissionRoute } from './permissionRouter.js'
+import { shippingRouter } from './shippingRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -66,6 +67,9 @@ RouterInstance.use('/orders', orderRoute)
 
 /* Shipping Address APIs */
 RouterInstance.use('/shipping-addresses', shippingAddressRouter)
+
+/* Shipping APIs */
+RouterInstance.use('/shipping', shippingRouter)
 
 /* Cart APIs */
 RouterInstance.use('/cart', cartRouter)

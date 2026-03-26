@@ -1,6 +1,6 @@
 /**
- * Database Seed Script
- * Tạo dữ liệu mẫu cho database E-commerce
+ * Database Seed Script (RBAC + Admin)
+ * Seed các bảng: roles, permissions, role_permissions, users (admin account)
  */
 
 import 'dotenv/config'
@@ -10,508 +10,205 @@ import {
   PrismaClient,
   UserStatus,
   AccountType,
-  VoucherType
-} from '../src/generated/prisma/index.js'
+  Gender
+} from '@prisma/client'
 import bcryptLib from 'bcrypt'
 
-// Create PostgreSQL connection pool
 const connectionString = process.env.DATABASE_URL!
 const pool = new Pool({ connectionString })
 const adapter = new PrismaPg(pool)
-
-// Create Prisma Client with adapter
 const prisma = new PrismaClient({ adapter })
 
-async function main() {
-  console.log('🌱 Bắt đầu seed database...')
+const ROLES = {
+  ADMIN: 'admin',
+  STAFF: 'staff',
+  USER: 'user'
+} as const
 
-  // 1. Tạo Roles
-  console.log('📝 Đang tạo Roles...')
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'admin' },
-    update: { displayName: 'Quản trị viên' },
-    create: { name: 'admin', displayName: 'Quản trị viên' }
-  })
+const PERMISSIONS = {
+  MANAGE_PRODUCTS: 'manage_products',
+  MANAGE_USERS: 'manage_users',
+  MANAGE_ROLES: 'manage_roles',
+  MANAGE_ORDERS: 'manage_orders',
+  VIEW_ANALYTICS: 'view_analytics',
+  MANAGE_SYSTEM: 'manage_system',
+  MANAGE_VOUCHERS: 'manage_vouchers',
+  MANAGE_CONTACTS: 'manage_contacts'
+} as const
 
-  const userRole = await prisma.role.upsert({
-    where: { name: 'user' },
-    update: { displayName: 'Người dùng' },
-    create: { name: 'user', displayName: 'Người dùng' }
-  })
+const ROLE_DISPLAY_NAMES: Record<(typeof ROLES)[keyof typeof ROLES], string> = {
+  [ROLES.ADMIN]: 'Quản trị viên',
+  [ROLES.STAFF]: 'Nhân viên',
+  [ROLES.USER]: 'Người dùng'
+}
 
-  const staffRole = await prisma.role.upsert({
-    where: { name: 'staff' },
-    update: { displayName: 'Nhân viên' },
-    create: { name: 'staff', displayName: 'Nhân viên' }
-  })
+const PERMISSION_DISPLAY_NAMES: Record<string, string> = {
+  [PERMISSIONS.MANAGE_PRODUCTS]: 'Quản lý sản phẩm',
+  [PERMISSIONS.MANAGE_USERS]: 'Quản lý người dùng',
+  [PERMISSIONS.MANAGE_ROLES]: 'Quản lý vai trò & quyền',
+  [PERMISSIONS.MANAGE_ORDERS]: 'Quản lý đơn hàng',
+  [PERMISSIONS.VIEW_ANALYTICS]: 'Xem báo cáo thống kê',
+  [PERMISSIONS.MANAGE_SYSTEM]: 'Quản lý hệ thống',
+  [PERMISSIONS.MANAGE_VOUCHERS]: 'Quản lý mã giảm giá',
+  [PERMISSIONS.MANAGE_CONTACTS]: 'Quản lý liên hệ'
+}
 
-  // 2. Tạo Permissions
-  console.log('🔐 Đang tạo Permissions...')
-  const permissionsData = [
-    { name: 'manage_users', displayName: 'Quản lý người dùng' },
-    { name: 'manage_roles', displayName: 'Quản lý vai trò & quyền' },
-    { name: 'manage_products', displayName: 'Quản lý sản phẩm' },
-    { name: 'manage_orders', displayName: 'Quản lý đơn hàng' },
-    { name: 'manage_vouchers', displayName: 'Quản lý mã giảm giá' },
-    { name: 'view_analytics', displayName: 'Xem báo cáo thống kê' },
-    { name: 'manage_contacts', displayName: 'Quản lý liên hệ' },
-    { name: 'manage_system', displayName: 'Quản lý hệ thống' }
-  ]
+/**
+ * Seed roles + permissions + role_permissions
+ */
+const seedRbac = async () => {
+  console.log('🔐 Seeding RBAC...')
 
-  const permissions = await Promise.all(
-    permissionsData.map((p) =>
-      prisma.permission.upsert({
-        where: { name: p.name },
-        update: { displayName: p.displayName },
-        create: { name: p.name, displayName: p.displayName }
-      })
-    )
-  )
+  // 1) Seed roles
+  const roleEntries = Object.values(ROLES)
+  const roleRecords = new Map<string, { id: number; name: string }>()
 
-  // 3. Gán Permissions cho Roles
-  console.log('🔗 Đang gán Permissions cho Roles...')
+  for (const roleName of roleEntries) {
+    const role = await prisma.role.upsert({
+      where: { name: roleName },
+      update: { displayName: ROLE_DISPLAY_NAMES[roleName] },
+      create: { name: roleName, displayName: ROLE_DISPLAY_NAMES[roleName] },
+      select: { id: true, name: true }
+    })
 
-  // NOTE: Admin mặc định có full quyền (bypass check), không cần gán permission vào DB.
+    roleRecords.set(role.name, role)
+  }
 
-  // Staff có các permissions liên quan đến vận hành
-  const staffPermissionNames = [
-    'manage_products',
-    'manage_orders',
-    'manage_vouchers',
-    'view_analytics',
-    'manage_contacts'
-  ]
+  // 2) Seed permissions
+  const permissionEntries = Object.values(PERMISSIONS)
+  const permissionRecords = new Map<string, { id: number; name: string }>()
 
-  const staffPermissions = permissions.filter((p) =>
-    staffPermissionNames.includes(p.name)
-  )
-
-  for (const permission of staffPermissions) {
-    await prisma.rolePermission.upsert({
-      where: {
-        roleId_permissionId: {
-          roleId: staffRole.id,
-          permissionId: permission.id
-        }
-      },
-      update: {},
+  for (const permissionName of permissionEntries) {
+    const permission = await prisma.permission.upsert({
+      where: { name: permissionName },
+      update: { displayName: PERMISSION_DISPLAY_NAMES[permissionName] },
       create: {
-        roleId: staffRole.id,
+        name: permissionName,
+        displayName: PERMISSION_DISPLAY_NAMES[permissionName]
+      },
+      select: { id: true, name: true }
+    })
+
+    permissionRecords.set(permission.name, permission)
+  }
+
+  // 3) Define role-permission matrix
+  const adminPermissions = permissionEntries
+  const staffPermissions = [
+    PERMISSIONS.MANAGE_PRODUCTS,
+    PERMISSIONS.MANAGE_ORDERS,
+    PERMISSIONS.MANAGE_VOUCHERS,
+    PERMISSIONS.VIEW_ANALYTICS,
+    PERMISSIONS.MANAGE_CONTACTS
+  ]
+  const userPermissions: string[] = []
+
+  const matrix = [
+    { role: ROLES.ADMIN, permissions: adminPermissions },
+    { role: ROLES.STAFF, permissions: staffPermissions },
+    { role: ROLES.USER, permissions: userPermissions }
+  ]
+
+  // 4) Rebuild role_permissions deterministically
+  await prisma.rolePermission.deleteMany({})
+
+  const rolePermissionRows: Array<{ roleId: number; permissionId: number }> = []
+
+  for (const item of matrix) {
+    const role = roleRecords.get(item.role)
+    if (!role) continue
+
+    for (const permissionName of item.permissions) {
+      const permission = permissionRecords.get(permissionName)
+      if (!permission) continue
+
+      rolePermissionRows.push({
+        roleId: role.id,
         permissionId: permission.id
-      }
+      })
+    }
+  }
+
+  if (rolePermissionRows.length > 0) {
+    await prisma.rolePermission.createMany({
+      data: rolePermissionRows,
+      skipDuplicates: true
     })
   }
 
-  // 4. Tạo Users (Admin & User)
-  console.log('👤 Đang tạo Users...')
-  const hashedPassword = await bcryptLib.hash('123456', 10)
+  console.log(
+    `✅ RBAC seeded: ${roleEntries.length} roles, ${permissionEntries.length} permissions, ${rolePermissionRows.length} role-permissions`
+  )
 
-  const adminUser = await prisma.user.upsert({
-    where: { email: 'admin@commerce.vn' },
-    update: {},
-    create: {
-      name: 'Đinh Hoàng Vũ',
-      email: 'admin@commerce.vn',
+  return {
+    adminRoleId: roleRecords.get(ROLES.ADMIN)!.id
+  }
+}
+
+/**
+ * Seed admin user account
+ */
+const seedAdminUser = async (adminRoleId: number) => {
+  console.log('👤 Seeding admin user...')
+
+  const adminEmail = process.env.ADMIN_SEED_EMAIL || 'admin@commerce.vn'
+  const adminPassword = process.env.ADMIN_SEED_PASSWORD || '123456'
+  const adminName = process.env.ADMIN_SEED_NAME || 'System Administrator'
+
+  const hashedPassword = await bcryptLib.hash(adminPassword, 10)
+
+  const admin = await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      name: adminName,
       password: hashedPassword,
-      phoneNumber: '0901234567',
-      address: '123 Nguyễn Huệ, Q.1, TP.HCM',
-      gender: 'male',
+      roleId: adminRoleId,
       emailVerified: true,
       status: UserStatus.active,
       typeAccount: AccountType.LOCAL,
-      roleId: adminRole.id,
-      dateOfBirth: new Date('1990-01-01')
-    }
-  })
-
-  const normalUser = await prisma.user.upsert({
-    where: { email: 'user@example.com' },
-    update: {},
+      gender: Gender.other,
+      phoneNumber: '0900000000',
+      address: 'HCM City, Vietnam'
+    },
     create: {
-      name: 'Đinh Duy Hoàng',
-      email: 'hoang@gmail.com',
+      name: adminName,
+      email: adminEmail,
       password: hashedPassword,
-      phoneNumber: '0912345678',
-      address: '456 Lê Lợi, Q.1, TP.HCM',
-      gender: 'male',
+      roleId: adminRoleId,
       emailVerified: true,
       status: UserStatus.active,
       typeAccount: AccountType.LOCAL,
-      roleId: userRole.id,
-      dateOfBirth: new Date('1995-05-15')
+      gender: Gender.other,
+      phoneNumber: '0900000000',
+      address: 'HCM City, Vietnam'
+    },
+    select: {
+      id: true,
+      email: true,
+      role: { select: { name: true } }
     }
   })
 
-  const normalUser2 = await prisma.user.upsert({
-    where: { email: 'nguyen.thi.b@gmail.com' },
-    update: {},
-    create: {
-      name: 'Nguyễn Thị B',
-      email: 'nguyen.thi.b@gmail.com',
-      password: hashedPassword,
-      phoneNumber: '0923456789',
-      address: '789 Trần Hưng Đạo, Q.5, TP.HCM',
-      gender: 'female',
-      emailVerified: true,
-      status: UserStatus.active,
-      typeAccount: AccountType.LOCAL,
-      roleId: userRole.id,
-      dateOfBirth: new Date('1998-08-20')
-    }
-  })
+  console.log(
+    `✅ Admin seeded: id=${admin.id}, email=${admin.email}, role=${admin.role.name}`
+  )
+}
 
-  const staffUser = await prisma.user.upsert({
-    where: { email: 'staff@commerce.vn' },
-    update: {},
-    create: {
-      name: 'Đinh Vũ Hoàng',
-      email: 'staff@commerce.vn',
-      password: hashedPassword,
-      phoneNumber: '0934567890',
-      address: '100 Võ Văn Tần, Q.3, TP.HCM',
-      gender: 'male',
-      emailVerified: true,
-      status: UserStatus.active,
-      typeAccount: AccountType.LOCAL,
-      roleId: staffRole.id,
-      dateOfBirth: new Date('1992-03-10')
-    }
-  })
+async function main() {
+  console.log('🌱 Bắt đầu seed database (RBAC + Admin)...')
 
-  // 5. Tạo Categories
-  console.log('📂 Đang tạo Categories...')
-  const categories = await Promise.all([
-    prisma.category.upsert({
-      where: { slug: 'dien-thoai' },
-      update: {},
-      create: {
-        name: 'Điện thoại',
-        slug: 'dien-thoai',
-        description: 'Điện thoại di động, smartphone các loại',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/categories/phone.jpg'
-      }
-    }),
-    prisma.category.upsert({
-      where: { slug: 'laptop' },
-      update: {},
-      create: {
-        name: 'Laptop',
-        slug: 'laptop',
-        description: 'Laptop, máy tính xách tay',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/categories/laptop.jpg'
-      }
-    }),
-    prisma.category.upsert({
-      where: { slug: 'tablet' },
-      update: {},
-      create: {
-        name: 'Tablet',
-        slug: 'tablet',
-        description: 'Máy tính bảng, iPad',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/categories/tablet.jpg'
-      }
-    }),
-    prisma.category.upsert({
-      where: { slug: 'phu-kien' },
-      update: {},
-      create: {
-        name: 'Phụ kiện',
-        slug: 'phu-kien',
-        description: 'Phụ kiện điện thoại, tai nghe, sạc dự phòng',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/categories/accessories.jpg'
-      }
-    })
-  ])
+  const { adminRoleId } = await seedRbac()
+  await seedAdminUser(adminRoleId)
 
-  // 4. Tạo Products
-  console.log('📦 Đang tạo Products...')
-  const products = await Promise.all([
-    // Điện thoại
-    prisma.product.upsert({
-      where: { slug: 'iphone-15-pro-max' },
-      update: {},
-      create: {
-        name: 'iPhone 15 Pro Max 256GB',
-        slug: 'iphone-15-pro-max',
-        description:
-          'iPhone 15 Pro Max với chip A17 Pro, camera 48MP, titanium cao cấp',
-        price: 29990000,
-        stock: 50,
-        rating: 4.8,
-        selled: 45,
-        discount: 5,
-        categoryId: categories[0].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/iphone15promax.jpg'
-      }
-    }),
-    prisma.product.upsert({
-      where: { slug: 'samsung-galaxy-s24-ultra' },
-      update: {},
-      create: {
-        name: 'Samsung Galaxy S24 Ultra 512GB',
-        slug: 'samsung-galaxy-s24-ultra',
-        description:
-          'Galaxy S24 Ultra với bút S Pen, camera 200MP, màn hình Dynamic AMOLED 2X',
-        price: 33990000,
-        stock: 30,
-        rating: 4.7,
-        selled: 28,
-        discount: 8,
-        categoryId: categories[0].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/s24ultra.jpg'
-      }
-    }),
-    prisma.product.upsert({
-      where: { slug: 'xiaomi-14-pro' },
-      update: {},
-      create: {
-        name: 'Xiaomi 14 Pro 12GB/256GB',
-        slug: 'xiaomi-14-pro',
-        description: 'Xiaomi 14 Pro với Snapdragon 8 Gen 3, camera Leica',
-        price: 18990000,
-        stock: 40,
-        rating: 4.5,
-        selled: 62,
-        discount: 10,
-        categoryId: categories[0].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/xiaomi14pro.jpg'
-      }
-    }),
-
-    // Laptop
-    prisma.product.upsert({
-      where: { slug: 'macbook-pro-14-m3' },
-      update: {},
-      create: {
-        name: 'MacBook Pro 14" M3 Pro 18GB/512GB',
-        slug: 'macbook-pro-14-m3',
-        description:
-          'MacBook Pro 14 inch với chip M3 Pro, màn hình Liquid Retina XDR',
-        price: 52990000,
-        stock: 25,
-        rating: 4.9,
-        selled: 18,
-        discount: 3,
-        categoryId: categories[1].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/macbookpro14.jpg'
-      }
-    }),
-    prisma.product.upsert({
-      where: { slug: 'dell-xps-15' },
-      update: {},
-      create: {
-        name: 'Dell XPS 15 9530 i7-13700H RTX 4060',
-        slug: 'dell-xps-15',
-        description:
-          'Dell XPS 15 với Intel Core i7 Gen 13, NVIDIA RTX 4060, màn hình OLED 3.5K',
-        price: 45990000,
-        stock: 15,
-        rating: 4.6,
-        selled: 12,
-        discount: 7,
-        categoryId: categories[1].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/dellxps15.jpg'
-      }
-    }),
-
-    // Tablet
-    prisma.product.upsert({
-      where: { slug: 'ipad-pro-12-9-m2' },
-      update: {},
-      create: {
-        name: 'iPad Pro 12.9 inch M2 WiFi 256GB',
-        slug: 'ipad-pro-12-9-m2',
-        description: 'iPad Pro 12.9" với chip M2, màn hình Liquid Retina XDR',
-        price: 28990000,
-        stock: 20,
-        rating: 4.8,
-        selled: 35,
-        discount: 5,
-        categoryId: categories[2].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/ipadpro12.jpg'
-      }
-    }),
-
-    // Phụ kiện
-    prisma.product.upsert({
-      where: { slug: 'airpods-pro-2' },
-      update: {},
-      create: {
-        name: 'AirPods Pro 2 với MagSafe (USB-C)',
-        slug: 'airpods-pro-2',
-        description: 'AirPods Pro thế hệ 2 với chip H2, chống ồn chủ động',
-        price: 6290000,
-        stock: 100,
-        rating: 4.7,
-        selled: 156,
-        discount: 8,
-        categoryId: categories[3].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/airpodspro2.jpg'
-      }
-    }),
-    prisma.product.upsert({
-      where: { slug: 'anker-powercore-20000' },
-      update: {},
-      create: {
-        name: 'Anker PowerCore 20000mAh PD 20W',
-        slug: 'anker-powercore-20000',
-        description: 'Sạc dự phòng Anker 20000mAh, hỗ trợ sạc nhanh PD 20W',
-        price: 890000,
-        stock: 200,
-        rating: 4.5,
-        selled: 278,
-        discount: 15,
-        categoryId: categories[3].id,
-        status: 'active',
-        image:
-          'https://res.cloudinary.com/demo/image/upload/v1234567890/products/anker20000.jpg'
-      }
-    })
-  ])
-
-  // 5. Tạo Vouchers
-  console.log('🎟️ Đang tạo Vouchers...')
-  await Promise.all([
-    prisma.voucher.upsert({
-      where: { code: 'WELCOME2024' },
-      update: {},
-      create: {
-        code: 'WELCOME2024',
-        type: VoucherType.percent,
-        amount: 10,
-        maxDiscount: 500000,
-        minOrderValue: 1000000,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-        usageLimit: 1000,
-        usedCount: 0,
-        isActive: true,
-        description: 'Giảm 10% cho đơn hàng từ 1 triệu, tối đa 500k'
-      }
-    }),
-    prisma.voucher.upsert({
-      where: { code: 'FREESHIP50K' },
-      update: {},
-      create: {
-        code: 'FREESHIP50K',
-        type: VoucherType.fixed,
-        amount: 50000,
-        minOrderValue: 500000,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-12-31'),
-        usageLimit: 5000,
-        usedCount: 0,
-        isActive: true,
-        description: 'Miễn phí vận chuyển 50k cho đơn từ 500k'
-      }
-    }),
-    prisma.voucher.upsert({
-      where: { code: 'SALE500K' },
-      update: {},
-      create: {
-        code: 'SALE500K',
-        type: VoucherType.fixed,
-        amount: 500000,
-        minOrderValue: 5000000,
-        startDate: new Date('2024-01-01'),
-        endDate: new Date('2024-06-30'),
-        usageLimit: 100,
-        usedCount: 0,
-        isActive: true,
-        description: 'Giảm 500k cho đơn hàng từ 5 triệu'
-      }
-    }),
-    prisma.voucher.upsert({
-      where: { code: 'TET2024' },
-      update: {},
-      create: {
-        code: 'TET2024',
-        type: VoucherType.percent,
-        amount: 20,
-        maxDiscount: 2000000,
-        minOrderValue: 3000000,
-        startDate: new Date('2024-01-20'),
-        endDate: new Date('2024-02-15'),
-        usageLimit: 500,
-        usedCount: 0,
-        isActive: true,
-        description: 'Giảm 20% dịp Tết 2024, tối đa 2 triệu'
-      }
-    })
-  ])
-
-  // 6. Tạo Shipping Addresses
-  console.log('📍 Đang tạo Shipping Addresses...')
-  await Promise.all([
-    prisma.shippingAddress.upsert({
-      where: { id: 1 },
-      update: {},
-      create: {
-        userId: normalUser.id,
-        fullName: 'Nguyễn Văn A',
-        phone: '0912345678',
-        address: '456 Lê Lợi',
-        city: 'TP. Hồ Chí Minh',
-        province: 'Hồ Chí Minh',
-        postalCode: '700000',
-        isDefault: true
-      }
-    }),
-    prisma.shippingAddress.upsert({
-      where: { id: 2 },
-      update: {},
-      create: {
-        userId: normalUser2.id,
-        fullName: 'Nguyễn Thị B',
-        phone: '0923456789',
-        address: '789 Trần Hưng Đạo',
-        city: 'TP. Hồ Chí Minh',
-        province: 'Hồ Chí Minh',
-        postalCode: '700000',
-        isDefault: true
-      }
-    })
-  ])
-
-  console.log('✅ Seed database hoàn tất!')
-  console.log('\n📊 Tóm tắt dữ liệu:')
-  console.log(`  - Roles: 3 (admin, staff, user)`)
-  console.log(`  - Permissions: ${permissions.length}`)
-  console.log(`  - Users: 4 (1 admin, 1 staff, 2 users)`)
-  console.log(`  - Categories: ${categories.length}`)
-  console.log(`  - Products: ${products.length}`)
-  console.log(`  - Vouchers: 4`)
-  console.log(`  - Shipping Addresses: 2`)
-  console.log('\n🔑 Thông tin đăng nhập:')
-  console.log(`  Admin: admin@commerce.vn / 123456`)
-  console.log(`  Staff: staff@commerce.vn / 123456`)
-  console.log(`  User 1: user@example.com / 123456`)
-  console.log(`  User 2: nguyen.thi.b@gmail.com / 123456`)
+  console.log('🎉 Seed hoàn tất.')
 }
 
 main()
   .catch((e) => {
-    console.error('❌ Lỗi khi seed database:', e)
+    console.error('❌ Seed failed:', e)
     process.exit(1)
   })
   .finally(async () => {
     await prisma.$disconnect()
+    await pool.end()
   })

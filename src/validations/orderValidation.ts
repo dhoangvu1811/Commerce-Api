@@ -29,19 +29,6 @@ const orderItemSchema = z.object({
     .max(1000, 'Số lượng tối đa là 1000 sản phẩm')
 })
 
-/** Schema cho shipping address */
-const shippingAddressSchema = z.object({
-  id: z.string().optional().default(''),
-  name: z.string({ required_error: 'Tên người nhận là bắt buộc' }),
-  phone: z.string({ required_error: 'Số điện thoại là bắt buộc' }),
-  address: z.string({ required_error: 'Địa chỉ là bắt buộc' }),
-  city: z.string({ required_error: 'Thành phố là bắt buộc' }),
-  province: z.string({ required_error: 'Tỉnh/Thành là bắt buộc' }),
-  postalCode: z.string().optional().default(''),
-  isDefault: z.boolean().optional(),
-  fullAddress: z.string().optional().default('')
-})
-
 /** Schema tạo order mới */
 const createOrderSchema = z.object({
   items: z
@@ -49,13 +36,8 @@ const createOrderSchema = z.object({
     .min(1, 'Giỏ hàng cần có ít nhất 1 sản phẩm')
     .max(100, 'Đơn hàng chỉ được tối đa 100 sản phẩm'),
   voucherCode: z.string().optional().default(''),
-  shippingAddress: shippingAddressSchema,
-  shippingFee: z
-    .number()
-    .min(0)
-    .max(10000000, 'Phí vận chuyển không được vượt quá 10,000,000')
-    .optional()
-    .default(0),
+  shippingAddressId: z.coerce.number({ required_error: 'Vui lòng chọn địa chỉ giao hàng' }).int().positive(),
+  shippingServiceId: z.coerce.number({ required_error: 'Vui lòng chọn dịch vụ vận chuyển' }).int().positive(),
   paymentMethod: z
     .enum(
       ALLOWED_PAYMENT_METHODS as unknown as readonly [string, ...string[]],

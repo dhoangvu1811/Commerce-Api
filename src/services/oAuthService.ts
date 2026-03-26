@@ -17,6 +17,7 @@ import { StatusCodes } from 'http-status-codes'
 import { v4 as uuidv4 } from 'uuid'
 import ms from 'ms'
 import { env } from '~/config/environment.js'
+import { prisma } from '~/config/prisma.js'
 import type { UserResponse, UserRole } from '~/types/user.types.js'
 
 /** OAuth provider types */
@@ -64,8 +65,23 @@ interface AuthTokensResponse {
   user: Partial<UserResponse>
 }
 
-// Default role ID for regular users
-const DEFAULT_USER_ROLE_ID = 2
+const USER_ROLE_NAME = 'user'
+let cachedUserRoleId: number | null = null
+
+const getDefaultUserRoleId = async (): Promise<number> => {
+  if (cachedUserRoleId) {
+    return cachedUserRoleId
+  }
+
+  const role = await prisma.role.findFirst({ where: { name: USER_ROLE_NAME } })
+  if (!role) {
+    throw new ApiError(StatusCodes.INTERNAL_SERVER_ERROR, 'Role "user" chưa được seed trong database')
+  }
+
+  cachedUserRoleId = role.id
+
+  return role.id
+}
 
 /**
  * Mapping các OAuth providers
@@ -137,6 +153,8 @@ const normalizeOAuthProfile = (profile: RawOAuthProfile, provider: OAuthProvider
  */
 const handleOAuth = async (profile: RawOAuthProfile, provider: OAuthProviderType): Promise<User> => {
   try {
+    const defaultUserRoleId = await getDefaultUserRoleId()
+
     // Chuẩn hóa profile
     const normalizedProfile = normalizeOAuthProfile(profile, provider)
     const providerConfig = OAUTH_PROVIDERS[provider]
@@ -171,7 +189,7 @@ const handleOAuth = async (profile: RawOAuthProfile, provider: OAuthProviderType
         name: normalizedProfile.displayName,
         email: normalizedProfile.email,
         password: providerConfig.passwordPlaceholder,
-        roleId: DEFAULT_USER_ROLE_ID,
+        roleId: defaultUserRoleId,
         avatar: normalizedProfile.avatar,
         emailVerified: true,
         status: UserStatus.active, // OAuth users luôn được kích hoạt ngay
