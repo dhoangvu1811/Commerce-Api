@@ -350,14 +350,28 @@ const uploadAvatar = async (req: Request, res: Response, next: NextFunction): Pr
       return
     }
 
-    // Upload avatar thông qua service
+    // Upload avatar lên cloud
     const uploadResult = await userService.uploadAvatar(req.file.buffer, 'users-commerceweb')
+    const avatarUrl = uploadResult?.secure_url
+
+    if (!avatarUrl) {
+      res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+        code: StatusCodes.INTERNAL_SERVER_ERROR,
+        message: 'Upload ảnh thất bại, không nhận được URL avatar',
+        data: null
+      })
+
+      return
+    }
+
+    const userId = String(req.jwtDecoded!._id)
+    const updatedUser = await userService.updateUser(userId, { avatar: avatarUrl })
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Upload ảnh thành công',
       data: {
-        avatarUrl: uploadResult?.secure_url,
+        avatarUrl: updatedUser.avatar || avatarUrl,
         publicId: uploadResult?.public_id
       }
     })
