@@ -26,6 +26,16 @@ const PAYPAL_PAYABLE_ORDER_STATUSES: readonly OrderStatus[] = [
   OrderStatus.PENDING,
   OrderStatus.CONFIRMED
 ]
+const PAYPAL_CREATABLE_PAYMENT_STATUSES: readonly PaymentStatus[] = [
+  PaymentStatus.PENDING,
+  PaymentStatus.PROCESSING,
+  PaymentStatus.FAILED
+]
+const PAYPAL_CAPTURE_UPDATABLE_PAYMENT_STATUSES: readonly PaymentStatus[] = [
+  PaymentStatus.PENDING,
+  PaymentStatus.PROCESSING,
+  PaymentStatus.FAILED
+]
 
 const assertOrderEligibility = async (orderCode: string, userId: number) => {
   const order = await orderModel.findByOrderCode(orderCode)
@@ -122,30 +132,50 @@ const createPaypalOrder = async (
     description: `Thanh toán đơn hàng #${order.orderCode}`
   })
 
-  await prisma.payment.update({
-    where: { id: latestPayment.id },
-    data: {
-      status: PaymentStatus.PROCESSING,
-      transactionId: paypalOrder.id
-    }
-  })
+  await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+    const paymentUpdateResult = await tx.payment.updateMany({
+      where: {
+        id: latestPayment.id,
+        status: { in: [...PAYPAL_CREATABLE_PAYMENT_STATUSES] },
+        order: {
+          is: {
+            status: { in: [...PAYPAL_PAYABLE_ORDER_STATUSES] }
+          }
+        }
+      },
+      data: {
+        status: PaymentStatus.PROCESSING,
+        transactionId: paypalOrder.id
+      }
+    })
 
-  await orderModel.appendLog(order.id, {
-    action: 'paypalCreateOrder',
-    performedById: userIdNum,
-    performedByRole: 'user',
-    fromStatus: order.status,
-    toStatus: order.status,
-    fromPaymentStatus: latestPayment.status,
-    toPaymentStatus: PaymentStatus.PROCESSING,
-    note: 'Khởi tạo phiên thanh toán PayPal',
-    meta: {
-      paypalOrderId: paypalOrder.id,
-      sourceAmount: amount,
-      sourceCurrency,
-      paypalAmount,
-      paypalCurrency: currency
+    if (paymentUpdateResult.count === 0) {
+      throw new ApiError(
+        StatusCodes.CONFLICT,
+        'Không thể khởi tạo phiên PayPal do trạng thái đơn hàng hoặc thanh toán đã thay đổi'
+      )
     }
+
+    await tx.orderLog.create({
+      data: {
+        orderId: order.id,
+        action: 'paypalCreateOrder',
+        performedById: userIdNum,
+        performedByRole: 'user',
+        fromStatus: order.status,
+        toStatus: order.status,
+        fromPaymentStatus: latestPayment.status,
+        toPaymentStatus: PaymentStatus.PROCESSING,
+        note: 'Khởi tạo phiên thanh toán PayPal',
+        meta: {
+          paypalOrderId: paypalOrder.id,
+          sourceAmount: amount,
+          sourceCurrency,
+          paypalAmount,
+          paypalCurrency: currency
+        }
+      }
+    })
   })
 
   return {
@@ -220,16 +250,32 @@ const capturePaypalOrder = async (
     }
 
     if (targetOrderStatus !== order.status) {
-      await tx.order.update({
-        where: { id: order.id },
+      const orderUpdateResult = await tx.order.updateMany({
+        where: {
+          id: order.id,
+          status: order.status
+        },
         data: { status: targetOrderStatus }
       })
+
+      if (orderUpdateResult.count === 0) {
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          'Trạng thái đơn hàng đã thay đổi trong lúc xác nhận thanh toán PayPal'
+        )
+      }
     }
 
     const paymentResult = await tx.payment.updateMany({
       where: {
         id: latestPayment.id,
-        status: { not: PaymentStatus.PAID }
+        transactionId: trimmedPaypalOrderId,
+        status: { in: [...PAYPAL_CAPTURE_UPDATABLE_PAYMENT_STATUSES] },
+        order: {
+          is: {
+            status: { in: [...PAYPAL_PAYABLE_ORDER_STATUSES] }
+          }
+        }
       },
       data: {
         status: PaymentStatus.PAID,

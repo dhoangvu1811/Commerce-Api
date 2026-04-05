@@ -752,6 +752,11 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
     }
 
     const isCOD = isCODPayment(latestPayment.paymentMethod)
+    const markPaidAllowedStatuses: readonly PaymentStatus[] = [
+      PaymentStatus.PENDING,
+      PaymentStatus.PROCESSING,
+      PaymentStatus.FAILED
+    ]
 
     // Execute in transaction
     await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -773,17 +778,34 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
       }
 
       if (Object.keys(updateData).length > 0) {
-        await tx.order.update({
-          where: { id: orderIdNum },
+        const orderUpdateResult = await tx.order.updateMany({
+          where: {
+            id: orderIdNum,
+            status: OrderStatus.PENDING
+          },
           data: updateData
         })
+
+        if (orderUpdateResult.count === 0) {
+          throw new ApiError(
+            StatusCodes.CONFLICT,
+            'Trạng thái đơn hàng đã thay đổi trong lúc xác nhận thanh toán'
+          )
+        }
       }
 
-      // 3) Update Payment (dùng updateMany có điều kiện để phòng race condition double-markPaid)
+      // 3) Update Payment với điều kiện chặt để tránh ghi đè khi đơn đã bị hủy.
       const paymentResult = await tx.payment.updateMany({
         where: {
           id: latestPayment.id,
-          status: { not: PaymentStatus.PAID }
+          status: { in: [...markPaidAllowedStatuses] },
+          order: {
+            is: {
+              status: {
+                notIn: [OrderStatus.CANCELLED, OrderStatus.DELIVERED]
+              }
+            }
+          }
         },
         data: {
           status: PaymentStatus.PAID,
@@ -791,8 +813,11 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
         }
       })
       if (paymentResult.count === 0) {
-        // Payment đã được PAID bởi request concurrent khác → rollback toàn bộ incrementSelled
-        throw new ApiError(StatusCodes.CONFLICT, 'Đơn hàng đã được xác nhận thanh toán bởi một yêu cầu khác')
+        // Payment có thể đã đổi trạng thái bởi luồng concurrent (cancel/pay).
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          'Không thể xác nhận thanh toán vì trạng thái đơn hàng hoặc thanh toán đã thay đổi'
+        )
       }
     })
 
@@ -919,19 +944,22 @@ const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = f
         }
       }
 
-      // 4) Update order status → CANCELLED (dùng updateMany có điều kiện để phòng race condition double-cancel)
+      // 4) Update order status → CANCELLED bằng CAS theo trạng thái snapshot.
       const cancelResult = await tx.order.updateMany({
         where: {
           id: orderIdNum,
-          status: { not: OrderStatus.CANCELLED }
+          status: order.status
         },
         data: {
           status: OrderStatus.CANCELLED
         }
       })
       if (cancelResult.count === 0) {
-        // Đơn đã bị hủy bởi request concurrent khác → rollback toàn bộ stock/selled/voucher đã xử lý
-        throw new ApiError(StatusCodes.CONFLICT, 'Đơn hàng đã được hủy bởi một yêu cầu khác')
+        // Trạng thái đơn có thể đã đổi bởi request concurrent (cancel/pay/updateStatus).
+        throw new ApiError(
+          StatusCodes.CONFLICT,
+          'Không thể hủy vì trạng thái đơn hàng đã thay đổi bởi một yêu cầu khác'
+        )
       }
 
       // 5) Update payment (dùng currentPayment đọc trong transaction → tránh stale read)
