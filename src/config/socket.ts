@@ -131,12 +131,13 @@ export const initSocket = (httpServer: HttpServer): SocketServer => {
   // ── Connection handler ─────────────────────
   io.on('connection', socket => {
     const user = socket.data.user as SocketUserData
+    const normalizedRole = String(user.role || '').toLowerCase()
 
     // Join room cá nhân theo userId → để gửi notification riêng
     socket.join(`user:${user._id}`)
 
     // Admin/Staff join room admin → nhận thông báo đơn hàng mới
-    if (user.role === ROLES.ADMIN || user.role === ROLES.STAFF) {
+    if (normalizedRole === ROLES.ADMIN || normalizedRole === ROLES.STAFF) {
       socket.join('admin')
     }
 

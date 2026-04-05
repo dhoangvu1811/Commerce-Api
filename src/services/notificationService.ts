@@ -2,7 +2,7 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { notificationModel } from '~/models/notificationModel.js'
 import { prisma } from '~/config/prisma.js'
-import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
+import { emitToUser, SOCKET_EVENTS } from '~/config/socket.js'
 import { ROLES } from '~/constants/rbac.js'
 
 /**
@@ -45,28 +45,9 @@ const createAdminNotification = async (type: string, message: string, excludeUse
 
   if (targetAdmins.length === 0) return
 
-  // Tạo notification cho từng admin (dùng createMany cho hiệu suất)
-  await prisma.notification.createMany({
-    data: targetAdmins.map(admin => ({
-      userId: admin.id,
-      type,
-      message
-    }))
-  })
-
-  // Emit realtime đến room admin (loại trừ admin đang thao tác)
-  // Dùng emitToAdmin thay vì emitToUser từng người → hiệu quả hơn
-  // FE sẽ tự fetch lại khi nhận event để đồng bộ ID chính xác
-  emitToAdmin(
-    SOCKET_EVENTS.NOTIFICATION_NEW,
-    {
-      id: 0, // Placeholder — FE sẽ prepend hoặc refetch
-      type,
-      message,
-      isRead: false,
-      createdAt: new Date().toISOString()
-    },
-    excludeUserId
+  // Tạo notification + emit theo từng admin để payload luôn có ID thật.
+  await Promise.allSettled(
+    targetAdmins.map(admin => createNotification(admin.id, type, message))
   )
 }
 

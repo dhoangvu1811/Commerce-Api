@@ -163,7 +163,13 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
   try {
     const userIdNum = parseId(userId, 'User ID')
 
-    const { items, voucherCode, shippingAddressId, shippingServiceId, paymentMethod = '' } = payload || {}
+    const {
+      items,
+      voucherCode,
+      shippingAddressId,
+      shippingServiceId,
+      paymentMethod = PaymentMethod.COD
+    } = payload || {}
     const shippingAddressIdNum = Number(shippingAddressId)
 
     if (!shippingAddressIdNum || Number.isNaN(shippingAddressIdNum)) {
@@ -395,23 +401,32 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
     }
 
     const orderResult = mapOrderToApi(fullOrder)
+    const adminOrderMessage =
+      `Đơn hàng mới #${orderResult.orderCode} từ ${
+        orderResult.user?.name || orderResult.user?.email || 'Khách hàng'
+      } - ${orderResult.items.length} sản phẩm`
 
-    // Lưu notification cho admin/staff vào DB
-    await notificationService.createAdminNotification(
-      'ORDER_NEW',
-      `Đơn hàng mới #${orderResult.orderCode} từ ${orderResult.user?.name || orderResult.user?.email || 'Khách hàng'} - ${orderResult.items.length} sản phẩm`
-    )
+    // Side-effect realtime là best-effort, không được làm fail luồng tạo đơn đã thành công.
+    try {
+      await notificationService.createAdminNotification('ORDER_NEW', adminOrderMessage)
+    } catch (notificationError) {
+      console.error('[OrderService.create] Không thể tạo notification admin cho ORDER_NEW:', notificationError)
+    }
 
-    // Emit realtime: thông báo admin có đơn hàng mới
-    emitToAdmin(SOCKET_EVENTS.ORDER_NEW, {
-      orderId: orderResult.id,
-      orderCode: orderResult.orderCode,
-      userId: orderResult.userId,
-      userName: orderResult.user?.name || orderResult.user?.email || '',
-      totalPrice: orderResult.totals.payable,
-      itemCount: orderResult.items.length,
-      createdAt: orderResult.createdAt
-    })
+    try {
+      // Emit realtime: thông báo admin có đơn hàng mới
+      emitToAdmin(SOCKET_EVENTS.ORDER_NEW, {
+        orderId: orderResult.id,
+        orderCode: orderResult.orderCode,
+        userId: orderResult.userId,
+        userName: orderResult.user?.name || orderResult.user?.email || '',
+        totalPrice: orderResult.totals.payable,
+        itemCount: orderResult.items.length,
+        createdAt: orderResult.createdAt
+      })
+    } catch (socketError) {
+      console.error('[OrderService.create] Không thể emit ORDER_NEW qua socket:', socketError)
+    }
 
     return orderResult
   } catch (error) {
