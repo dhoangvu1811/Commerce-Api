@@ -64,5 +64,14 @@ export const env: EnvironmentVariables = {
   // Facebook OAuth
   FACEBOOK_CLIENT_ID: process.env.FACEBOOK_CLIENT_ID || '',
   FACEBOOK_CLIENT_SECRET: process.env.FACEBOOK_CLIENT_SECRET || '',
-  FACEBOOK_CALLBACK_URL: process.env.FACEBOOK_CALLBACK_URL || ''
+  FACEBOOK_CALLBACK_URL: process.env.FACEBOOK_CALLBACK_URL || '',
+
+  // PayPal
+  PAYPAL_CLIENT_ID: process.env.PAYPAL_CLIENT_ID || '',
+  PAYPAL_CLIENT_SECRET: process.env.PAYPAL_CLIENT_SECRET || '',
+  PAYPAL_ENV: process.env.PAYPAL_ENV || 'sandbox',
+  PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID || '',
+  PAYPAL_CURRENCY: process.env.PAYPAL_CURRENCY || 'USD',
+  PAYPAL_SOURCE_CURRENCY: process.env.PAYPAL_SOURCE_CURRENCY || 'VND',
+  PAYPAL_VND_TO_USD_RATE: Number(process.env.PAYPAL_VND_TO_USD_RATE || '26000')
 }

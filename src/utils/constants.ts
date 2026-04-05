@@ -77,7 +77,8 @@ export const ALLOWED_PAYMENT_METHODS = [
   PaymentMethod.BANK_TRANSFER,
   PaymentMethod.MOMO,
   PaymentMethod.VNPAY,
-  PaymentMethod.ZALOPAY
+  PaymentMethod.ZALOPAY,
+  PaymentMethod.PAYPAL
 ] as const
 
 /**

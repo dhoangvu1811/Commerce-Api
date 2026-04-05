@@ -89,7 +89,8 @@ export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
         PaymentMethod.VNPAY,
         PaymentMethod.MOMO,
         PaymentMethod.ZALOPAY,
-        PaymentMethod.BANK_TRANSFER
+        PaymentMethod.BANK_TRANSFER,
+        PaymentMethod.PAYPAL
       ] as PaymentMethod[]
     ).includes(paymentMethod as PaymentMethod)
   ) {
@@ -107,7 +108,8 @@ export const isOnlinePayment = (paymentMethod: string = ''): boolean => {
       'debit',
       'momo',
       'zalopay',
-      'vnpay'
+      'vnpay',
+      'paypal'
     ].some((keyword) => method.includes(keyword)) ||
     (!isCODPayment(paymentMethod) && paymentMethod.trim() !== '')
   )
