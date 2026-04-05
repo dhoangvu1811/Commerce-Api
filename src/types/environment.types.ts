@@ -67,6 +67,15 @@ export interface EnvironmentConfig {
   GHN_DEFAULT_WIDTH: string
   GHN_DEFAULT_HEIGHT: string
   GHN_FALLBACK_FEE: string
+
+  // PayPal
+  PAYPAL_CLIENT_ID: string
+  PAYPAL_CLIENT_SECRET: string
+  PAYPAL_ENV: string
+  PAYPAL_WEBHOOK_ID: string
+  PAYPAL_CURRENCY: string
+  PAYPAL_SOURCE_CURRENCY: string
+  PAYPAL_VND_TO_USD_RATE: number
 }
 
 /**

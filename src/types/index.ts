@@ -136,3 +136,16 @@ export type {
   GoogleVerifyCallback,
   FacebookVerifyCallback
 } from './oauth.types.js'
+
+// Payment types
+export type {
+  CreatePaypalOrderResult,
+  CapturePaypalOrderResult,
+  PayPalErrorDetail,
+  PayPalErrorPayload,
+  PayPalAccessTokenResponse,
+  PayPalCreateOrderInput,
+  PayPalCreateOrderResponse,
+  PayPalCaptureApiResponse,
+  PayPalCaptureOrderResponse
+} from './payment.types.js'

@@ -20,6 +20,7 @@ import { notificationRouter } from './notificationRouter.js'
 import { roleRoute } from './roleRouter.js'
 import { permissionRoute } from './permissionRouter.js'
 import { shippingRouter } from './shippingRouter.js'
+import { paymentRouter } from './paymentRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -85,6 +86,9 @@ RouterInstance.use('/contacts', contactRouter)
 
 /* Notification APIs */
 RouterInstance.use('/notifications', notificationRouter)
+
+/* Payment APIs */
+RouterInstance.use('/payments', paymentRouter)
 
 /* Role APIs (Admin Only) */
 RouterInstance.use('/roles', roleRoute)

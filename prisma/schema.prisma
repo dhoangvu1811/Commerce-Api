@@ -45,6 +45,7 @@ enum PaymentMethod {
   MOMO
   VNPAY
   ZALOPAY
+  PAYPAL
 }
 
 enum VoucherType {
@@ -493,24 +494,24 @@ model Notification {
 
 /// Shipping_Addresses table - địa chỉ giao hàng (với đầy đủ fields từ MongoDB)
 model ShippingAddress {
-  id         Int      @id @default(autoincrement())
-  userId     Int      @map("user_id")
-  fullName   String   @map("full_name") @db.VarChar(100)
-  phone      String   @db.VarChar(15)
+  id          Int      @id @default(autoincrement())
+  userId      Int      @map("user_id")
+  fullName    String   @map("full_name") @db.VarChar(100)
+  phone       String   @db.VarChar(15)
   /// Tên Tỉnh/Thành phố
-  province   String   @db.VarChar(100)
-  provinceId Int      @map("province_id")
-  districtId Int      @map("district_id")
+  province    String   @db.VarChar(100)
+  provinceId  Int      @map("province_id")
+  districtId  Int      @map("district_id")
   /// Tên Quận/Huyện
-  district   String   @db.VarChar(100)
-  wardCode   String   @map("ward_code") @db.VarChar(20)
-  ward       String   @db.VarChar(100)
-  addressLine String  @map("address_line") @db.VarChar(255)
-  fullAddress String  @map("full_address") @db.VarChar(700)
-  postalCode String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
-  isActive   Boolean  @default(true) @map("is_active")
-  isDefault  Boolean  @default(false) @map("is_default")
-  createdAt  DateTime @default(now()) @map("created_at")
+  district    String   @db.VarChar(100)
+  wardCode    String   @map("ward_code") @db.VarChar(20)
+  ward        String   @db.VarChar(100)
+  addressLine String   @map("address_line") @db.VarChar(255)
+  fullAddress String   @map("full_address") @db.VarChar(700)
+  postalCode  String?  @map("postal_code") @db.VarChar(20) // Thêm từ MongoDB
+  isActive    Boolean  @default(true) @map("is_active")
+  isDefault   Boolean  @default(false) @map("is_default")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   // Relations
   user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
