@@ -265,3 +265,48 @@ export interface UpdateOrderInput {
   deliveredAt?: Date | null
   updatedAt?: Date
 }
+
+/**
+ * Điểm doanh thu theo ngày cho dashboard
+ */
+export interface DashboardRevenuePoint {
+  key: string
+  value: number
+}
+
+export interface DashboardUserSummary {
+  totalUsers: number
+  activeUsers: number
+  inactiveUsers: number
+  newUsersToday: number
+  newUsersThisMonth: number
+}
+
+export interface DashboardTopProductSummary {
+  id: number
+  name: string
+  price: number
+  stock: number
+  selled: number
+}
+
+export interface DashboardProductSummary {
+  totalProducts: number
+  topSellingProducts: DashboardTopProductSummary[]
+}
+
+/**
+ * Dữ liệu tổng hợp dashboard đơn hàng (Admin)
+ */
+export interface AdminOrderDashboardSummary {
+  users: DashboardUserSummary
+  products: DashboardProductSummary
+  totalOrders: number
+  recentOrders: Order[]
+  statusCounts: Record<OrderStatus, number>
+  revenue: {
+    today: number
+    month: number
+    lastSevenDays: DashboardRevenuePoint[]
+  }
+}

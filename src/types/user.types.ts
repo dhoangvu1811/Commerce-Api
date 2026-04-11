@@ -205,6 +205,18 @@ export interface UserQueryFilter {
 }
 
 /**
+ * Thống kê tổng quan người dùng cho dashboard
+ */
+export interface UserOverviewStats {
+  totalUsers: number
+  activeUsers: number
+  inactiveUsers: number
+  totalSessions: number
+  newUsersToday: number
+  newUsersThisMonth: number
+}
+
+/**
  * User filter (legacy - kept for backward compatibility)
  * Note: Prisma uses different filter structure
  */

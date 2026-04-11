@@ -258,6 +258,21 @@ const getUsers = async (req: Request, res: Response, next: NextFunction): Promis
   }
 }
 
+// Lấy thống kê tổng quan người dùng cho dashboard (Admin only)
+const getUserOverviewStats = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const result = await userService.getUserOverviewStats()
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy thống kê tổng quan người dùng thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 // Lấy danh sách users với session summary cho table overview (Admin only)
 const getUsersWithSessionSummary = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
@@ -734,6 +749,7 @@ export const userController = {
   deleteUser,
   deleteMultipleUsers,
   getUsers,
+  getUserOverviewStats,
   refreshToken,
   createUserByAdmin,
   uploadAvatar,
