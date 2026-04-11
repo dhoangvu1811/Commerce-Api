@@ -35,7 +35,8 @@ import type {
   VerifyAccountResult,
   ResetPasswordInput,
   ForgotPasswordResult,
-  ResetPasswordResult
+  ResetPasswordResult,
+  UserOverviewStats
 } from '~/types/user.types.js'
 import type { UploadResult, DeleteResultInfo } from '~/types/common.types.js'
 
@@ -471,6 +472,38 @@ const getUsers = async (
     return {
       ...result,
       users: usersWithoutPassword
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+/**
+ * Lấy thống kê tổng quan người dùng cho dashboard
+ */
+const getUserOverviewStats = async (): Promise<UserOverviewStats> => {
+  try {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+
+    const [totalUsers, activeUsers, inactiveUsers, totalSessions, newUsersToday, newUsersThisMonth] =
+      await Promise.all([
+        prisma.user.count(),
+        prisma.user.count({ where: { status: UserStatus.active } }),
+        prisma.user.count({ where: { status: UserStatus.inactive } }),
+        prisma.session.count(),
+        prisma.user.count({ where: { createdAt: { gte: startOfToday } } }),
+        prisma.user.count({ where: { createdAt: { gte: startOfMonth } } })
+      ])
+
+    return {
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      totalSessions,
+      newUsersToday,
+      newUsersThisMonth
     }
   } catch (error) {
     throw error
@@ -1045,6 +1078,7 @@ export const userService = {
   deleteUser,
   deleteMultipleUsers,
   getUsers,
+  getUserOverviewStats,
   refreshToken,
   createUserByAdmin,
   uploadAvatar,

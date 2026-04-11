@@ -16,7 +16,7 @@ import { notificationService } from '~/services/notificationService.js'
 import { ghnService } from '~/services/ghnService.js'
 import { emitToUser, emitToAdmin, SOCKET_EVENTS } from '~/config/socket.js'
 import type { VoucherType, Prisma } from '@prisma/client'
-import { OrderStatus, PaymentStatus, PaymentMethod } from '@prisma/client'
+import { OrderStatus, PaymentStatus, PaymentMethod, UserStatus } from '@prisma/client'
 import { prisma } from '~/config/prisma.js'
 import {
   ORDER_STATUS,
@@ -41,6 +41,7 @@ import type {
   PayloadOrderItem,
   CreateOrderPayload,
   AdminOrderQueryFilter,
+  AdminOrderDashboardSummary,
   UpdateStatusData,
   UpdatePaymentStatusData,
   UpdateOrderInput,
@@ -55,6 +56,55 @@ import type { PaginationInfo } from '~/types/common.types.js'
 interface PaginatedOrdersResult {
   orders: Order[]
   pagination: PaginationInfo
+}
+
+const DASHBOARD_RECENT_ORDER_LIMIT = 6
+const DASHBOARD_REVENUE_DAY_COUNT = 7
+const DASHBOARD_TOP_PRODUCT_LIMIT = 6
+
+const toDateKey = (date: Date): string => {
+  const year = date.getFullYear()
+  const month = `${date.getMonth() + 1}`.padStart(2, '0')
+  const day = `${date.getDate()}`.padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
+const buildRecentDateKeys = (days: number): string[] => {
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const dateKeys: string[] = []
+
+  for (let offset = days - 1; offset >= 0; offset -= 1) {
+    const date = new Date(startOfToday)
+
+    date.setDate(startOfToday.getDate() - offset)
+    dateKeys.push(toDateKey(date))
+  }
+
+  return dateKeys
+}
+
+const getRevenueRangeStart = (): Date => {
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfSevenDayWindow = new Date(startOfToday)
+
+  startOfSevenDayWindow.setDate(startOfToday.getDate() - (DASHBOARD_REVENUE_DAY_COUNT - 1))
+
+  return startOfSevenDayWindow < startOfMonth ? startOfSevenDayWindow : startOfMonth
+}
+
+const createOrderStatusCounts = (): Record<OrderStatus, number> => {
+  return ORDER_STATUS.reduce(
+    (acc, status) => {
+      acc[status] = 0
+
+      return acc
+    },
+    {} as Record<OrderStatus, number>
+  )
 }
 
 /**
@@ -505,6 +555,167 @@ const adminGetOrders = async (
     return {
       orders: result.orders.map(mapOrderToApi),
       pagination: result.pagination as any
+    }
+  } catch (error) {
+    throw error
+  }
+}
+
+/**
+ * Admin: Lấy dữ liệu tổng hợp dashboard đơn hàng
+ */
+const adminGetDashboardSummary = async (): Promise<AdminOrderDashboardSummary> => {
+  try {
+    const now = new Date()
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+    const revenueRangeStart = getRevenueRangeStart()
+    const revenueDateKeys = buildRecentDateKeys(DASHBOARD_REVENUE_DAY_COUNT)
+
+    const [
+      totalOrders,
+      groupedStatusCounts,
+      recentOrdersResult,
+      deliveredOrdersForRevenue,
+      totalUsers,
+      activeUsers,
+      inactiveUsers,
+      newUsersToday,
+      newUsersThisMonth,
+      totalProducts,
+      topSellingProducts
+    ] = await Promise.all([
+      prisma.order.count(),
+      prisma.order.groupBy({
+        by: ['status'],
+        _count: {
+          _all: true
+        }
+      }),
+      orderModel.getMany({}, 1, DASHBOARD_RECENT_ORDER_LIMIT),
+      prisma.order.findMany({
+        where: {
+          status: OrderStatus.DELIVERED,
+          OR: [
+            {
+              deliveredAt: {
+                gte: revenueRangeStart
+              }
+            },
+            {
+              deliveredAt: null,
+              createdAt: {
+                gte: revenueRangeStart
+              }
+            }
+          ]
+        },
+        select: {
+          deliveredAt: true,
+          createdAt: true,
+          totalPrice: true
+        }
+      }),
+      prisma.user.count(),
+      prisma.user.count({ where: { status: UserStatus.active } }),
+      prisma.user.count({ where: { status: UserStatus.inactive } }),
+      prisma.user.count({
+        where: {
+          createdAt: {
+            gte: startOfToday
+          }
+        }
+      }),
+      prisma.user.count({
+        where: {
+          createdAt: {
+            gte: startOfMonth
+          }
+        }
+      }),
+      prisma.product.count(),
+      prisma.product.findMany({
+        take: DASHBOARD_TOP_PRODUCT_LIMIT,
+        orderBy: [{ selled: 'desc' }, { createdAt: 'desc' }],
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          stock: true,
+          selled: true
+        }
+      })
+    ])
+
+    const statusCounts = createOrderStatusCounts()
+
+    for (const statusRow of groupedStatusCounts) {
+      const status = statusRow.status as OrderStatus
+
+      statusCounts[status] = Number(statusRow._count._all || 0)
+    }
+
+    const revenueBucket = revenueDateKeys.reduce<Record<string, number>>((acc, key) => {
+      acc[key] = 0
+
+      return acc
+    }, {})
+
+    let todayRevenue = 0
+    let monthRevenue = 0
+
+    for (const order of deliveredOrdersForRevenue) {
+      const revenueDate = order.deliveredAt ? new Date(order.deliveredAt) : new Date(order.createdAt)
+
+      if (Number.isNaN(revenueDate.getTime())) {
+        continue
+      }
+
+      const payable = Number(order.totalPrice || 0)
+      const dateKey = toDateKey(revenueDate)
+
+      if (dateKey in revenueBucket) {
+        revenueBucket[dateKey] = (revenueBucket[dateKey] || 0) + payable
+      }
+
+      if (revenueDate >= startOfMonth) {
+        monthRevenue += payable
+      }
+
+      if (revenueDate >= startOfToday) {
+        todayRevenue += payable
+      }
+    }
+
+    return {
+      users: {
+        totalUsers: Number(totalUsers),
+        activeUsers: Number(activeUsers),
+        inactiveUsers: Number(inactiveUsers),
+        newUsersToday: Number(newUsersToday),
+        newUsersThisMonth: Number(newUsersThisMonth)
+      },
+      products: {
+        totalProducts: Number(totalProducts),
+        topSellingProducts: topSellingProducts.map(product => ({
+          id: product.id,
+          name: product.name,
+          price: Number(product.price || 0),
+          stock: Number(product.stock || 0),
+          selled: Number(product.selled || 0)
+        }))
+      },
+      totalOrders: Number(totalOrders),
+      recentOrders: recentOrdersResult.orders.map(mapOrderToApi),
+      statusCounts,
+      revenue: {
+        today: todayRevenue,
+        month: monthRevenue,
+        lastSevenDays: revenueDateKeys.map(key => ({
+          key,
+          value: revenueBucket[key] || 0
+        }))
+      }
     }
   } catch (error) {
     throw error
@@ -1092,6 +1303,7 @@ export const orderService = {
   getMyOrders,
   getDetails,
   adminGetOrders,
+  adminGetDashboardSummary,
   updateStatus,
   updatePaymentStatus,
   markPaid,

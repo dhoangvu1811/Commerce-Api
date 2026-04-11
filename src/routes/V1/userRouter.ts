@@ -77,6 +77,9 @@ RouterInstance.get('/me', userController.getCurrentUser)
 // Admin routes - requires manage_users permission
 RouterInstance.get('/all', authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS), userController.getUsers)
 
+// Lấy thống kê tổng quan người dùng cho dashboard
+RouterInstance.get('/stats', authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS), userController.getUserOverviewStats)
+
 // Lấy users với session summary cho table overview
 RouterInstance.get(
   '/overview',

@@ -89,6 +89,20 @@ const adminGetOrders = async (req: Request, res: Response, next: NextFunction): 
   }
 }
 
+const adminGetDashboardSummary = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const result = await orderService.adminGetDashboardSummary()
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy dữ liệu dashboard đơn hàng thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 const adminGetDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const id = String(req.params.id)
@@ -205,6 +219,7 @@ export const orderController = {
   getMyOrders,
   getDetails,
   adminGetOrders,
+  adminGetDashboardSummary,
   adminGetDetails,
   adminUpdateStatus,
   adminUpdatePaymentStatus,

@@ -34,6 +34,13 @@ RouterInstance.post(
 // Admin routes - requires manage_orders permission
 RouterInstance.get('/all', authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS), orderController.adminGetOrders)
 RouterInstance.get(
+  '/dashboard-summary',
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_USERS),
+  authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS),
+  orderController.adminGetDashboardSummary
+)
+RouterInstance.get(
   '/admin/details/:id',
   authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
   orderValidation.validateOrderId,

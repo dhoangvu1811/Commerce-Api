@@ -6,10 +6,21 @@
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import { productService } from '~/services/productService.js'
+import { recommendationService } from '~/services/recommendationService.js'
 
 // Extend Request type to include file from multer
 interface MulterRequest extends Request {
   file?: Express.Multer.File
+}
+
+type RecommendationMode = 'auto' | 'guest' | 'personalized'
+
+const normalizeRecommendationMode = (value: unknown): RecommendationMode => {
+  const normalized = String(value || 'auto').toLowerCase()
+  if (normalized === 'guest') return 'guest'
+  if (normalized === 'personalized') return 'personalized'
+
+  return 'auto'
 }
 
 const createNew = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -117,6 +128,33 @@ const getProducts = async (req: Request, res: Response, next: NextFunction): Pro
   }
 }
 
+const getSimilarProducts = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const productId = String(req.params.id)
+    const topK = req.query.topK ? parseInt(String(req.query.topK), 10) : undefined
+    const minScore = req.query.minScore ? parseFloat(String(req.query.minScore)) : undefined
+    const mode = normalizeRecommendationMode(req.query.mode)
+
+    const parsedUserId = req.jwtDecoded?._id ? parseInt(req.jwtDecoded._id, 10) : NaN
+    const userId = Number.isInteger(parsedUserId) && parsedUserId > 0 ? parsedUserId : undefined
+
+    const result = await recommendationService.getSimilarProducts(productId, {
+      topK,
+      minScore,
+      mode,
+      userId
+    })
+
+    res.status(StatusCodes.OK).json({
+      code: StatusCodes.OK,
+      message: 'Lấy danh sách sản phẩm tương tự thành công',
+      data: result
+    })
+  } catch (error) {
+    next(error)
+  }
+}
+
 const uploadImage = async (req: MulterRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Kiểm tra xem có file được upload không
@@ -153,5 +191,6 @@ export const productController = {
   deleteProduct,
   deleteSelectedProducts,
   getProducts,
+  getSimilarProducts,
   uploadImage
 }

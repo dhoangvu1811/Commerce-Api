@@ -21,6 +21,7 @@ export interface EnvironmentConfig {
   LOCAL_DEV_APP_PORT: number
   BUILD_MODE: BuildMode
   AUTHOR: string
+  RECOMMENDER_API_URL: string
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string
