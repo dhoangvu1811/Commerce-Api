@@ -49,6 +49,46 @@ const verifyToken = async (req: Request, _res: Response, next: NextFunction): Pr
 }
 
 /**
+ * Middleware xác thực token tùy chọn cho route public
+ * Nếu không có token hoặc token không hợp lệ thì vẫn cho phép đi tiếp như guest.
+ */
+const verifyOptionalToken = async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
+  try {
+    let token = req.cookies?.accessToken as string | undefined
+
+    if (!token) {
+      const authHeader = req.headers?.authorization
+      token = authHeader?.split(' ')[1]
+    }
+
+    if (!token) {
+      next()
+
+      return
+    }
+
+    const decoded = JwtProvider.verifyAccessToken(token) as AccessTokenPayload
+
+    // Với route public, nếu session không còn active thì degrade về guest.
+    if (decoded.sessionId) {
+      const activeSession = await sessionModel.findBySessionId(decoded.sessionId)
+      if (!activeSession || String(activeSession.userId) !== decoded._id) {
+        req.jwtDecoded = undefined
+        next()
+
+        return
+      }
+    }
+
+    req.jwtDecoded = decoded
+    next()
+  } catch {
+    req.jwtDecoded = undefined
+    next()
+  }
+}
+
+/**
  * Middleware kiểm tra quyền admin
  * Yêu cầu đã qua verifyToken
  */
@@ -311,6 +351,7 @@ const requireAllPermissions = (permissionNames: string[]) => {
 
 export const authMiddleware = {
   verifyToken,
+  verifyOptionalToken,
   verifyAdmin,
   verifyUserOwnership,
   verifyActiveUser,

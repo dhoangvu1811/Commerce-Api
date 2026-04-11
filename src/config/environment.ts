@@ -19,6 +19,7 @@ export const env: EnvironmentVariables = {
   LOCAL_DEV_APP_PORT: Number(process.env.LOCAL_DEV_APP_PORT) || 8017,
   BUILD_MODE: (process.env.BUILD_MODE as 'dev' | 'production') || 'dev',
   AUTHOR: process.env.AUTHOR || 'Developer',
+  RECOMMENDER_API_URL: process.env.RECOMMENDER_API_URL || 'http://localhost:8020',
 
   // JWT Secrets
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || '',
