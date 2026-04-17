@@ -21,6 +21,7 @@ import { roleRoute } from './roleRouter.js'
 import { permissionRoute } from './permissionRouter.js'
 import { shippingRouter } from './shippingRouter.js'
 import { paymentRouter } from './paymentRouter.js'
+import { recommendationEventRouter } from './recommendationEventRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -56,6 +57,9 @@ RouterInstance.use('/categories', categoryRouter)
 
 /* Product APIs */
 RouterInstance.use('/products', productRoute)
+
+/* Recommendation telemetry (public + optional auth) */
+RouterInstance.use('/recommendation-events', recommendationEventRouter)
 
 /* User APIs */
 RouterInstance.use('/users', userRoute)

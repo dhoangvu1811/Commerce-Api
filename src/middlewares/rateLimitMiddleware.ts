@@ -70,3 +70,18 @@ export const generalLimiter: RateLimitRequestHandler = rateLimit({
   standardHeaders: true,
   legacyHeaders: false
 })
+
+/**
+ * Telemetry recommender (impression / click) — tránh spam batch
+ */
+export const recommendationEventLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 1000,
+  max: 60,
+  message: {
+    code: StatusCodes.TOO_MANY_REQUESTS,
+    message: 'Quá nhiều sự kiện gợi ý. Vui lòng thử lại sau.',
+    data: null
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+})
