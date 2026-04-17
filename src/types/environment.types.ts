@@ -22,6 +22,8 @@ export interface EnvironmentConfig {
   BUILD_MODE: BuildMode
   AUTHOR: string
   RECOMMENDER_API_URL: string
+  RECOMMENDER_REINDEX_ENABLED: string
+  RECOMMENDER_REINDEX_SECRET: string
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string

@@ -18,6 +18,7 @@ import { prisma } from '~/config/prisma.js'
 import type { ProductQueryFilter } from '~/types/product.types.js'
 import { slugify } from '~/utils/helper.js'
 import type { PaginationInfo, UploadResult, DeleteResultInfo } from '~/types/common.types.js'
+import { requestReindex } from '~/services/recommenderIndexService.js'
 
 /** Paginated products result */
 interface PaginatedProductsResult {
@@ -79,6 +80,8 @@ const createNew = async (
 
     // Lấy lại product với images đã được thêm
     const productWithImages = await productModel.findOneById(createdProduct.id)
+
+    requestReindex()
 
     return productWithImages || createdProduct
   } catch (error) {
@@ -159,6 +162,8 @@ const update = async (productId: string, updateData: UpdateProductInput & { imag
     // Lấy lại product với images đã được cập nhật
     const productWithImages = await productModel.findOneById(productIdNum)
 
+    requestReindex()
+
     return productWithImages || updatedProduct
   } catch (error) {
     throw error
@@ -180,6 +185,8 @@ const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
 
     // Xóa sản phẩm
     const result = await productModel.deleteOneById(productIdNum)
+
+    requestReindex()
 
     return {
       deletedCount: result ? 1 : 0,
@@ -221,6 +228,8 @@ const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResul
 
     // Xóa các sản phẩm đã chọn
     const result = await productModel.deleteMany({ id: { in: numberIds } })
+
+    requestReindex()
 
     return {
       deletedCount: result.count,

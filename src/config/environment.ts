@@ -20,6 +20,8 @@ export const env: EnvironmentVariables = {
   BUILD_MODE: (process.env.BUILD_MODE as 'dev' | 'production') || 'dev',
   AUTHOR: process.env.AUTHOR || 'Developer',
   RECOMMENDER_API_URL: process.env.RECOMMENDER_API_URL || 'http://localhost:8020',
+  RECOMMENDER_REINDEX_ENABLED: process.env.RECOMMENDER_REINDEX_ENABLED || '',
+  RECOMMENDER_REINDEX_SECRET: process.env.RECOMMENDER_REINDEX_SECRET || '',
 
   // JWT Secrets
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || '',
