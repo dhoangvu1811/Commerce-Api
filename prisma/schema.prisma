@@ -521,3 +521,21 @@ model ShippingAddress {
   @@index([provinceId, districtId, wardCode])
   @@map("shipping_addresses")
 }
+
+/// Sự kiện telemetry cho gợi ý sản phẩm tương tự (impression / click)
+model RecommendationEvent {
+  id                   Int      @id @default(autoincrement())
+  type                 String   @db.VarChar(50)
+  sourceProductId      Int      @map("source_product_id")
+  recommendedProductId Int?     @map("recommended_product_id")
+  position             Int?
+  strategy             String?  @db.VarChar(30)
+  similarityScore      Decimal? @map("similarity_score") @db.Decimal(8, 4)
+  userId               Int?     @map("user_id")
+  occurredAt           DateTime @map("occurred_at")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@index([type, createdAt])
+  @@index([sourceProductId])
+  @@map("recommendation_events")
+}

@@ -228,4 +228,80 @@ describe('recommendationService.getSimilarProducts', () => {
     expect(calledUrl).toContain('top_k=8')
     expect(calledUrl).toContain('min_score=0.05')
   })
+
+  test('REC-SIM-HP-005 should fallback when RECOMMENDER_API_URL is empty (no fetch)', async () => {
+    env.RECOMMENDER_API_URL = ''
+
+    vi.spyOn(productModel, 'findOneById').mockResolvedValue({
+      id: 8,
+      status: 'active',
+      categoryId: 4
+    } as any)
+
+    const fetchMock = vi.fn()
+    vi.stubGlobal('fetch', fetchMock)
+
+    vi.spyOn(productModel, 'getMany').mockResolvedValue({
+      products: [
+        { id: 8, status: 'active' },
+        { id: 9, status: 'active' }
+      ],
+      pagination: {
+        page: 1,
+        itemsPerPage: 9,
+        totalItems: 2,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPrevPage: false
+      }
+    } as any)
+
+    vi.spyOn(productModel, 'findByIds').mockResolvedValue([{ id: 9, status: 'active', name: 'FB' }] as any)
+
+    const result = await recommendationService.getSimilarProducts('8', { topK: 5, mode: 'guest' })
+
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(result.strategy).toBe('fallback')
+    expect(result.products[0]?.id).toBe(9)
+  })
+
+  test('REC-SIM-HP-006 should default strategy to guest when recommender omits strategyUsed', async () => {
+    env.RECOMMENDER_API_URL = 'http://localhost:8020'
+
+    vi.spyOn(productModel, 'findOneById').mockResolvedValue({
+      id: 8,
+      status: 'active',
+      categoryId: 6
+    } as any)
+
+    vi.spyOn(productModel, 'findByIds').mockResolvedValue([
+      { id: 7, status: 'active', name: 'X' }
+    ] as any)
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          code: 200,
+          message: 'OK',
+          data: {
+            sourceProductId: 8,
+            similarProducts: [{ productId: 7, score: 0.4 }]
+          }
+        })
+      })
+    )
+
+    const result = await recommendationService.getSimilarProducts('8', { mode: 'guest' })
+
+    expect(result.strategy).toBe('guest')
+    expect(result.products[0]?.id).toBe(7)
+  })
+
+  test('REC-SIM-ER-002 should reject invalid product id', async () => {
+    await expect(recommendationService.getSimilarProducts('0')).rejects.toMatchObject({
+      statusCode: StatusCodes.BAD_REQUEST
+    })
+  })
 })
