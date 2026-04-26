@@ -19,6 +19,7 @@ import type { ProductQueryFilter } from '~/types/product.types.js'
 import { slugify } from '~/utils/helper.js'
 import type { PaginationInfo, UploadResult, DeleteResultInfo } from '~/types/common.types.js'
 import { requestReindex } from '~/services/recommenderIndexService.js'
+import { requestEmbeddingReindex } from '~/services/embeddingIndexService.js'
 
 /** Paginated products result */
 interface PaginatedProductsResult {
@@ -82,6 +83,7 @@ const createNew = async (
     const productWithImages = await productModel.findOneById(createdProduct.id)
 
     requestReindex()
+    requestEmbeddingReindex()
 
     return productWithImages || createdProduct
   } catch (error) {
@@ -90,12 +92,40 @@ const createNew = async (
 }
 
 /**
- * Lấy chi tiết product
+ * Lấy chi tiết product theo ID (legacy support)
  */
 const getDetails = async (productId: string): Promise<Product> => {
   try {
     const productIdNum = parseProductId(productId)
     const product = await productModel.findOneById(productIdNum)
+
+    if (!product) {
+      throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
+    }
+
+    return product
+  } catch (error) {
+    throw error
+  }
+}
+
+/**
+ * Lấy chi tiết product theo ID hoặc slug (hybrid identifier)
+ * Nếu identifier là số → query by ID
+ * Nếu identifier là string → query by slug
+ */
+const getByIdentifier = async (identifier: string): Promise<Product> => {
+  try {
+    let product: Product | null = null
+
+    // Detect: nếu identifier toàn là số → query by ID
+    if (/^\d+$/.test(identifier)) {
+      const productIdNum = parseInt(identifier, 10)
+      product = await productModel.findOneById(productIdNum)
+    } else {
+      // Query by slug
+      product = await productModel.findBySlug(identifier)
+    }
 
     if (!product) {
       throw new ApiError(StatusCodes.NOT_FOUND, 'Không tìm thấy sản phẩm')
@@ -163,6 +193,7 @@ const update = async (productId: string, updateData: UpdateProductInput & { imag
     const productWithImages = await productModel.findOneById(productIdNum)
 
     requestReindex()
+    requestEmbeddingReindex()
 
     return productWithImages || updatedProduct
   } catch (error) {
@@ -187,6 +218,7 @@ const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
     const result = await productModel.deleteOneById(productIdNum)
 
     requestReindex()
+    requestEmbeddingReindex()
 
     return {
       deletedCount: result ? 1 : 0,
@@ -230,6 +262,7 @@ const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResul
     const result = await productModel.deleteMany({ id: { in: numberIds } })
 
     requestReindex()
+    requestEmbeddingReindex()
 
     return {
       deletedCount: result.count,
@@ -377,6 +410,7 @@ const uploadImage = async (fileBuffer: Buffer, folderName: string = 'products'):
 export const productService = {
   createNew,
   getDetails,
+  getByIdentifier,
   update,
   deleteProduct,
   deleteSelectedProducts,

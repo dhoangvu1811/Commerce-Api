@@ -6,6 +6,7 @@ import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
 import { wishlistModel } from '~/models/wishlistModel.js'
 import { productModel } from '~/models/productModel.js'
+import { requestReindex } from '~/services/recommenderIndexService.js'
 
 /**
  * Toggle (Thêm/Xóa) sản phẩm yêu thích
@@ -24,6 +25,7 @@ const toggleWishlist = async (userId: number, productId: number) => {
 
   if (existingItem) {
     await wishlistModel.remove(userId, productId)
+    requestReindex()
 
     return {
       action: 'removed',
@@ -36,6 +38,7 @@ const toggleWishlist = async (userId: number, productId: number) => {
     }
 
     await wishlistModel.add(userId, productId)
+    requestReindex()
 
     return {
       action: 'added',

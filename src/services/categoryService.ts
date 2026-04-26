@@ -8,6 +8,8 @@ import type {
 } from '~/types/category.types.js'
 import ApiError from '~/utils/ApiError.js'
 import { slugify } from '~/utils/helper.js'
+import { requestReindex } from '~/services/recommenderIndexService.js'
+import { requestEmbeddingReindex } from '~/services/embeddingIndexService.js'
 
 /**
  * Create new category
@@ -81,6 +83,9 @@ const update = async (categoryId: number, data: UpdateCategoryInput): Promise<Ca
     ...data,
     slug
   })
+
+  requestReindex()
+  requestEmbeddingReindex()
 
   return updatedCategory
 }

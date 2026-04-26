@@ -25,6 +25,7 @@ import {
   ORDER_STATUS_NAMES as STATUS_NAMES,
   PAYMENT_STATUS_NAMES
 } from '~/utils/constants.js'
+import { requestReindex } from '~/services/recommenderIndexService.js'
 import {
   applyVoucher,
   calcLineTotal,
@@ -798,6 +799,8 @@ const updateStatus = async (orderId: string, data: UpdateStatusData, adminId: st
       `Đơn hàng #${order.orderCode} của bạn đã chuyển sang trạng thái: ${STATUS_NAMES[status] || status}`
     )
 
+    requestReindex()
+
     const refreshed = await orderModel.findOneById(orderIdNum)
     const orderResult = mapOrderToApi(refreshed!)
 
@@ -1228,6 +1231,8 @@ const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = f
 
     // Thông báo admin (nếu user hủy hoặc để sync admin panel, loại trừ admin đang thao tác)
     emitToAdmin(SOCKET_EVENTS.ORDER_CANCELLED, cancelPayload, requesterIdNum)
+
+    requestReindex()
 
     return orderResult
   } catch (error) {
