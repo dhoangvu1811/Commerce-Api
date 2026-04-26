@@ -22,6 +22,7 @@ import { permissionRoute } from './permissionRouter.js'
 import { shippingRouter } from './shippingRouter.js'
 import { paymentRouter } from './paymentRouter.js'
 import { recommendationEventRouter } from './recommendationEventRouter.js'
+import { aiChatRouter } from './aiChatRouter.js'
 import { prisma } from '~/config/prisma.js'
 
 const RouterInstance: Router = express.Router()
@@ -60,6 +61,9 @@ RouterInstance.use('/products', productRoute)
 
 /* Recommendation telemetry (public + optional auth) */
 RouterInstance.use('/recommendation-events', recommendationEventRouter)
+
+/* AI product chat — proxy tới n8n RAG */
+RouterInstance.use('/ai-chat', aiChatRouter)
 
 /* User APIs */
 RouterInstance.use('/users', userRoute)
