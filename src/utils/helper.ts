@@ -376,4 +376,7 @@ export const slugify = (text: string): string => {
     locale: 'vi', // language code of the locale to use
     remove: /[*+~.()'"!:@]/g // remove characters that match regex, defaults to `undefined`
   })
+    .replace(/[\\/]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
 }

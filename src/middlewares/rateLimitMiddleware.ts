@@ -74,6 +74,21 @@ export const generalLimiter: RateLimitRequestHandler = rateLimit({
 /**
  * Telemetry recommender (impression / click) — tránh spam batch
  */
+/**
+ * Chat AI / RAG — tránh spam
+ */
+export const aiChatLimiter: RateLimitRequestHandler = rateLimit({
+  windowMs: 60 * 1000,
+  max: 20,
+  message: {
+    code: StatusCodes.TOO_MANY_REQUESTS,
+    message: 'Quá nhiều tin nhắn chat. Vui lòng thử lại sau.',
+    data: null
+  },
+  standardHeaders: true,
+  legacyHeaders: false
+})
+
 export const recommendationEventLimiter: RateLimitRequestHandler = rateLimit({
   windowMs: 60 * 1000,
   max: 60,

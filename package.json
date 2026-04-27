@@ -29,6 +29,7 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:fix-slugs": "tsx src/scripts/fix-product-slugs.ts",
     "render:build": "pnpm db:generate && pnpm db:migrate:deploy && pnpm build"
   },
   "dependencies": {

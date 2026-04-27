@@ -15,7 +15,8 @@ import { PERMISSIONS } from '~/constants/rbac.js'
 const RouterInstance: Router = express.Router()
 
 // Public routes - không cần xác thực (cho khách hàng xem sản phẩm)
-RouterInstance.get('/details/:id', productController.getDetails)
+// Support both ID (legacy) and slug-based routing
+RouterInstance.get('/details/:identifier', productController.getDetails)
 RouterInstance.get('/getAll', productController.getProducts)
 RouterInstance.get('/similar/:id', authMiddleware.verifyOptionalToken, productController.getSimilarProducts)
 

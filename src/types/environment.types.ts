@@ -25,6 +25,17 @@ export interface EnvironmentConfig {
   RECOMMENDER_REINDEX_ENABLED: string
   RECOMMENDER_REINDEX_SECRET: string
 
+  /** URL webhook n8n RAG (POST) */
+  N8N_AI_CHAT_WEBHOOK_URL: string
+  /** Timeout gọi webhook chat AI (ms) */
+  AI_CHAT_WEBHOOK_TIMEOUT_MS: number
+  /** Gửi kèm header X-Internal-Key nếu không rỗng */
+  AI_CHAT_INTERNAL_SECRET: string
+  /** Base URL ecommerce-Embeddings (debounce reindex) */
+  EMBEDDINGS_SERVICE_URL: string
+  EMBEDDINGS_REINDEX_ENABLED: string
+  EMBEDDINGS_REINDEX_SECRET: string
+
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string
   CLOUDINARY_API_KEY: string

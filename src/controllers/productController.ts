@@ -39,9 +39,10 @@ const createNew = async (req: Request, res: Response, next: NextFunction): Promi
 
 const getDetails = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const productId = String(req.params.id)
+    // Support both ID (legacy) and identifier (ID or slug)
+    const identifier = String(req.params.identifier || req.params.id)
 
-    const product = await productService.getDetails(productId)
+    const product = await productService.getByIdentifier(identifier)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
