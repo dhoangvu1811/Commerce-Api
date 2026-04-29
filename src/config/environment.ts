@@ -29,6 +29,7 @@ export const env: EnvironmentVariables = {
   EMBEDDINGS_SERVICE_URL: process.env.EMBEDDINGS_SERVICE_URL || 'http://localhost:8030',
   EMBEDDINGS_REINDEX_ENABLED: process.env.EMBEDDINGS_REINDEX_ENABLED || '',
   EMBEDDINGS_REINDEX_SECRET: process.env.EMBEDDINGS_REINDEX_SECRET || '',
+  EMBEDDINGS_IMAGE_SEARCH_URL: process.env.EMBEDDINGS_IMAGE_SEARCH_URL || '',
 
   // JWT Secrets
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET || '',

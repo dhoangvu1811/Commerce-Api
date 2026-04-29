@@ -35,6 +35,8 @@ export interface EnvironmentConfig {
   EMBEDDINGS_SERVICE_URL: string
   EMBEDDINGS_REINDEX_ENABLED: string
   EMBEDDINGS_REINDEX_SECRET: string
+  /** URL endpoint tìm kiếm ảnh trên ecommerce-Embeddings (POST /v1/search-by-image) */
+  EMBEDDINGS_IMAGE_SEARCH_URL: string
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string
