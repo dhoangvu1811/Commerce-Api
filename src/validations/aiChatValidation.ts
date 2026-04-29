@@ -16,6 +16,7 @@ const chatSchema = z.object({
     .transform(v => {
       if (v === undefined || v === null || v === '') return undefined
       const n = Number(v)
+
       return Number.isFinite(n) && n > 0 ? Math.trunc(n) : undefined
     }),
   locale: z.string().max(16).optional()
@@ -26,13 +27,14 @@ const validateChat = (req: Request, _res: Response, next: NextFunction): void =>
   if (!parsed.success) {
     const msg = parsed.error.errors.map(e => e.message).join('; ')
     next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, msg))
-    
+
     return
   }
 
   // At least message or image must be present
   if (!parsed.data.message && !req.file) {
     next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Cần nhập tin nhắn hoặc đính kèm ảnh'))
+
     return
   }
 

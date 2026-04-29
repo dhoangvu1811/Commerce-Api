@@ -37,6 +37,8 @@ export interface EnvironmentConfig {
   EMBEDDINGS_REINDEX_SECRET: string
   /** URL endpoint tìm kiếm ảnh trên ecommerce-Embeddings (POST /v1/search-by-image) */
   EMBEDDINGS_IMAGE_SEARCH_URL: string
+  /** Hugging Face Access Token để xác thực gọi API lên HF Space private */
+  EMBEDDINGS_HF_TOKEN: string
 
   // Cloudinary
   CLOUDINARY_CLOUD_NAME: string
