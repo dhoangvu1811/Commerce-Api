@@ -44,6 +44,12 @@ const searchByImage = async (imageBuffer: Buffer, limit = 8): Promise<ImageSearc
   formData.append('limit', String(limit))
   formData.append('score_threshold', '0.3')
 
+  const headers: Record<string, string> = {}
+  const hfToken = env.EMBEDDINGS_HF_TOKEN?.trim()
+  if (hfToken) {
+    headers['Authorization'] = `Bearer ${hfToken}`
+  }
+
   const controller = new AbortController()
   const t = setTimeout(() => controller.abort(), 60_000)
 
@@ -51,6 +57,7 @@ const searchByImage = async (imageBuffer: Buffer, limit = 8): Promise<ImageSearc
     const res = await fetch(url, {
       method: 'POST',
       body: formData,
+      headers,
       signal: controller.signal
     })
 
