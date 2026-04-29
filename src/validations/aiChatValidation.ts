@@ -5,11 +5,19 @@ import ApiError from '~/utils/ApiError.js'
 
 const chatSchema = z.object({
   message: z
-    .string({ required_error: 'Nội dung tin nhắn là bắt buộc' })
-    .min(1, 'Tin nhắn không được để trống')
-    .max(4000, 'Tin nhắn quá dài'),
+    .string()
+    .max(4000, 'Tin nhắn quá dài')
+    .optional()
+    .default(''),
   conversationId: z.string().max(128).optional(),
-  productId: z.number().int().positive().optional(),
+  productId: z
+    .union([z.number(), z.string()])
+    .optional()
+    .transform(v => {
+      if (v === undefined || v === null || v === '') return undefined
+      const n = Number(v)
+      return Number.isFinite(n) && n > 0 ? Math.trunc(n) : undefined
+    }),
   locale: z.string().max(16).optional()
 })
 
@@ -21,6 +29,13 @@ const validateChat = (req: Request, _res: Response, next: NextFunction): void =>
     
     return
   }
+
+  // At least message or image must be present
+  if (!parsed.data.message && !req.file) {
+    next(new ApiError(StatusCodes.UNPROCESSABLE_ENTITY, 'Cần nhập tin nhắn hoặc đính kèm ảnh'))
+    return
+  }
+
   req.body = parsed.data
   next()
 }

@@ -6,7 +6,9 @@ import type { AiChatPayload } from '~/types/aiChat.types.js'
 const postChat = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const payload = req.body as AiChatPayload
-    const result = await aiChatService.sendChatMessage(payload)
+    const imageBuffer = req.file?.buffer ?? undefined
+
+    const result = await aiChatService.sendChatMessage(payload, imageBuffer)
 
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
