@@ -14,7 +14,7 @@ const createProductSchema = z.object({
   name: z
     .string({ required_error: 'Tên sản phẩm là bắt buộc' })
     .min(2, 'Tên sản phẩm phải có ít nhất 2 ký tự')
-    .max(255, 'Tên sản phẩm không được vượt quá 255 ký tự'),
+    .max(500, 'Tên sản phẩm không được vượt quá 500 ký tự'),
   image: z
     .string({ required_error: 'Hình ảnh sản phẩm là bắt buộc' })
     .url('Hình ảnh phải là URL hợp lệ'),
@@ -37,7 +37,7 @@ const createProductSchema = z.object({
     .default(0),
   description: z
     .string()
-    .max(1000, 'Mô tả không được vượt quá 1000 ký tự')
+    .max(50000, 'Mô tả không được vượt quá 50000 ký tự')
     .optional()
     .default(''),
   selled: z
@@ -71,7 +71,7 @@ const updateProductSchema = z
     name: z
       .string()
       .min(2, 'Tên sản phẩm phải có ít nhất 2 ký tự')
-      .max(255, 'Tên sản phẩm không được vượt quá 255 ký tự')
+      .max(500, 'Tên sản phẩm không được vượt quá 500 ký tự')
       .optional(),
     image: z.string().url('Hình ảnh phải là URL hợp lệ').optional(),
     categoryId: z
@@ -92,7 +92,7 @@ const updateProductSchema = z
       .optional(),
     description: z
       .string()
-      .max(1000, 'Mô tả không được vượt quá 1000 ký tự')
+      .max(50000, 'Mô tả không được vượt quá 50000 ký tự')
       .optional(),
     selled: z
       .number()

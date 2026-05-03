@@ -201,7 +201,7 @@ model Product {
   id Int @id @default(autoincrement())
 
   // ===== Từ MongoDB hiện tại =====
-  name        String  @db.VarChar(255)
+  name        String  @db.VarChar(500)
   image       String? @db.VarChar(500) // Main image
   description String? @db.Text
   price       Decimal @db.Decimal(15, 2)
@@ -211,7 +211,7 @@ model Product {
   discount    Decimal @default(0) @db.Decimal(5, 2) // % giảm giá
 
   // ===== Từ ERD (normalize) =====
-  slug       String @unique @db.VarChar(255)
+  slug       String @unique @db.VarChar(500)
   categoryId Int    @map("category_id")
   status     String @default("active") @db.VarChar(20)
 
@@ -347,7 +347,7 @@ model OrderItem {
   productId Int @map("product_id")
 
   // ===== Snapshot data (từ MongoDB embedded) =====
-  name      String  @db.VarChar(255) // Product name snapshot
+  name      String  @db.VarChar(500) // Product name snapshot
   image     String? @db.VarChar(500) // Product image snapshot
   unitPrice Decimal @map("unit_price") @db.Decimal(15, 2)
   discount  Decimal @default(0) @db.Decimal(5, 2)
