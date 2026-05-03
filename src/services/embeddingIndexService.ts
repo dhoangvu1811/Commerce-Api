@@ -14,7 +14,7 @@ const isEnabled = (): boolean => {
   return String(env.EMBEDDINGS_REINDEX_ENABLED || '').toLowerCase() === 'true'
 }
 
-const runReindex = async (): Promise<void> => {
+const runReindex = async (productId?: number): Promise<void> => {
   const baseUrl = env.EMBEDDINGS_SERVICE_URL?.trim()
   if (!baseUrl) {
     return
@@ -42,29 +42,38 @@ const runReindex = async (): Promise<void> => {
       method: 'POST',
       signal: controller.signal,
       headers,
-      body: JSON.stringify({ full_reset: false })
+      body: JSON.stringify({ product_id: productId || null, full_reset: false })
     })
 
     if (!response.ok) {
       console.warn(
-        `[embeddingIndex] Reindex failed: HTTP ${response.status} ${response.statusText}`
+        `[embeddingIndex] Reindex failed for product ${productId || 'ALL'}: HTTP ${response.status} ${response.statusText}`
       )
     }
   } catch (err) {
-    console.warn('[embeddingIndex] Reindex request failed:', (err as Error).message)
+    console.warn(`[embeddingIndex] Reindex request failed for product ${productId || 'ALL'}:`, (err as Error).message)
   } finally {
     clearTimeout(timeout)
   }
 }
 
 /**
- * Lên lịch reindex vector (debounce). Không throw.
+ * Lên lịch reindex vector (debounce) cho full reindex, hoặc chạy ngay nếu có ID cụ thể.
+ * Không throw.
  */
-export const requestEmbeddingReindex = (): void => {
+export const requestEmbeddingReindex = (productId?: number): void => {
   if (!isEnabled()) {
     return
   }
 
+  // Nếu truyền ID cụ thể, chạy ngay lập tức để cập nhật nhanh
+  // (Server Python đã có hàng đợi xử lý tuần tự nên không sợ quá tải)
+  if (productId) {
+    void runReindex(productId)
+    return
+  }
+
+  // Nếu không truyền ID (tức là cần full reindex), vẫn dùng debounce
   if (debounceTimer) {
     clearTimeout(debounceTimer)
   }
