@@ -83,7 +83,7 @@ const createNew = async (
     const productWithImages = await productModel.findOneById(createdProduct.id)
 
     requestReindex()
-    requestEmbeddingReindex()
+    requestEmbeddingReindex(createdProduct.id)
 
     return productWithImages || createdProduct
   } catch (error) {
@@ -193,7 +193,7 @@ const update = async (productId: string, updateData: UpdateProductInput & { imag
     const productWithImages = await productModel.findOneById(productIdNum)
 
     requestReindex()
-    requestEmbeddingReindex()
+    requestEmbeddingReindex(productIdNum)
 
     return productWithImages || updatedProduct
   } catch (error) {
@@ -218,7 +218,7 @@ const deleteProduct = async (productId: string): Promise<DeleteResultInfo> => {
     const result = await productModel.deleteOneById(productIdNum)
 
     requestReindex()
-    requestEmbeddingReindex()
+    requestEmbeddingReindex(productIdNum)
 
     return {
       deletedCount: result ? 1 : 0,
@@ -262,7 +262,7 @@ const deleteSelectedProducts = async (productIds: string[]): Promise<DeleteResul
     const result = await productModel.deleteMany({ id: { in: numberIds } })
 
     requestReindex()
-    requestEmbeddingReindex()
+    numberIds.forEach(id => requestEmbeddingReindex(id))
 
     return {
       deletedCount: result.count,
