@@ -98,12 +98,19 @@ const fetchFromRecommender = async (
       url.searchParams.set('user_id', String(userId))
     }
 
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json'
+    }
+
+    const hfToken = env.RECOMMENDER_HF_TOKEN?.trim()
+    if (hfToken) {
+      headers['Authorization'] = `Bearer ${hfToken}`
+    }
+
     const response = await fetch(url.toString(), {
       method: 'GET',
       signal: controller.signal,
-      headers: {
-        'Content-Type': 'application/json'
-      }
+      headers
     })
 
     if (!response.ok) {

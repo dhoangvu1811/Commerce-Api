@@ -33,6 +33,11 @@ const runReindex = async (): Promise<void> => {
     headers['X-Reindex-Key'] = secret
   }
 
+  const hfToken = env.RECOMMENDER_HF_TOKEN?.trim()
+  if (hfToken) {
+    headers['Authorization'] = `Bearer ${hfToken}`
+  }
+
   try {
     const response = await fetch(url.toString(), {
       method: 'POST',

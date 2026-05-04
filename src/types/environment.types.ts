@@ -24,6 +24,8 @@ export interface EnvironmentConfig {
   RECOMMENDER_API_URL: string
   RECOMMENDER_REINDEX_ENABLED: string
   RECOMMENDER_REINDEX_SECRET: string
+  /** Hugging Face Access Token để xác thực gọi API lên HF Space private cho recommendation */
+  RECOMMENDER_HF_TOKEN: string
 
   /** URL webhook n8n RAG (POST) */
   N8N_AI_CHAT_WEBHOOK_URL: string
