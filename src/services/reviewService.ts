@@ -9,6 +9,7 @@ import { productModel } from '~/models/productModel.js'
 import { prisma } from '~/config/prisma.js'
 import { OrderStatus } from '@prisma/client'
 import { requestReindex } from '~/services/recommenderIndexService.js'
+import { requestEmbeddingReindex } from '~/services/embeddingIndexService.js'
 
 interface ReviewPayload {
   productId: number
@@ -103,6 +104,7 @@ const createNewReview = async (userId: number, data: ReviewPayload) => {
   }
 
   requestReindex()
+  requestEmbeddingReindex(data.productId)
 
   return newReview
 }
