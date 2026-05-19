@@ -21,7 +21,7 @@ export const generateOpenApiDocument = (): any => {
     info: {
       version: '1.0.0',
       title: 'Commerce API',
-      description: 'API documentation cho hệ thống Bano AI E-commerce',
+      description: 'API documentation cho hệ thống E-commerce',
       contact: {
         name: env.AUTHOR
       }
