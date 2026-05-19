@@ -13,7 +13,8 @@ import {
 const DEFAULT_LOCAL_ORIGINS: string[] = [
   'http://localhost:5173',
   'http://localhost:3000',
-  'http://localhost:3001'
+  'http://localhost:3001',
+  'http://localhost:8017'
 ]
 
 const normalizeOrigin = (origin: string): string => origin.trim().replace(/\/$/, '')

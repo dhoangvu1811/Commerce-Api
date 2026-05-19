@@ -10,7 +10,7 @@ import ApiError from '~/utils/ApiError.js'
 import { ID_RULE, ID_RULE_MESSAGE } from '~/utils/zodValidators.js'
 
 /** Schema tạo product mới */
-const createProductSchema = z.object({
+export const createProductSchema = z.object({
   name: z
     .string({ required_error: 'Tên sản phẩm là bắt buộc' })
     .min(2, 'Tên sản phẩm phải có ít nhất 2 ký tự')
@@ -66,7 +66,7 @@ const createProductSchema = z.object({
 })
 
 /** Schema cập nhật product (tất cả optional, nhưng phải có ít nhất 1 field) */
-const updateProductSchema = z
+export const updateProductSchema = z
   .object({
     name: z
       .string()
