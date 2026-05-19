@@ -3,7 +3,10 @@
  * Xác thực dữ liệu đầu vào cho các API liên quan đến user
  */
 
+import { extendZodWithOpenApi } from '@asteasolutions/zod-to-openapi'
 import { z } from 'zod'
+
+extendZodWithOpenApi(z)
 import type { Request, Response, NextFunction } from 'express'
 import { StatusCodes } from 'http-status-codes'
 import ApiError from '~/utils/ApiError.js'
@@ -43,22 +46,25 @@ const nullableDateSchema = z
   )
 
 /** Schema đăng ký tài khoản */
-const registerSchema = z
+export const registerSchema = z
   .object({
     name: z
       .string({ required_error: 'Tên là bắt buộc' })
       .min(2, 'Tên phải có ít nhất 2 ký tự')
-      .max(100, 'Tên không được vượt quá 100 ký tự'),
+      .max(100, 'Tên không được vượt quá 100 ký tự')
+      .openapi({ example: 'Nguyễn Văn A', description: 'Họ và tên người dùng' }),
     email: z
       .string({ required_error: 'Email là bắt buộc' })
       .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
-      .transform((val) => val.toLowerCase().trim()),
+      .transform((val) => val.toLowerCase().trim())
+      .openapi({ example: 'user@example.com', description: 'Địa chỉ email' }),
     password: z
       .string({ required_error: 'Mật khẩu là bắt buộc' })
-      .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE),
+      .regex(PASSWORD_RULE, PASSWORD_RULE_MESSAGE)
+      .openapi({ example: 'Password@123', description: 'Mật khẩu (ít nhất 8 ký tự, 1 hoa, 1 số)' }),
     confirmPassword: z.string({
       required_error: 'Xác nhận mật khẩu là bắt buộc'
-    }),
+    }).openapi({ example: 'Password@123', description: 'Xác nhận lại mật khẩu' }),
     phoneNumber: z
       .string()
       .regex(PHONE_RULE, 'Số điện thoại không đúng định dạng')
@@ -79,13 +85,16 @@ const registerSchema = z
   })
 
 /** Schema đăng nhập */
-const loginSchema = z.object({
+export const loginSchema = z.object({
   email: z
     .string({ required_error: 'Email là bắt buộc' })
     .regex(EMAIL_RULE, EMAIL_RULE_MESSAGE)
-    .transform((val) => val.toLowerCase().trim()),
-  password: z.string({ required_error: 'Mật khẩu là bắt buộc' }),
+    .transform((val) => val.toLowerCase().trim())
+    .openapi({ example: 'admin@bano.com', description: 'Địa chỉ email' }),
+  password: z.string({ required_error: 'Mật khẩu là bắt buộc' })
+    .openapi({ example: '123456', description: 'Mật khẩu' }),
   loginContext: z.enum(['admin', 'client']).optional()
+    .openapi({ example: 'client', description: 'Ngữ cảnh đăng nhập' })
 })
 
 /** Schema cập nhật user (tất cả optional, phải có ít nhất 1 field) */
