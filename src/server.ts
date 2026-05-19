@@ -39,6 +39,30 @@ const START_SERVER = (): void => {
   // Enable req.body json data
   app.use(express.json())
 
+  // Swagger API Docs (Mở public ở dev, có Basic Auth ở production)
+  import('swagger-ui-express').then(swaggerUi => {
+    import('./docs/swagger.js').then(({ generateOpenApiDocument }) => {
+      import('express-basic-auth').then(basicAuthModule => {
+        const basicAuth = basicAuthModule.default
+        const swaggerMiddleware = [swaggerUi.default.serve, swaggerUi.default.setup(generateOpenApiDocument())]
+        
+        if (env.BUILD_MODE === 'production') {
+          app.use(
+            '/api-docs',
+            basicAuth({
+              users: { 'admin': '123456' },
+              challenge: true,
+              realm: 'API Docs'
+            }),
+            ...swaggerMiddleware
+          )
+        } else {
+          app.use('/api-docs', ...swaggerMiddleware)
+        }
+      })
+    })
+  })
+
   // Use APIs V1
   app.use('/V1', APIs_V1)
 
