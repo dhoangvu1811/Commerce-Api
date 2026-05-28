@@ -1,7 +1,10 @@
 import { StatusCodes } from 'http-status-codes'
 import { env } from '~/config/environment.js'
 import ApiError from '~/utils/ApiError.js'
-import type { AiChatPayload, AiChatReply, AiChatSource, ImageSearchHit } from '~/types/aiChat.types.js'
+import type {
+  AiChatPayload, AiChatReply, AiChatSource, ImageSearchHit,
+  ConversationState, ImageTurn, TurnType, EnrichedImageSearchHit
+} from '~/types/aiChat.types.js'
 
 const parseWebhookReply = (raw: unknown): { reply: string; sources: AiChatSource[] } => {
   if (!raw || typeof raw !== 'object') {
@@ -72,6 +75,7 @@ const searchByImage = async (imageBuffer: Buffer, limit = 8): Promise<ImageSearc
     if (!res.ok) return []
 
     const data = (json as { data?: { hits?: ImageSearchHit[] } })?.data
+
     return data?.hits ?? []
   } catch {
     return []
@@ -81,33 +85,69 @@ const searchByImage = async (imageBuffer: Buffer, limit = 8): Promise<ImageSearc
 }
 
 /**
- * In-memory cache: lưu image search results theo conversationId
- * để các lượt text tiếp theo vẫn có context ảnh.
- * TTL: 10 phút — sau đó tự xóa để tránh memory leak.
+ * SA-1: In-memory cache lưu ConversationState (image history + turn counter)
+ * theo conversationId. TTL: 10 phút — reset mỗi khi có turn mới.
+ * Giữ tối đa 5 lượt ảnh per conversation (FIFO).
  */
 const IMAGE_CACHE_TTL_MS = 10 * 60 * 1000
-const imageResultsCache = new Map<string, { results: ImageSearchHit[]; ts: number }>()
+const MAX_IMAGE_TURNS = 5
+const conversationCache = new Map<string, ConversationState>()
 
-const getCachedImageResults = (conversationId: string): ImageSearchHit[] => {
-  const entry = imageResultsCache.get(conversationId)
-  if (!entry) return []
-  if (Date.now() - entry.ts > IMAGE_CACHE_TTL_MS) {
-    imageResultsCache.delete(conversationId)
-    return []
+/** Lấy conversation state, trả null nếu không có hoặc đã hết hạn TTL */
+const getConversationState = (conversationId: string): ConversationState | null => {
+  const state = conversationCache.get(conversationId)
+  if (!state) return null
+  // TTL check dựa trên lastActivity (reset mỗi turn mới)
+  if (Date.now() - state.lastActivity > IMAGE_CACHE_TTL_MS) {
+    conversationCache.delete(conversationId)
+
+    return null
   }
-  return entry.results
+
+  return state
 }
 
-const setCachedImageResults = (conversationId: string, results: ImageSearchHit[]): void => {
-  imageResultsCache.set(conversationId, { results, ts: Date.now() })
+/** Tạo ConversationState mới (empty) */
+const createEmptyState = (): ConversationState => ({
+  imageHistory: [],
+  turnCounter: 0,
+  lastActivity: Date.now()
+})
 
-  // Cleanup: xóa các entry quá hạn (chạy lazy, tối đa 50 entry/lần)
-  if (imageResultsCache.size > 100) {
+/** SA-1: Push lượt ảnh mới vào imageHistory (FIFO, tối đa MAX_IMAGE_TURNS) */
+const pushImageTurn = (
+  state: ConversationState,
+  turnIndex: number,
+  results: ImageSearchHit[]
+): void => {
+  // Tên SP chính = tên sản phẩm đầu tiên trong results
+  const productName = results[0]?.payload?.name || '(Không rõ)'
+
+  const newTurn: ImageTurn = {
+    turnIndex,
+    timestamp: Date.now(),
+    productName,
+    results
+  }
+
+  state.imageHistory.push(newTurn)
+
+  // FIFO: giữ tối đa 5 image turns, loại lượt cũ nhất
+  while (state.imageHistory.length > MAX_IMAGE_TURNS) {
+    state.imageHistory.shift()
+  }
+
+  state.lastActivity = Date.now()
+}
+
+/** Lazy cleanup: xóa các conversation quá hạn (tối đa 50/lần) */
+const lazyCleanupCache = (): void => {
+  if (conversationCache.size > 100) {
     const now = Date.now()
     let cleaned = 0
-    for (const [key, val] of imageResultsCache) {
-      if (now - val.ts > IMAGE_CACHE_TTL_MS) {
-        imageResultsCache.delete(key)
+    for (const [key, val] of conversationCache) {
+      if (now - val.lastActivity > IMAGE_CACHE_TTL_MS) {
+        conversationCache.delete(key)
         if (++cleaned >= 50) break
       }
     }
@@ -115,10 +155,41 @@ const setCachedImageResults = (conversationId: string, results: ImageSearchHit[]
 }
 
 /**
+ * SA-1: Flatten imageHistory thành mảng EnrichedImageSearchHit[].
+ * - Thứ tự: lượt ảnh GẦN NHẤT trước, lượt cũ sau (reverse)
+ * - Dedup theo product_id (giữ kết quả từ lượt ảnh gần nhất)
+ * - Mỗi hit kèm metadata: _imageTurnIndex, _imageTurnTimestamp
+ */
+const flattenImageHistory = (imageHistory: ImageTurn[]): EnrichedImageSearchHit[] => {
+  const seen = new Set<number>()
+  const enriched: EnrichedImageSearchHit[] = []
+
+  // Duyệt từ lượt mới nhất → cũ nhất
+  for (let i = imageHistory.length - 1; i >= 0; i--) {
+    const turn = imageHistory[i]
+    if (!turn) continue
+    for (const hit of turn.results) {
+      const pid = hit.payload?.product_id
+      if (!pid || seen.has(pid)) continue
+      seen.add(pid)
+      enriched.push({
+        ...hit,
+        _imageTurnIndex: turn.turnIndex,
+        _imageTurnTimestamp: turn.timestamp
+      })
+    }
+  }
+
+  return enriched
+}
+
+/**
  * Unified chat handler:
- * 1. Nếu có ảnh → gọi image search → cache kết quả
- * 2. Nếu chỉ text → lấy cached image results (nếu có)
- * 3. Gửi tất cả cho n8n
+ * 1. Lấy/tạo conversation state (SA-1)
+ * 2. Tăng turnCounter, xác định turnType (SA-4)
+ * 3. Nếu có ảnh → gọi image search → push vào imageHistory (SA-1)
+ * 4. Nếu chỉ text → flatten imageHistory làm imageSearchResults (SA-1)
+ * 5. Gửi tất cả cho n8n kèm metadata (SA-4)
  */
 const sendChatMessage = async (payload: AiChatPayload, imageBuffer?: Buffer): Promise<AiChatReply> => {
   const url = env.N8N_AI_CHAT_WEBHOOK_URL?.trim()
@@ -136,29 +207,61 @@ const sendChatMessage = async (payload: AiChatPayload, imageBuffer?: Buffer): Pr
 
   const conversationId = payload.conversationId || ''
   const hasImage = !!(imageBuffer && imageBuffer.length > 0)
-  let imageSearchResults: ImageSearchHit[] = []
+  let imageSearchResults: (ImageSearchHit | EnrichedImageSearchHit)[] = []
+
+  // SA-1: Lấy hoặc tạo conversation state
+  let state = conversationId
+    ? (getConversationState(conversationId) || createEmptyState())
+    : createEmptyState()
+
+  // SA-4: Tăng turn counter
+  state.turnCounter += 1
+  const turnIndex = state.turnCounter
+
+  // SA-4: Xác định loại turn
+  const messageText = (payload.message || '').trim()
+  const turnType: TurnType = hasImage
+    ? (messageText ? 'hybrid' : 'image')
+    : 'text'
 
   if (hasImage) {
-    // Lượt có ảnh mới → search + cache
-    imageSearchResults = await searchByImage(imageBuffer)
-    if (conversationId && imageSearchResults.length > 0) {
-      setCachedImageResults(conversationId, imageSearchResults)
+    // Lượt có ảnh mới → search + push vào imageHistory
+    const newResults = await searchByImage(imageBuffer)
+    if (conversationId && newResults.length > 0) {
+      pushImageTurn(state, turnIndex, newResults)
     }
-  } else if (conversationId) {
-    // Lượt text only → lấy cached image results (nếu có)
-    imageSearchResults = getCachedImageResults(conversationId)
+    // imageSearchResults = kết quả ảnh mới (không flatten, vì đây là turn image)
+    imageSearchResults = newResults
+  } else if (conversationId && state.imageHistory.length > 0) {
+    // Lượt text only + có image history → flatten toàn bộ (gần nhất trước, dedup)
+    imageSearchResults = flattenImageHistory(state.imageHistory)
   }
 
-  // hasImage = true  → n8n skip text search, chỉ dùng imageSearchResults
-  // hasImage = false + có cached image → n8n chạy text search + có imageSearchResults context
+  // SA-1: Cập nhật lastActivity và persist state
+  state.lastActivity = Date.now()
+  if (conversationId) {
+    conversationCache.set(conversationId, state)
+    lazyCleanupCache()
+  }
+
+  // Build payload gửi n8n — backward compatible + fields mới
   const body = {
     message: payload.message || '',
     conversationId,
     productId: payload.productId,
     locale: payload.locale || 'vi',
     internalKey: env.AI_CHAT_INTERNAL_SECRET || undefined,
+    // Backward compatible: flatten results để n8n IF node vẫn hoạt động
     imageSearchResults,
-    hasImage
+    hasImage,
+    // SA-1: Full image history array
+    imageHistory: state.imageHistory,
+    // SA-4: Turn metadata
+    turnIndex,
+    turnType,
+    imageHistoryCount: state.imageHistory.length,
+    hasImageHistory: state.imageHistory.length > 0,
+    imageTurnIndex: hasImage ? turnIndex : undefined
   }
 
   const headers: Record<string, string> = {
@@ -191,8 +294,9 @@ const sendChatMessage = async (payload: AiChatPayload, imageBuffer?: Buffer): Pr
     if (!res.ok) {
       const msg =
         typeof json === 'object' && json
-          ? String((json as any).reply || (json as any).message || '')
+          ? String((json as Record<string, unknown>).reply || (json as Record<string, unknown>).message || '')
           : res.statusText
+
       throw new ApiError(StatusCodes.BAD_GATEWAY, msg || 'Webhook chat lỗi')
     }
 
