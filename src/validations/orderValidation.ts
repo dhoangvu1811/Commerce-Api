@@ -75,6 +75,15 @@ const updatePaymentStatusSchema = z.object({
   )
 })
 
+/** Schema cancel order with reason */
+const cancelOrderSchema = z.object({
+  cancelReason: z
+    .string({ required_error: 'Vui lòng cung cấp lý do hủy đơn hàng' })
+    .trim()
+    .min(5, 'Lý do hủy đơn phải chứa ít nhất 5 ký tự')
+    .max(500, 'Lý do hủy đơn không được vượt quá 500 ký tự')
+})
+
 /**
  * Helper function để format Zod errors
  */
@@ -185,9 +194,41 @@ const validateOrderId = async (
   next()
 }
 
+/**
+ * Validation hủy đơn hàng với lý do
+ */
+const cancelOrder = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+): Promise<void> => {
+  const paramsResult = orderIdSchema.safeParse(req.params)
+  if (!paramsResult.success) {
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(paramsResult.error)
+      )
+    )
+  }
+
+  const bodyResult = cancelOrderSchema.safeParse(req.body)
+  if (!bodyResult.success) {
+    return next(
+      new ApiError(
+        StatusCodes.UNPROCESSABLE_ENTITY,
+        formatZodError(bodyResult.error)
+      )
+    )
+  }
+  req.body = bodyResult.data
+  next()
+}
+
 export const orderValidation = {
   create,
   updateStatus,
   validateOrderId,
-  updatePaymentStatus
+  updatePaymentStatus,
+  cancelOrder
 }

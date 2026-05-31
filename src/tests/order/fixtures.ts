@@ -19,6 +19,7 @@ export const buildOrderWithRelations = (
     shippingFee: toDecimal(15000),
     totalPrice: toDecimal(115000),
     deliveredAt: null,
+    cancelReason: null,
     createdAt: now,
     updatedAt: now,
     items: [

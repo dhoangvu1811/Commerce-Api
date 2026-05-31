@@ -174,7 +174,8 @@ const userCancel = async (req: Request, res: Response, next: NextFunction): Prom
   try {
     const id = String(req.params.id)
     const userId = String(req.jwtDecoded!._id)
-    const updated = await orderService.cancel(id, userId, false)
+    const { cancelReason } = req.body
+    const updated = await orderService.cancel(id, userId, false, cancelReason)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Hủy đơn hàng thành công',
@@ -189,7 +190,8 @@ const adminCancel = async (req: Request, res: Response, next: NextFunction): Pro
   try {
     const id = String(req.params.id)
     const adminId = String(req.jwtDecoded!._id)
-    const updated = await orderService.cancel(id, adminId, true)
+    const { cancelReason } = req.body
+    const updated = await orderService.cancel(id, adminId, true, cancelReason)
     res.status(StatusCodes.OK).json({
       code: StatusCodes.OK,
       message: 'Hủy đơn hàng (admin) thành công',
