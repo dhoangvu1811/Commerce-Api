@@ -118,6 +118,7 @@ const mapOrderToApi = (order: OrderWithRelations): Order => {
     userId: order.userId,
     orderCode: order.orderCode,
     status: order.status,
+    cancelReason: order.cancelReason,
     deliveredAt: order.deliveredAt,
     createdAt: order.createdAt,
     updatedAt: order.updatedAt,
@@ -1084,7 +1085,12 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
 /**
  * Hủy đơn hàng (với Prisma transaction)
  */
-const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = false): Promise<Order> => {
+const cancel = async (
+  orderId: string,
+  requesterId: string,
+  isAdmin: boolean = false,
+  cancelReason?: string
+): Promise<Order> => {
   try {
     const orderIdNum = parseId(orderId, 'Order ID')
     const requesterIdNum = parseId(requesterId, 'Requester ID')
@@ -1165,7 +1171,8 @@ const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = f
           status: order.status
         },
         data: {
-          status: OrderStatus.CANCELLED
+          status: OrderStatus.CANCELLED,
+          cancelReason
         }
       })
       if (cancelResult.count === 0) {
@@ -1197,7 +1204,7 @@ const cancel = async (orderId: string, requesterId: string, isAdmin: boolean = f
       fromPaymentStatus: actualPaymentStatusBeforeCancel,
       toPaymentStatus:
         actualPaymentStatusBeforeCancel === PaymentStatus.PAID ? PaymentStatus.REFUNDED : PaymentStatus.CANCELLED,
-      note: isAdmin ? 'Admin hủy đơn' : 'Người dùng hủy đơn'
+      note: `Hủy đơn hàng. Lý do: ${cancelReason || 'Không có lý do chi tiết'}`
     })
 
     const refreshed = await orderModel.findOneById(orderIdNum)

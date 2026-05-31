@@ -140,6 +140,7 @@ export interface Order extends Timestamps {
   vouchers?: OrderVoucher[] // Changed to array if multiple allowed, or keep as snapshot
   totals: OrderTotals
   status: OrderStatus
+  cancelReason?: string | null
   paymentStatus?: PaymentStatus // Derived from latest payment
   payments: Payment[] // Relation to Payment table
   logs: LogEntry[]

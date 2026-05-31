@@ -27,7 +27,7 @@ RouterInstance.get(
 RouterInstance.post(
   '/cancel/:id',
   authMiddleware.verifyActiveUser,
-  orderValidation.validateOrderId,
+  orderValidation.cancelOrder,
   orderController.userCancel
 )
 
@@ -67,7 +67,7 @@ RouterInstance.post(
 RouterInstance.post(
   '/admin/cancel/:id',
   authMiddleware.requirePermission(PERMISSIONS.MANAGE_ORDERS),
-  orderValidation.validateOrderId,
+  orderValidation.cancelOrder,
   orderController.adminCancel
 )
 RouterInstance.get(

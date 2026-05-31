@@ -322,6 +322,7 @@ model Order {
 
   // ===== Từ ERD (normalize) =====
   shippingAddressId Int @map("shipping_address_id")
+  cancelReason      String? @map("cancel_reason") @db.VarChar(500)
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
