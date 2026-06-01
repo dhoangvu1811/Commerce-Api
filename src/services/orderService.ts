@@ -443,6 +443,37 @@ const create = async (userId: string, payload: CreateOrderPayload): Promise<Orde
         }
       })
 
+      // 7.7) Create outbox event for ORDER_CREATED
+      await tx.webhookOutbox.create({
+        data: {
+          eventType: 'ORDER_CREATED',
+          aggregateType: 'ORDER',
+          aggregateId: String(order.id),
+          payload: {
+            orderId: order.id,
+            orderCode: order.orderCode,
+            customerName: userShippingAddress.fullName || 'Khách hàng',
+            phone: userShippingAddress.phone || '',
+            fullAddress: userShippingAddress.fullAddress || '',
+            paymentMethod: paymentMethod,
+            paymentStatus: PaymentStatus.PENDING,
+            orderStatus: OrderStatus.PENDING,
+            subtotal: Number(subtotal),
+            discountAmount: discountValue,
+            voucherCode: voucherData?.code || null,
+            shippingFee: shipping,
+            totalPrice: payable,
+            items: orderItems.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              unitPrice: item.unitPrice,
+              lineTotal: item.lineTotal
+            })),
+            createdAt: new Date().toISOString()
+          }
+        }
+      })
+
       return order
     })
 
@@ -1192,6 +1223,39 @@ const cancel = async (
           }
         })
       }
+
+      // 6) Create outbox event for ORDER_CANCELLED
+      await tx.webhookOutbox.create({
+        data: {
+          eventType: 'ORDER_CANCELLED',
+          aggregateType: 'ORDER',
+          aggregateId: String(order.id),
+          payload: {
+            orderId: order.id,
+            orderCode: order.orderCode,
+            customerName: order.shippingAddress?.fullName || 'Khách hàng',
+            phone: order.shippingAddress?.phone || '',
+            fullAddress: order.shippingAddress?.fullAddress || '',
+            paymentMethod: latestPayment?.paymentMethod || '',
+            paymentStatus: currentPayment?.status === PaymentStatus.PAID ? PaymentStatus.REFUNDED : PaymentStatus.CANCELLED,
+            orderStatus: OrderStatus.CANCELLED,
+            subtotal: Number(order.subtotal),
+            discountAmount: Number(order.discountAmount),
+            voucherCode: order.orderVouchers?.[0]?.code || null,
+            shippingFee: Number(order.shippingFee),
+            totalPrice: Number(order.totalPrice),
+            cancelReason: cancelReason || 'Không có lý do chi tiết',
+            cancelledBy: isAdmin ? 'admin' : 'user',
+            items: order.items.map(item => ({
+              name: item.name,
+              quantity: item.quantity,
+              unitPrice: Number(item.unitPrice),
+              lineTotal: Number(item.lineTotal)
+            })),
+            cancelledAt: new Date().toISOString()
+          }
+        }
+      })
     })
 
     // Audit log (dùng actualPaymentStatusBeforeCancel từ trong transaction, không phải stale read)
