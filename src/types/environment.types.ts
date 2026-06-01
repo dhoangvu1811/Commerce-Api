@@ -96,6 +96,14 @@ export interface EnvironmentConfig {
   PAYPAL_CURRENCY: string
   PAYPAL_SOURCE_CURRENCY: string
   PAYPAL_VND_TO_USD_RATE: number
+
+  // n8n Telegram Webhook (Outbox Pattern)
+  N8N_TELEGRAM_WEBHOOK_URL: string
+  OUTBOX_PROCESSOR_ENABLED: string
+  OUTBOX_BATCH_SIZE: number
+  OUTBOX_POLL_INTERVAL_MS: number
+  OUTBOX_MAX_RETRIES: number
+  OUTBOX_HTTP_TIMEOUT_MS: number
 }
 
 /**

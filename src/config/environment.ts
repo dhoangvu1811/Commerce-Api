@@ -86,5 +86,13 @@ export const env: EnvironmentVariables = {
   PAYPAL_WEBHOOK_ID: process.env.PAYPAL_WEBHOOK_ID || '',
   PAYPAL_CURRENCY: process.env.PAYPAL_CURRENCY || 'USD',
   PAYPAL_SOURCE_CURRENCY: process.env.PAYPAL_SOURCE_CURRENCY || 'VND',
-  PAYPAL_VND_TO_USD_RATE: Number(process.env.PAYPAL_VND_TO_USD_RATE || '26000')
+  PAYPAL_VND_TO_USD_RATE: Number(process.env.PAYPAL_VND_TO_USD_RATE || '26000'),
+
+  // n8n Telegram Webhook (Outbox Pattern)
+  N8N_TELEGRAM_WEBHOOK_URL: process.env.N8N_TELEGRAM_WEBHOOK_URL || '',
+  OUTBOX_PROCESSOR_ENABLED: process.env.OUTBOX_PROCESSOR_ENABLED || 'true',
+  OUTBOX_BATCH_SIZE: Number(process.env.OUTBOX_BATCH_SIZE) || 10,
+  OUTBOX_POLL_INTERVAL_MS: Number(process.env.OUTBOX_POLL_INTERVAL_MS) || 5000,
+  OUTBOX_MAX_RETRIES: Number(process.env.OUTBOX_MAX_RETRIES) || 5,
+  OUTBOX_HTTP_TIMEOUT_MS: Number(process.env.OUTBOX_HTTP_TIMEOUT_MS) || 8000
 }
