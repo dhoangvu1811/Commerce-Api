@@ -66,6 +66,36 @@ enum AccountType {
 }
 
 // ============================================================
+// OUTBOX & WEBHOOKS
+// ============================================================
+
+enum OutboxStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+}
+
+model WebhookOutbox {
+  id            String       @id @default(uuid())
+  eventType     String       @map("event_type") @db.VarChar(50) // ORDER_CREATED, ORDER_CANCELLED
+  aggregateType String       @map("aggregate_type") @db.VarChar(50) // ORDER
+  aggregateId   String       @map("aggregate_id") @db.VarChar(50) // orderId hoặc orderCode
+  payload       Json
+  status        OutboxStatus @default(PENDING)
+  retryCount    Int          @default(0) @map("retry_count")
+  nextRetryAt   DateTime?    @map("next_retry_at")
+  lastError     String?      @map("last_error") @db.Text
+  sentAt        DateTime?    @map("sent_at")
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@index([status, nextRetryAt])
+  @@index([aggregateType, aggregateId])
+  @@map("webhook_outbox")
+}
+
+// ============================================================
 // USERS & AUTHENTICATION
 // ============================================================
 
