@@ -128,6 +128,9 @@ describe('orderService.create', () => {
           },
           orderLog: {
             create: async () => ({ id: 1 })
+          },
+          webhookOutbox: {
+            create: async () => ({ id: '1' })
           }
         }
 
@@ -457,6 +460,9 @@ describe('orderService.cancel', () => {
           },
           order: {
             updateMany: async () => ({ count: 1 })
+          },
+          webhookOutbox: {
+            create: async () => ({ id: '1' })
           }
         }
 
@@ -503,6 +509,9 @@ describe('orderService.cancel', () => {
           },
           order: {
             updateMany: async () => ({ count: 0 })
+          },
+          webhookOutbox: {
+            create: async () => ({ id: '1' })
           }
         }
 
