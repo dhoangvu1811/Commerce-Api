@@ -16,6 +16,7 @@ import { connectDB, disconnectDB } from './config/prisma.js'
 import cors from 'cors'
 import { corsOptions } from './config/cors.js'
 import { initSocket } from './config/socket.js'
+import { startOutboxProcessor, stopOutboxProcessor } from './services/outboxProcessor.js'
 import '~/providers/passport.js'
 
 /**
@@ -73,6 +74,9 @@ const START_SERVER = (): void => {
   const httpServer = http.createServer(app)
   initSocket(httpServer)
 
+  // Khởi động outbox processor (non-blocking, best-effort)
+  startOutboxProcessor()
+
   // Môi trường production
   console.log('🚀 ~ START_SERVER ~ env.BUILD_MODE:', env.BUILD_MODE)
   if (env.BUILD_MODE === 'production') {
@@ -97,6 +101,10 @@ const START_SERVER = (): void => {
    */
   const gracefulShutdown = async (signal: string): Promise<void> => {
     console.log(`4. Server is shutting down... (${signal})`)
+    
+    // Dừng processor trước để ngừng nhận batch mới
+    stopOutboxProcessor()
+    
     try {
       await disconnectDB()
       console.log('5. Disconnected from PostgreSQL!')
