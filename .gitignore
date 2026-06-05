@@ -203,3 +203,6 @@ sql_DB.sql
 
 /docs
 GEMINI.md
+# CodeGraph
+.codegraph/
+
