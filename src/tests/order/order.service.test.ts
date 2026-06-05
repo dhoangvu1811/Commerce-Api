@@ -523,3 +523,70 @@ describe('orderService.cancel', () => {
     await expectApiError(orderService.cancel('1', '10', false), StatusCodes.CONFLICT)
   })
 })
+
+describe('orderService.updateStatus (P1)', () => {
+  test('ORD-UPD-HP-001 should update order status from PENDING to CONFIRMED successfully', async () => {
+    // Arrange
+    const initialOrder = buildOrderWithRelations({
+      status: OrderStatus.PENDING
+    })
+
+    const updatedOrder = buildOrderWithRelations({
+      status: OrderStatus.CONFIRMED
+    })
+
+    let findCall = 0
+    let orderUpdateInput: any
+
+    vi.spyOn(orderModel, 'findOneById').mockImplementation(async () => {
+      findCall += 1
+      return findCall === 1 ? initialOrder : updatedOrder
+    })
+
+    vi.spyOn(orderModel, 'update').mockImplementation(async (id, data) => {
+      orderUpdateInput = { id, data }
+      return updatedOrder as any
+    })
+
+    vi.spyOn(orderModel, 'appendLog').mockResolvedValue({ id: 1 } as any)
+    vi.spyOn(notificationService, 'createNotification').mockResolvedValue({ id: 1 } as any)
+
+    // Act
+    const result = await orderService.updateStatus('1', { status: OrderStatus.CONFIRMED }, '99')
+
+    // Assert
+    expect(result.status).toBe(OrderStatus.CONFIRMED)
+    expect(orderUpdateInput.data.status).toBe(OrderStatus.CONFIRMED)
+  })
+
+  test('ORD-UPD-EG-001 should reject invalid status transition', async () => {
+    // Arrange
+    const order = buildOrderWithRelations({
+      status: OrderStatus.PENDING
+    })
+
+    vi.spyOn(orderModel, 'findOneById').mockResolvedValue(order)
+
+    // Act + Assert: PENDING to DELIVERED is invalid (must go through CONFIRMED/SHIPPED first)
+    await expectApiError(
+      orderService.updateStatus('1', { status: OrderStatus.DELIVERED }, '99'),
+      StatusCodes.BAD_REQUEST
+    )
+  })
+
+  test('ORD-UPD-EG-002 should reject status update when order is CANCELLED', async () => {
+    // Arrange
+    const order = buildOrderWithRelations({
+      status: OrderStatus.CANCELLED
+    })
+
+    vi.spyOn(orderModel, 'findOneById').mockResolvedValue(order)
+
+    // Act + Assert
+    await expectApiError(
+      orderService.updateStatus('1', { status: OrderStatus.CONFIRMED }, '99'),
+      StatusCodes.BAD_REQUEST
+    )
+  })
+})
+
