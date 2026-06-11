@@ -4,6 +4,7 @@ import { aiChatController } from '~/controllers/aiChatController.js'
 import { aiChatValidation } from '~/validations/aiChatValidation.js'
 import { aiChatLimiter } from '~/middlewares/rateLimitMiddleware.js'
 import { multerUploadMiddleware } from '~/middlewares/multerUploadMiddleware.js'
+import { authMiddleware } from '~/middlewares/authMiddleware.js'
 
 const router: Router = express.Router()
 
@@ -14,8 +15,10 @@ router.post(
   '/',
   aiChatLimiter,
   multerUploadMiddleware.upload.single('image'),
+  authMiddleware.verifyOptionalToken,
   aiChatValidation.chat,
   aiChatController.postChat
 )
 
 export const aiChatRouter = router
+
