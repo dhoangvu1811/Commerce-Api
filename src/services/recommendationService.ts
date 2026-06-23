@@ -126,11 +126,11 @@ const fetchFromRecommender = async (
     return {
       strategy,
       candidates: similarProducts
-        .filter(item => Number.isInteger(item.productId) && item.productId > 0)
         .map(item => ({
-          productId: item.productId,
+          productId: Number(item.productId),
           score: Number(item.score) || 0
         }))
+        .filter(item => Number.isInteger(item.productId) && item.productId > 0)
     }
   } catch {
     return { candidates: [] }
