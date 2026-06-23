@@ -87,7 +87,7 @@ const fetchFromRecommender = async (
   }
 
   const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), 2500)
+  const timeout = setTimeout(() => controller.abort(), 6000)
 
   try {
     const url = new URL(`/recommendations/similar/${sourceProductId}`, baseUrl)
