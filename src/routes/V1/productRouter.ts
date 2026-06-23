@@ -18,7 +18,17 @@ const RouterInstance: Router = express.Router()
 // Support both ID (legacy) and slug-based routing
 RouterInstance.get('/details/:identifier', productController.getDetails)
 RouterInstance.get('/getAll', productController.getProducts)
-RouterInstance.get('/similar/:id', authMiddleware.verifyOptionalToken, productController.getSimilarProducts)
+RouterInstance.get(
+  '/similar/:id',
+  (req, res, next) => {
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+    res.setHeader('Pragma', 'no-cache')
+    res.setHeader('Expires', '0')
+    next()
+  },
+  authMiddleware.verifyOptionalToken,
+  productController.getSimilarProducts
+)
 
 // Protected routes - requires manage_products permission
 RouterInstance.use(authMiddleware.verifyToken, authMiddleware.requirePermission(PERMISSIONS.MANAGE_PRODUCTS))
