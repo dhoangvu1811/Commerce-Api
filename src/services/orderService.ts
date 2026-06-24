@@ -1048,7 +1048,9 @@ const markPaid = async (orderId: string, adminId: string): Promise<Order> => {
           order: {
             is: {
               status: {
-                notIn: [OrderStatus.CANCELLED, OrderStatus.DELIVERED]
+                notIn: isCOD
+                  ? [OrderStatus.CANCELLED]
+                  : [OrderStatus.CANCELLED, OrderStatus.DELIVERED]
               }
             }
           }
